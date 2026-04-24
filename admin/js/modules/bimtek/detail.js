@@ -12,6 +12,7 @@ import { renderFormMapel } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { renderTabPeserta }  from './tab-peserta.js';
 import { renderTabPengajar } from './tab-pengajar.js';
+import { renderTabJadwal } from './tab-jadwal.js';
 
 let _bimtek    = null;
 let _mapelList = [];
@@ -350,9 +351,15 @@ function _switchTab(targetTab, bimtekId) {
     app.querySelector(`#pane-${id}`)?.classList.toggle('hidden', id !== targetTab);
   });
 
+
   // Lazy placeholder untuk tab yang belum diimplementasi
   const pane = app.querySelector(`#pane-${targetTab}`);
   if (!pane || pane.dataset.rendered) return;
+
+ if (targetTab === 'jadwal') {
+      // Selalu re-render jadwal (data bisa berubah)
+      pane.removeAttribute('data-rendered');
+    }
 
   if (targetTab === 'peserta' && !pane.dataset.rendered) {
     pane.dataset.rendered = '1';
@@ -366,7 +373,13 @@ function _switchTab(targetTab, bimtekId) {
     return;
   }
  
-  const placeholders = ['jadwal', 'penilaian', 'report']; // peserta & pengajar sudah dihandle di atas
+ if (targetTab === 'jadwal' && !pane.dataset.rendered) {
+      pane.dataset.rendered = '1';
+      renderTabJadwal(pane, bimtekId, _bimtek);
+      return;
+    }
+
+  const placeholders = ['penilaian', 'report']; // peserta & pengajar sudah dihandle di atas
   if (placeholders.includes(targetTab)) {
     const label = { jadwal:'Jadwal', penilaian:'Penilaian', report:'Report' }[targetTab];
     pane.innerHTML = `
