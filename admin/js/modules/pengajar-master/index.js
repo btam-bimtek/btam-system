@@ -76,7 +76,11 @@ function _renderTable() {
       { key: 'bidangUtama',    label: 'Bidang', width: '140px',
         render: v => (v ?? []).map(b => {
           const bd = BIDANG_LIST.find(x => x.bidangId === b);
-          return `<span class="badge badge-blue">${bd?.nama ?? b}</span>`;
+          if (!bd) return '<span class="badge badge-gray">' + b + '</span>';
+          const bg  = bd.color + '55';
+          const bdr = bd.color + '80';
+          return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white" ' +
+            'style="background-color:' + bg + ';border:1px solid ' + bdr + '">' + bd.nama + '</span>';
         }).join(' ') || '—' },
       { key: 'keahlian',       label: 'Keahlian', width: '180px',
         render: v => (v ?? []).slice(0,3).map(k => `<span class="badge badge-gray">${k}</span>`).join(' ') },
