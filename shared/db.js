@@ -48,21 +48,21 @@ export {
 
 export { db } from './firebase-config.js';
 
-// ─── Helper: snapshot → array of {_id, ...data} ──────────────
+// ─── Helper: snapshot → array of {id, ...data} ──────────────
 /**
- * Ubah QuerySnapshot menjadi array object dengan _id.
+ * Ubah QuerySnapshot menjadi array object dengan id.
  * @param {QuerySnapshot} snap
  * @returns {object[]}
  */
 export function snapToArray(snap) {
-  return snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
 }
 
 /**
- * Ubah DocumentSnapshot menjadi object dengan _id, atau null.
+ * Ubah DocumentSnapshot menjadi object dengan id, atau null.
  * @param {DocumentSnapshot} snap
  * @returns {object|null}
  */
 export function snapToDoc(snap) {
-  return snap.exists() ? { ...snap.data(), _id: snap.id } : null;
+  return snap.exists() ? { ...snap.data(), id: snap.id } : null;
 }
