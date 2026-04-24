@@ -10,6 +10,8 @@ import { requireWrite } from '../../auth-guard.js';
 import { getBimtek, listMapel, deleteBimtek, cancelBimtek, deleteMapel, reorderMapel } from './api.js';
 import { renderFormMapel } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
+import { renderTabPeserta }  from './tab-peserta.js';
+import { renderTabPengajar } from './tab-pengajar.js';
 
 let _bimtek    = null;
 let _mapelList = [];
@@ -351,9 +353,22 @@ function _switchTab(targetTab, bimtekId) {
   // Lazy placeholder untuk tab yang belum diimplementasi
   const pane = app.querySelector(`#pane-${targetTab}`);
   if (!pane || pane.dataset.rendered) return;
-  const placeholders = ['jadwal','peserta','pengajar','penilaian','report'];
+
+  if (targetTab === 'peserta' && !pane.dataset.rendered) {
+    pane.dataset.rendered = '1';
+    renderTabPeserta(pane, bimtekId, _bimtek);
+    return;
+  }
+ 
+  if (targetTab === 'pengajar' && !pane.dataset.rendered) {
+    pane.dataset.rendered = '1';
+    renderTabPengajar(pane, bimtekId, _bimtek);
+    return;
+  }
+ 
+  const placeholders = ['jadwal', 'penilaian', 'report']; // peserta & pengajar sudah dihandle di atas
   if (placeholders.includes(targetTab)) {
-    const label = { jadwal:'Jadwal', peserta:'Peserta', pengajar:'Pengajar', penilaian:'Penilaian', report:'Report' }[targetTab];
+    const label = { jadwal:'Jadwal', penilaian:'Penilaian', report:'Report' }[targetTab];
     pane.innerHTML = `
       <div class="flex flex-col items-center justify-center py-16 text-gray-500">
         <svg class="w-10 h-10 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,6 +378,7 @@ function _switchTab(targetTab, bimtekId) {
       </div>`;
     pane.dataset.rendered = '1';
   }
+ 
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
