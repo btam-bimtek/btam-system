@@ -367,39 +367,23 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
 // ─── Search helper ────────────────────────────────────────────────────────────
 
 async function _searchMaster(term, excludeIds) {
-  // Search by nama (case-insensitive dengan uppercase trick)
-  const upper = term.toUpperCase();
+  // Filter client-side, konsisten dengan listPeserta() di peserta-master/api.js
   const q = query(
     collection(db, 'peserta_master'),
     where('deleted', '==', false),
-    where('namaUpper', '>=', upper),
-    where('namaUpper', '<=', upper + '\uf8ff')
+    orderBy('nama')
   );
   const snap = await getDocs(q);
-  const byNama = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // Juga coba search by noPeserta kalau term kelihatan seperti ID
-  let byId = [];
-  if (/^[A-Za-z0-9\-]+$/.test(term)) {
-    const qId = query(
-      collection(db, 'peserta_master'),
-      where('deleted', '==', false),
-      where('noPeserta', '>=', term),
-      where('noPeserta', '<=', term + '\uf8ff')
+  const lower = term.toLowerCase();
+  const merged = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p =>
+      p.nama?.toLowerCase().includes(lower) ||
+      p.noPeserta?.toLowerCase().includes(lower) ||
+      p.instansi?.toLowerCase().includes(lower)
     );
-    const snapId = await getDocs(qId);
-    byId = snapId.docs.map(d => ({ id: d.id, ...d.data() }));
-  }
 
-  // Merge + dedupe by noPeserta
-  const seen = new Set();
-  const merged = [...byNama, ...byId].filter(p => {
-    if (seen.has(p.noPeserta)) return false;
-    seen.add(p.noPeserta);
-    return true;
-  });
-
-  return merged.slice(0, 25); // max 25 hasil
+  return merged.slice(0, 25);
 }
 
 // ─── Fetch details ────────────────────────────────────────────────────────────

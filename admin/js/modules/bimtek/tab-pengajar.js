@@ -294,15 +294,21 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
 // ─── Search & fetch ───────────────────────────────────────────────────────────
 
 async function _searchPengajarMaster(term) {
-  const upper = term.toUpperCase();
+  // Filter client-side, konsisten dengan listPengajar() di pengajar-master/api.js
   const q = query(
     collection(db, 'pengajar_master'),
     where('deleted', '==', false),
-    where('namaUpper', '>=', upper),
-    where('namaUpper', '<=', upper + '\uf8ff')
+    orderBy('nama')
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, 25);
+  const lower = term.toLowerCase();
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p =>
+      p.nama?.toLowerCase().includes(lower) ||
+      p.keahlian?.some(k => k.toLowerCase().includes(lower))
+    )
+    .slice(0, 25);
 }
 
 async function _fetchPengajarDetails(ids) {
