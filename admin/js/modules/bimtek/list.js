@@ -53,7 +53,7 @@ export async function renderBimtekList({ query = {} } = {}) {
         <select id="filter-bidang" class="form-select w-44">
           <option value="">Semua Bidang</option>
           ${BIDANG_LIST.filter(b => b.active).map(b =>
-            `<option value="${b.id}">${_esc(b.nama)}</option>`
+            `<option value="${b.bidangId}">${_esc(b.nama)}</option>`
           ).join('')}
         </select>
 
@@ -184,7 +184,18 @@ function _buildRow(b) {
           ? '<span class="badge badge-blue">Reguler</span>'
           : '<span class="badge badge-yellow">PNBP</span>'}
       </td>
-      <td class="px-4 py-3 text-xs text-gray-400">${_esc(bidangNames)}</td>
+      <td class="px-4 py-3">
+        <div class="flex flex-wrap gap-1">
+          ${(b.bidangIds ?? []).map(id => {
+            const bd = BIDANG_LIST.find(x => x.bidangId === id);
+            if (!bd) return '';
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+              style="background-color: ${bd.color}88; border: 1px solid ${bd.color}60">
+              ${_esc(bd.nama)}
+            </span>`;
+          }).join('')}
+        </div>
+      </td>
       <td class="px-4 py-3 text-xs text-gray-400">
         ${_fmtDate(b.periode?.mulai)} — ${_fmtDate(b.periode?.selesai)}
       </td>
