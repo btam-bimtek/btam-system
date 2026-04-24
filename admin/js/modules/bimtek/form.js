@@ -224,14 +224,14 @@ function _buildBidangField(activeBidang, tipe, currentIds) {
       <select id="bidang-single" class="form-select w-full">
         <option value="">— Pilih bidang —</option>
         ${activeBidang.map(b =>
-          `<option value="${b.id}" ${currentIds[0]===b.id?'selected':''}>${_esc(b.nama)}</option>`
+          `<option value="${b.bidangId}" ${currentIds[0]===b.bidangId?'selected':''}>${_esc(b.nama)}</option>`
         ).join('')}
       </select>`;
   }
   return `<div class="flex flex-wrap gap-4">
     ${activeBidang.map(b => `
       <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
-        <input type="checkbox" class="bidang-check w-4 h-4 rounded" value="${b.id}" ${currentIds.includes(b.id)?'checked':''}>
+        <input type="checkbox" class="bidang-check w-4 h-4 rounded" value="${b.bidangId}" ${currentIds.includes(b.bidangId)?'checked':''}>
         ${_esc(b.nama)}
       </label>`).join('')}
   </div>`;
