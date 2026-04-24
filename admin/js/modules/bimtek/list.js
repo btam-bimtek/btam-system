@@ -171,7 +171,7 @@ function _render() {
 
 function _buildRow(b) {
   const bidangNames = (b.bidangIds ?? [])
-    .map(id => BIDANG_LIST.find(bd => bd.id === id)?.nama ?? id).join(', ') || '—';
+    .map(id => BIDANG_LIST.find(bd => bd.bidangId === id)?.nama ?? id).join(', ') || '—';
 
   return `
     <tr class="hover:bg-gray-800/50 transition-colors">

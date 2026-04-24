@@ -252,7 +252,7 @@ function _buildTimeline(dayKey, sched) {
 
     // Mapel sesi
     const mapel = _mapelList.find(m => m.id === slot.mapelId);
-    const bidang = BIDANG_LIST.find(b => b.id === mapel?.bidangId);
+    const bidang = BIDANG_LIST.find(b => b.bidangId === mapel?.bidangId);
     return `
       <div class="flex items-center gap-3 py-2 px-3 bg-blue-900/20 border border-blue-800/40 rounded-lg group">
         <span class="text-xs text-gray-400 font-mono w-28 shrink-0">
@@ -501,7 +501,7 @@ async function _handleExportJadwal() {
     for (const s of sorted) {
       if (s.tipe !== 'mapel') continue;
       const mapel  = _mapelList.find(m => m.id === s.mapelId);
-      const bidang = BIDANG_LIST.find(b => b.id === mapel?.bidangId);
+      const bidang = BIDANG_LIST.find(b => b.bidangId === mapel?.bidangId);
       rows.push([
         _fmtDay(_tsToDate(s.tanggal)),
         s.jamMulai,
