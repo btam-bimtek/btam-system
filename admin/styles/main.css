@@ -1,0 +1,109 @@
+/* admin/styles/main.css */
+/* Custom styles yang tidak bisa di-cover dengan Tailwind utility saja. */
+
+/* ─── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+/* ─── Focus ring global ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ─── Transitions ─────────────────────────────────────────── */
+* { transition-property: color, background-color, border-color, opacity;
+    transition-duration: 150ms; }
+
+/* ─── Table ───────────────────────────────────────────────── */
+.btam-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.btam-table th {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  font-weight: 500;
+  color: #9ca3af;
+  background: #111827;
+  border-bottom: 1px solid #1f2937;
+  white-space: nowrap;
+}
+
+.btam-table td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid #1f2937;
+  color: #e5e7eb;
+  vertical-align: middle;
+}
+
+.btam-table tbody tr:hover td {
+  background: #1f2937;
+}
+
+.btam-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Badge ───────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.badge-blue   { background: #1e3a5f; color: #93c5fd; }
+.badge-green  { background: #14532d; color: #86efac; }
+.badge-yellow { background: #713f12; color: #fde047; }
+.badge-red    { background: #7f1d1d; color: #fca5a5; }
+.badge-purple { background: #3b0764; color: #d8b4fe; }
+.badge-gray   { background: #1f2937; color: #9ca3af; }
+
+/* ─── Form inputs (override untuk konsistensi) ─────────────── */
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  color: #f3f4f6;
+  font-size: 0.875rem;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder { color: #4b5563; }
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1rem;
+  padding-right: 2rem;
+}
+
+/* ─── Print styles (override di milsestone 1.8) ───────────── */
+@media print {
+  #sidebar, #navbar, #toast-container, .no-print { display: none !important; }
+  body { background: white; color: black; }
+  #app { padding: 0; overflow: visible; }
+}

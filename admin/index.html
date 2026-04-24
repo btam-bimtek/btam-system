@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BTAM Terpadu — Sistem Manajemen Bimtek Admin Panel" />
+  <title>BTAM Terpadu</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            gray: {
+              950: '#0a0a0f'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="styles/main.css" />
+
+  <!-- Favicon placeholder -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>" />
+</head>
+<body class="bg-gray-950 text-gray-100 antialiased">
+
+  <!-- 
+    Konten di-inject sepenuhnya oleh main.js.
+    Tidak ada markup statis di sini selain shell kosong untuk SEO/no-js fallback.
+  -->
+  <noscript>
+    <div style="padding:2rem;text-align:center;color:#fff;background:#0a0a0f;font-family:sans-serif">
+      <p>Aplikasi ini memerlukan JavaScript untuk berjalan.</p>
+    </div>
+  </noscript>
+
+  <!-- Bootstrap -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
