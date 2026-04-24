@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Bimtek BTAM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 100px auto;
+            text-align: center;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .card {
+            border: 1px solid #ddd;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: white;
+        }
+        a {
+            display: inline-block;
+            padding: 12px 28px;
+            background: #0066cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 15px;
+            margin-top: 10px;
+        }
+        a:hover { background: #0052a3; }
+    </style>
+</head>
+<body>
+    <h1>Sistem Bimtek BTAM</h1>
+    <p>Pilih lokasi yang ingin diakses:</p>
+
+    <div class="card">
+        <h2>Admin</h2>
+        <p>Kelola Bimtek, peserta, pengajar, nilai</p>
+        <a href="/sistem-bimtek/admin/">Buka Admin</a>
+    </div>
+
+    <div class="card">
+        <h2>Peserta — Ujian</h2>
+        <p>Akses pre-test dan post-test</p>
+        <a href="/sistem-bimtek/exam/">Buka Ujian</a>
+    </div>
+
+    <div class="card">
+        <h2>Pendaftar</h2>
+        <p>Daftar Bimtek BTAM</p>
+        <a href="/sistem-bimtek/pendaftar/">Daftar Sekarang</a>
+    </div>
+</body>
+</html>
