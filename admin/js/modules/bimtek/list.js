@@ -53,12 +53,13 @@ export async function renderBimtekList({ query } = {}) {
     </div>
   `;
 
+  // Tombol baru
   app.querySelector('#btn-baru').addEventListener('click', () => navigate('/bimtek/baru'));
 
+  // Filter
   ['filter-tipe', 'filter-status', 'filter-bidang'].forEach(id => {
     app.querySelector(`#${id}`).addEventListener('change', () => _applyFilter(app));
   });
-
   app.querySelector('#btn-reset').addEventListener('click', () => {
     app.querySelector('#filter-tipe').value = '';
     app.querySelector('#filter-status').value = '';
@@ -67,43 +68,7 @@ export async function renderBimtekList({ query } = {}) {
     _renderContent(app);
   });
 
-  app.querySelector('#list-content').addEventListener('click', async e => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const { action, id } = btn.dataset;
-
-    if (action === 'detail') { navigate(`/bimtek/${id}`); return; }
-    if (action === 'edit')   { navigate(`/bimtek/${id}/edit`); return; }
-
-    if (action === 'publish') {
-      const ok = await confirmDialog({
-        title: 'Publikasikan Bimtek',
-        message: 'Publikasikan Bimtek ini? Status akan berubah menjadi "Direncanakan".',
-      });
-      if (!ok) return;
-      try {
-        await updateStatus(id, 'planned');
-        showToast('Bimtek dipublikasikan', 'success');
-        await _load(app);
-      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
-    }
-
-    if (action === 'cancel') {
-      const ok = await confirmDialog({
-        title: 'Batalkan Bimtek',
-        message: 'Batalkan Bimtek ini? Tindakan ini tidak bisa diurungkan.',
-        confirmLabel: 'Batalkan',
-        danger: true,
-      });
-      if (!ok) return;
-      try {
-        await updateStatus(id, 'cancelled');
-        showToast('Bimtek dibatalkan', 'success');
-        await _load(app);
-      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
-    }
-  });
-
+  // Load data
   await _load(app);
 }
 
@@ -113,6 +78,8 @@ async function _load(app) {
   try {
     _state.data = await listBimtek();
     _renderContent(app);
+    // Pasang event listener SETELAH konten dirender
+    _bindTableEvents(app);
   } catch (err) {
     el.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
   }
@@ -123,6 +90,7 @@ function _applyFilter(app) {
   _state.filter.status   = app.querySelector('#filter-status').value;
   _state.filter.bidangId = app.querySelector('#filter-bidang').value;
   _renderContent(app);
+  _bindTableEvents(app);
 }
 
 function _renderContent(app) {
@@ -137,13 +105,59 @@ function _renderContent(app) {
     : _buildTable(items);
 }
 
+// Bind events langsung ke setiap tombol (bukan event delegation)
+function _bindTableEvents(app) {
+  app.querySelectorAll('.btn-detail').forEach(btn => {
+    btn.addEventListener('click', () => navigate(`/bimtek/${btn.dataset.id}`));
+  });
+  app.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => navigate(`/bimtek/${btn.dataset.id}/edit`));
+  });
+  app.querySelectorAll('.btn-publish').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Publikasikan Bimtek',
+        message: 'Publikasikan Bimtek ini? Status akan berubah menjadi "Direncanakan".',
+      });
+      if (!ok) return;
+      try {
+        await updateStatus(btn.dataset.id, 'planned');
+        showToast('Bimtek dipublikasikan', 'success');
+        await _load(app);
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+  app.querySelectorAll('.btn-cancel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Batalkan Bimtek',
+        message: 'Batalkan Bimtek ini? Tindakan ini tidak bisa diurungkan.',
+        confirmLabel: 'Batalkan',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await updateStatus(btn.dataset.id, 'cancelled');
+        showToast('Bimtek dibatalkan', 'success');
+        await _load(app);
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+}
+
 function _buildTable(items) {
   const rows = items.map(b => {
     const mulai   = _fmtDate(b.periode?.mulai);
     const selesai = _fmtDate(b.periode?.selesai);
-    const bidang  = b.bidangIds
-      ?.map(id => BIDANG_LIST.find(x => x.bidangId === id)?.namaShort || id)
-      .join(', ') || '-';
+
+    // Pakai color dari BIDANG_LIST
+    const bidangBadges = (b.bidangIds || []).map(id => {
+      const found = BIDANG_LIST.find(x => x.bidangId === id);
+      const nama  = found ? found.nama : id;
+      const color = found ? found.color : '#6b7280';
+      // Buat background lebih gelap dari warna utama
+      return `<span style="background:${color}22;color:${color};font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;border:1px solid ${color}44;">${nama}</span>`;
+    }).join(' ');
 
     return `
       <tr style="border-bottom:1px solid #1f2937;">
@@ -151,18 +165,16 @@ function _buildTable(items) {
           <div style="font-weight:500;color:#fff;font-size:14px;">${_esc(b.nama)}</div>
           <div style="font-size:11px;color:#6b7280;">${_esc(b.kodeBimtek || '')}</div>
         </td>
-        <td style="padding:12px 16px;font-size:13px;color:#d1d5db;">${_esc(bidang)}</td>
+        <td style="padding:12px 16px;">${bidangBadges || '-'}</td>
         <td style="padding:12px 16px;">${_badgeTipe(b.tipe)}</td>
-        <td style="padding:12px 16px;font-size:12px;color:#9ca3af;">${mulai} – ${selesai}</td>
+        <td style="padding:12px 16px;font-size:12px;color:#9ca3af;white-space:nowrap;">${mulai} – ${selesai}</td>
         <td style="padding:12px 16px;">${_badgeStatus(b.status)}</td>
         <td style="padding:12px 16px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button data-action="detail" data-id="${b.id}" style="${_btnStyle('#374151')}">Detail</button>
-            <button data-action="edit"   data-id="${b.id}" style="${_btnStyle('#374151')}">Edit</button>
-            ${b.status === 'draft' ? `
-              <button data-action="publish" data-id="${b.id}" style="${_btnStyle('#1d4ed8')}">Publikasi</button>` : ''}
-            ${['draft','planned'].includes(b.status) ? `
-              <button data-action="cancel" data-id="${b.id}" style="${_btnStyle('#7f1d1d')}">Batalkan</button>` : ''}
+            <button class="btn-detail" data-id="${b.id}" style="${_btn('#374151')}">Detail</button>
+            <button class="btn-edit"   data-id="${b.id}" style="${_btn('#374151')}">Edit</button>
+            ${b.status === 'draft' ? `<button class="btn-publish" data-id="${b.id}" style="${_btn('#1d4ed8')}">Publikasi</button>` : ''}
+            ${['draft','planned'].includes(b.status) ? `<button class="btn-cancel" data-id="${b.id}" style="${_btn('#7f1d1d')}">Batalkan</button>` : ''}
           </div>
         </td>
       </tr>`;
@@ -174,12 +186,12 @@ function _buildTable(items) {
       <table style="width:100%;border-collapse:collapse;">
         <thead>
           <tr style="border-bottom:1px solid #1f2937;">
-            <th style="${_thStyle()}">Nama</th>
-            <th style="${_thStyle()}">Bidang</th>
-            <th style="${_thStyle()}">Tipe</th>
-            <th style="${_thStyle()}">Periode</th>
-            <th style="${_thStyle()}">Status</th>
-            <th style="${_thStyle()}">Aksi</th>
+            <th style="${_th()}">Nama</th>
+            <th style="${_th()}">Bidang</th>
+            <th style="${_th()}">Tipe</th>
+            <th style="${_th()}">Periode</th>
+            <th style="${_th()}">Status</th>
+            <th style="${_th()}">Aksi</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -196,7 +208,7 @@ function _badgeTipe(tipe) {
     lainnya:    ['#1f2937', '#9ca3af', 'Lainnya'],
   };
   const [bg, color, label] = map[tipe] || map.lainnya;
-  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;">${label}</span>`;
+  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;">${label}</span>`;
 }
 
 function _badgeStatus(status) {
@@ -208,14 +220,14 @@ function _badgeStatus(status) {
     cancelled: ['#450a0a', '#fca5a5', 'Dibatalkan'],
   };
   const [bg, color, label] = map[status] || map.draft;
-  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;">${label}</span>`;
+  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;">${label}</span>`;
 }
 
-function _btnStyle(bg) {
+function _btn(bg) {
   return `background:${bg};color:#fff;font-size:12px;padding:3px 10px;border-radius:4px;border:none;cursor:pointer;`;
 }
 
-function _thStyle() {
+function _th() {
   return `padding:10px 16px;text-align:left;font-size:11px;color:#6b7280;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;`;
 }
 
