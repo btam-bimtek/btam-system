@@ -20,7 +20,6 @@ export async function renderBimtekList({ query } = {}) {
       </button>
     </div>
 
-    <!-- Filter -->
     <div class="flex flex-wrap gap-3 mb-5">
       <select id="filter-tipe" class="form-select text-sm">
         <option value="">Semua Tipe</option>
@@ -49,7 +48,6 @@ export async function renderBimtekList({ query } = {}) {
       </button>
     </div>
 
-    <!-- Content -->
     <div id="list-content">
       <div class="text-gray-400 text-center py-16">Memuat...</div>
     </div>
@@ -74,8 +72,14 @@ export async function renderBimtekList({ query } = {}) {
     if (!btn) return;
     const { action, id } = btn.dataset;
 
+    if (action === 'detail') { navigate(`/bimtek/${id}`); return; }
+    if (action === 'edit')   { navigate(`/bimtek/${id}/edit`); return; }
+
     if (action === 'publish') {
-      const ok = await confirmDialog('Publikasikan Bimtek ini? Status jadi "Direncanakan".');
+      const ok = await confirmDialog({
+        title: 'Publikasikan Bimtek',
+        message: 'Publikasikan Bimtek ini? Status akan berubah menjadi "Direncanakan".',
+      });
       if (!ok) return;
       try {
         await updateStatus(id, 'planned');
@@ -85,10 +89,15 @@ export async function renderBimtekList({ query } = {}) {
     }
 
     if (action === 'cancel') {
-      const alasan = prompt('Alasan pembatalan (opsional):');
-      if (alasan === null) return;
+      const ok = await confirmDialog({
+        title: 'Batalkan Bimtek',
+        message: 'Batalkan Bimtek ini? Tindakan ini tidak bisa diurungkan.',
+        confirmLabel: 'Batalkan',
+        danger: true,
+      });
+      if (!ok) return;
       try {
-        await updateStatus(id, 'cancelled', alasan || null);
+        await updateStatus(id, 'cancelled');
         showToast('Bimtek dibatalkan', 'success');
         await _load(app);
       } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
@@ -132,59 +141,45 @@ function _buildTable(items) {
   const rows = items.map(b => {
     const mulai   = _fmtDate(b.periode?.mulai);
     const selesai = _fmtDate(b.periode?.selesai);
-    const bidang  = b.bidangIds?.map(id => BIDANG_LIST.find(x => x.bidangId === id)?.namaShort || id).join(', ') || '-';
+    const bidang  = b.bidangIds
+      ?.map(id => BIDANG_LIST.find(x => x.bidangId === id)?.namaShort || id)
+      .join(', ') || '-';
 
     return `
-      <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-        <td class="py-3 px-4">
-          <div class="font-medium text-white text-sm">${_esc(b.nama)}</div>
-          <div class="text-xs text-gray-500">${_esc(b.kodeBimtek || '')}</div>
+      <tr style="border-bottom:1px solid #1f2937;">
+        <td style="padding:12px 16px;">
+          <div style="font-weight:500;color:#fff;font-size:14px;">${_esc(b.nama)}</div>
+          <div style="font-size:11px;color:#6b7280;">${_esc(b.kodeBimtek || '')}</div>
         </td>
-        <td class="py-3 px-4 text-sm text-gray-300">${_esc(bidang)}</td>
-        <td class="py-3 px-4">
-          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">${b.tipe}</span>
-        </td>
-        <td class="py-3 px-4 text-xs text-gray-400">${mulai} – ${selesai}</td>
-        <td class="py-3 px-4">
-          <span class="text-xs px-2 py-0.5 rounded-full ${_statusColor(b.status)}">${_labelStatus(b.status)}</span>
-        </td>
-        <td class="py-3 px-4">
-          <div class="flex items-center gap-2">
-            <button onclick="location.hash='#/bimtek/${b.id}'"
-              class="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors">
-              Detail
-            </button>
-            <button onclick="location.hash='#/bimtek/${b.id}/edit'"
-              class="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors">
-              Edit
-            </button>
+        <td style="padding:12px 16px;font-size:13px;color:#d1d5db;">${_esc(bidang)}</td>
+        <td style="padding:12px 16px;">${_badgeTipe(b.tipe)}</td>
+        <td style="padding:12px 16px;font-size:12px;color:#9ca3af;">${mulai} – ${selesai}</td>
+        <td style="padding:12px 16px;">${_badgeStatus(b.status)}</td>
+        <td style="padding:12px 16px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button data-action="detail" data-id="${b.id}" style="${_btnStyle('#374151')}">Detail</button>
+            <button data-action="edit"   data-id="${b.id}" style="${_btnStyle('#374151')}">Edit</button>
             ${b.status === 'draft' ? `
-              <button data-action="publish" data-id="${b.id}"
-                class="text-xs px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-white transition-colors">
-                Publikasi
-              </button>` : ''}
+              <button data-action="publish" data-id="${b.id}" style="${_btnStyle('#1d4ed8')}">Publikasi</button>` : ''}
             ${['draft','planned'].includes(b.status) ? `
-              <button data-action="cancel" data-id="${b.id}"
-                class="text-xs px-2 py-1 rounded bg-red-900 hover:bg-red-800 text-white transition-colors">
-                Batalkan
-              </button>` : ''}
+              <button data-action="cancel" data-id="${b.id}" style="${_btnStyle('#7f1d1d')}">Batalkan</button>` : ''}
           </div>
         </td>
       </tr>`;
   }).join('');
 
   return `
-    <div class="text-xs text-gray-500 mb-3">${items.length} Bimtek ditemukan</div>
-    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-      <table class="w-full">
+    <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">${items.length} Bimtek ditemukan</div>
+    <div style="background:#111827;border-radius:12px;border:1px solid #1f2937;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
         <thead>
-          <tr class="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-            <th class="py-3 px-4 text-left font-medium">Nama</th>
-            <th class="py-3 px-4 text-left font-medium">Bidang</th>
-            <th class="py-3 px-4 text-left font-medium">Tipe</th>
-            <th class="py-3 px-4 text-left font-medium">Periode</th>
-            <th class="py-3 px-4 text-left font-medium">Status</th>
-            <th class="py-3 px-4 text-left font-medium">Aksi</th>
+          <tr style="border-bottom:1px solid #1f2937;">
+            <th style="${_thStyle()}">Nama</th>
+            <th style="${_thStyle()}">Bidang</th>
+            <th style="${_thStyle()}">Tipe</th>
+            <th style="${_thStyle()}">Periode</th>
+            <th style="${_thStyle()}">Status</th>
+            <th style="${_thStyle()}">Aksi</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -192,24 +187,42 @@ function _buildTable(items) {
     </div>`;
 }
 
+function _badgeTipe(tipe) {
+  const map = {
+    reguler:    ['#1e3a5f', '#93c5fd', 'Reguler'],
+    pnbp:       ['#3b1f5e', '#c4b5fd', 'PNBP'],
+    e_learning: ['#1a3a2a', '#6ee7b7', 'e-Learning'],
+    ojt:        ['#3b2a0a', '#fcd34d', 'OJT'],
+    lainnya:    ['#1f2937', '#9ca3af', 'Lainnya'],
+  };
+  const [bg, color, label] = map[tipe] || map.lainnya;
+  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;">${label}</span>`;
+}
+
+function _badgeStatus(status) {
+  const map = {
+    draft:     ['#1f2937', '#9ca3af', 'Draft'],
+    planned:   ['#1e3a5f', '#93c5fd', 'Direncanakan'],
+    ongoing:   ['#14532d', '#86efac', 'Berlangsung'],
+    completed: ['#2e1065', '#d8b4fe', 'Selesai'],
+    cancelled: ['#450a0a', '#fca5a5', 'Dibatalkan'],
+  };
+  const [bg, color, label] = map[status] || map.draft;
+  return `<span style="background:${bg};color:${color};font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;">${label}</span>`;
+}
+
+function _btnStyle(bg) {
+  return `background:${bg};color:#fff;font-size:12px;padding:3px 10px;border-radius:4px;border:none;cursor:pointer;`;
+}
+
+function _thStyle() {
+  return `padding:10px 16px;text-align:left;font-size:11px;color:#6b7280;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;`;
+}
+
 function _fmtDate(ts) {
   if (!ts) return '-';
   const d = ts?.toDate?.() ?? new Date(ts);
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function _labelStatus(s) {
-  return { draft:'Draft', planned:'Direncanakan', ongoing:'Berlangsung', completed:'Selesai', cancelled:'Dibatalkan' }[s] || s;
-}
-
-function _statusColor(s) {
-  return {
-    draft:     'bg-gray-700 text-gray-300',
-    planned:   'bg-blue-900/60 text-blue-300',
-    ongoing:   'bg-green-900/60 text-green-300',
-    completed: 'bg-purple-900/60 text-purple-300',
-    cancelled: 'bg-red-900/60 text-red-300',
-  }[s] || 'bg-gray-700 text-gray-300';
 }
 
 function _esc(s) {
