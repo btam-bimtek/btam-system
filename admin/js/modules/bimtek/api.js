@@ -305,6 +305,25 @@ export function validateMapel(data) {
   if (errors.length > 0) throw new Error(errors.join('; '));
 }
 
+// ─── VALIDASI WEIGHTS ───────────────────────────────────────────────────────
+
+/**
+ * Validasi total bobot penilaian.
+ * Returns { valid: bool, message: string }
+ */
+export function validateWeights(weights, hasTugas, hasPresentasi) {
+  const keys = ['pretest', 'posttest', 'pengajar', 'kehadiran', 'keaktifan', 'respek'];
+  if (hasTugas) keys.push('tugas');
+  if (hasPresentasi) keys.push('presentasi');
+
+  const total = keys.reduce((sum, k) => sum + (Number(weights[k]) || 0), 0);
+  const ok = Math.abs(total - 100) < 0.01;
+  return {
+    valid: ok,
+    message: ok ? '' : `Total bobot harus 100% (sekarang ${total}%)`,
+  };
+}
+
 // ─── VALIDASI JADWAL ────────────────────────────────────────────────────────
 
 /**
