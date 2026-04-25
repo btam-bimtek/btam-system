@@ -30,12 +30,15 @@ let state = {
 
 // ─── ENTRY POINT ────────────────────────────────────────────────────────────
 
-export async function renderBimtekDetail(container, bimtekId) {
+export async function renderBimtekDetail({ id } = {}) {
+  const app = document.getElementById('app');
+  const bimtekId = id;
   const isNew = !bimtekId || bimtekId === 'new';
   state.bimtekId = isNew ? null : bimtekId;
   state.activeTab = 'info';
 
   setPageTitle(isNew ? 'Bimtek Baru' : 'Detail Bimtek');
+  const container = app;
   container.innerHTML = `<div class="text-center py-5 text-muted">Memuat...</div>`;
 
   try {
