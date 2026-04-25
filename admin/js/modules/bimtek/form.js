@@ -257,11 +257,17 @@ function _buildWeightInputs(weights, hasTugas, hasPresentasi) {
   const keys = ['pretest','posttest','pengajar','kehadiran','keaktifan','respek'];
   if (hasTugas) keys.push('tugas');
   if (hasPresentasi) keys.push('presentasi');
+
+  // Redistribute bobot komponen tidak aktif ke pengajar
+  const display = { ...weights };
+  if (!hasTugas)      display.pengajar = (display.pengajar || 0) + (weights.tugas || 0);
+  if (!hasPresentasi) display.pengajar = (display.pengajar || 0) + (weights.presentasi || 0);
+
   return keys.map(k => `
     <div>
       <label class="block text-xs text-gray-400 mb-1.5">${WEIGHT_LABELS[k]}</label>
       <div class="flex items-center gap-1">
-        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100" value="${Math.round((weights[k]??0) * 100)}">
+        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100" value="${Math.round((display[k] ?? 0) * 100)}">
         <span class="text-xs text-gray-500 shrink-0">%</span>
       </div>
     </div>`).join('');
@@ -275,7 +281,9 @@ function _attachWeightEvents() {
 
 function _readWeights() {
   const w = { ...DEFAULT_WEIGHTS };
-  document.querySelectorAll('.weight-input').forEach(inp => { w[inp.dataset.key] = Number(inp.value)||0; });
+  document.querySelectorAll('.weight-input').forEach(inp => {
+    w[inp.dataset.key] = (Number(inp.value) || 0) / 100;
+  });
   return w;
 }
 
@@ -329,9 +337,9 @@ async function _handleSubmit(bimtekId, isEdit) {
       showToast('Bimtek berhasil diperbarui', 'success');
       window.location.hash = `#/bimtek/${bimtekId}`;
     } else {
-      const newId = await createBimtek(payload);
+      const result = await createBimtek(payload);
       showToast('Bimtek berhasil dibuat', 'success');
-      window.location.hash = `#/bimtek/${newId}`;
+      window.location.hash = `#/bimtek/${result.bimtekId}`;
     }
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
