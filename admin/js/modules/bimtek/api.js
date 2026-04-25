@@ -1,258 +1,410 @@
-/**
- * bimtek/api.js
- * Lokasi: admin/js/modules/bimtek/api.js
- */
-
+// admin/js/modules/bimtek/api.js
 import {
-  db,
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp, Timestamp,
-  snapToArray, snapToDoc
-} from '../../../../shared/db.js';
+  collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  query, where, orderBy, serverTimestamp, writeBatch,
+  deleteDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { db } from '../../../../shared/db.js';
 import { logAudit } from '../../../../shared/logger.js';
-import { auth } from '../../../../shared/firebase-config.js';
+import { getCurrentUser } from '../../../../shared/auth.js';
 
-const COL       = 'bimtek';
-const COL_MAPEL = 'mapel';
-const COL_SESI  = 'sesi';
+const COL = 'bimtek';
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
+// ─── DEFAULT WEIGHTS ────────────────────────────────────────────────────────
 
 export const DEFAULT_WEIGHTS = {
-  pretest: 10, posttest: 30, pengajar: 20,
-  kehadiran: 20, keaktifan: 10, respek: 10,
-  tugas: 0, presentasi: 0
+  pretest:    0.10,
+  posttest:   0.25,
+  pengajar:   0.20,
+  kehadiran:  0.15,
+  keaktifan:  0.10,
+  respek:     0.10,
+  tugas:      0.05,
+  presentasi: 0.05,
 };
 
-export const DEFAULT_THRESHOLDS = {
-  kehadiran: [{ min:90, label:'Sangat Baik' },{ min:75, label:'Baik' },{ min:60, label:'Cukup' },{ min:0, label:'Perlu Perhatian' }],
-  keaktifan: [{ min:85, label:'Sangat Aktif' },{ min:70, label:'Aktif' },{ min:55, label:'Cukup Aktif' },{ min:0, label:'Perlu Didorong' }],
-  respek:    [{ min:85, label:'Sangat Baik' },{ min:70, label:'Baik' },{ min:55, label:'Cukup' },{ min:0, label:'Perlu Perhatian' }]
-};
+export const DEFAULT_KKM = 60;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── GENERATE KODE BIMTEK ───────────────────────────────────────────────────
 
-export function generateKodeBimtek(tahun) {
-  return `BIM-${tahun}-${String(Date.now()).slice(-4)}`;
+export function generateKodeBimtek(tahun, urutan) {
+  const pad = String(urutan).padStart(2, '0');
+  return `BIM-${tahun}-${pad}`;
 }
 
-export function validateWeights(weights, hasTugas, hasPresentasi) {
-  const keys = ['pretest','posttest','pengajar','kehadiran','keaktifan','respek'];
-  if (hasTugas) keys.push('tugas');
-  if (hasPresentasi) keys.push('presentasi');
-  const sum = keys.reduce((acc, k) => acc + (Number(weights[k]) || 0), 0);
-  if (Math.abs(sum - 100) > 0.01) return { valid: false, message: `Total bobot harus 100. Saat ini: ${sum}` };
-  return { valid: true };
+// ─── LIST BIMTEK ────────────────────────────────────────────────────────────
+
+export async function listBimtek({ tipe, status, bidangId } = {}) {
+  let q = query(
+    collection(db, COL),
+    where('deleted', '==', false),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  let results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Client-side filter (Firestore butuh composite index kalau di-chain)
+  if (tipe) results = results.filter(b => b.tipe === tipe);
+  if (status) results = results.filter(b => b.status === status);
+  if (bidangId) results = results.filter(b => b.bidangIds?.includes(bidangId));
+
+  return results;
 }
 
-// ─── Bimtek CRUD ──────────────────────────────────────────────────────────────
-
-export async function listBimtek({ statusFilter = null, tipeFilter = null, bidangId = null } = {}) {
-  const constraints = [where('deleted','==',false), orderBy('periode.mulai','desc')];
-  if (statusFilter) constraints.splice(1, 0, where('status','==',statusFilter));
-  if (tipeFilter)   constraints.splice(1, 0, where('tipe','==',tipeFilter));
-  const snap = await getDocs(query(collection(db, COL), ...constraints));
-  let result = snapToArray(snap);
-  if (bidangId) result = result.filter(b => b.bidangIds?.includes(bidangId));
-  return result;
-}
+// ─── GET SINGLE BIMTEK ──────────────────────────────────────────────────────
 
 export async function getBimtek(bimtekId) {
   const snap = await getDoc(doc(db, COL, bimtekId));
-  if (!snap.exists()) throw new Error(`Bimtek ${bimtekId} tidak ditemukan`);
-  return snapToDoc(snap);
+  if (!snap.exists()) throw new Error('Bimtek tidak ditemukan');
+  return { id: snap.id, ...snap.data() };
 }
 
+// ─── CREATE BIMTEK ──────────────────────────────────────────────────────────
+
 export async function createBimtek(data) {
-  const wv = validateWeights(data.weights, data.hasTugas, data.hasPresentasi);
-  if (!wv.valid) throw new Error(wv.message);
+  const user = getCurrentUser();
+  const kapasitasDefault = data.mode === 'online' ? 25 : 17;
 
   const payload = {
-    nama:             data.nama.trim(),
-    kodeBimtek:       generateKodeBimtek(new Date().getFullYear()),
-    tipe:             data.tipe,
-    mode:             data.mode,
-    bidangIds:        data.bidangIds ?? [],
-    clientInstansiId: data.clientInstansiId ?? null,
+    nama: data.nama.trim(),
+    kodeBimtek: data.kodeBimtek?.trim() || '',
+    tipe: data.tipe,
+    mode: data.mode,
+    bidangIds: data.bidangIds || [],
+    clientInstansiId: data.clientInstansiId || null,
     periode: {
-      mulai:   Timestamp.fromDate(new Date(data.periode.mulai)),
-      selesai: Timestamp.fromDate(new Date(data.periode.selesai))
+      mulai: data.periode.mulai,
+      selesai: data.periode.selesai,
     },
-    lokasi:           data.lokasi?.trim() ?? '',
-    kapasitas:        data.kapasitas ?? (data.mode === 'online' ? 25 : 17),
-    pesertaIds:       [],
-    pengajarIds:      [],
-    kkm:              data.kkm ?? 60,
-    weights:          data.weights,
-    hasTugas:         data.hasTugas ?? false,
-    hasPresentasi:    data.hasPresentasi ?? false,
-    preTestExamId:    null,
-    postTestExamId:   null,
+    lokasi: data.lokasi?.trim() || '',
+    kapasitas: data.kapasitas ?? kapasitasDefault,
+    pesertaIds: [],
+    pengajarIds: data.pengajarIds || [],
+    kkm: data.kkm ?? DEFAULT_KKM,
+    weights: data.weights || { ...DEFAULT_WEIGHTS },
+    hasTugas: data.hasTugas ?? false,
+    hasPresentasi: data.hasPresentasi ?? false,
+    preTestExamId: null,
+    postTestExamId: null,
     reportThresholds: null,
-    status:           'draft',
-    cancelReason:     null,
-    createdAt:        serverTimestamp(),
-    updatedAt:        serverTimestamp(),
-    createdBy:        auth.currentUser?.email ?? '',
-    deleted:          false
+    status: 'draft',
+    cancelReason: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy: user.uid,
+    deleted: false,
   };
 
   const ref = await addDoc(collection(db, COL), payload);
-  await logAudit('create', 'bimtek', ref.id, { nama: payload.nama });
-  return { bimtekId: ref.id, ...payload };
+  await logAudit('bimtek', 'create', ref.id, { nama: payload.nama });
+  return ref.id;
 }
 
-export async function updateBimtek(bimtekId, fields) {
-  if (fields.weights) {
-    const existing = snapToDoc(await getDoc(doc(db, COL, bimtekId)));
-    const wv = validateWeights(fields.weights, fields.hasTugas ?? existing.hasTugas, fields.hasPresentasi ?? existing.hasPresentasi);
-    if (!wv.valid) throw new Error(wv.message);
+// ─── UPDATE BIMTEK ──────────────────────────────────────────────────────────
+
+export async function updateBimtek(bimtekId, data) {
+  const allowed = [
+    'nama', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
+    'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'kkm', 'weights',
+    'hasTugas', 'hasPresentasi', 'reportThresholds', 'status', 'cancelReason',
+    'preTestExamId', 'postTestExamId',
+  ];
+  const payload = {};
+  for (const key of allowed) {
+    if (key in data) payload[key] = data[key];
   }
-  if (fields.periode?.mulai && !(fields.periode.mulai instanceof Timestamp))
-    fields.periode.mulai = Timestamp.fromDate(new Date(fields.periode.mulai));
-  if (fields.periode?.selesai && !(fields.periode.selesai instanceof Timestamp))
-    fields.periode.selesai = Timestamp.fromDate(new Date(fields.periode.selesai));
+  payload.updatedAt = serverTimestamp();
 
-  await updateDoc(doc(db, COL, bimtekId), { ...fields, updatedAt: serverTimestamp() });
-  await logAudit('update', 'bimtek', bimtekId, fields);
+  await updateDoc(doc(db, COL, bimtekId), payload);
+  await logAudit('bimtek', 'update', bimtekId, { fields: Object.keys(payload) });
 }
+
+// ─── SOFT DELETE BIMTEK ─────────────────────────────────────────────────────
 
 export async function deleteBimtek(bimtekId) {
-  await updateDoc(doc(db, COL, bimtekId), { deleted: true, deletedAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  await logAudit('delete', 'bimtek', bimtekId);
+  await updateDoc(doc(db, COL, bimtekId), {
+    deleted: true,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit('bimtek', 'delete', bimtekId, {});
 }
 
-export async function cancelBimtek(bimtekId, reason) {
-  await updateBimtek(bimtekId, { status: 'cancelled', cancelReason: reason ?? null });
+// ─── UPDATE STATUS ──────────────────────────────────────────────────────────
+
+export async function updateStatus(bimtekId, status, cancelReason = null) {
+  const validStatuses = ['draft', 'planned', 'ongoing', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) throw new Error(`Status tidak valid: ${status}`);
+  await updateDoc(doc(db, COL, bimtekId), {
+    status,
+    cancelReason: status === 'cancelled' ? (cancelReason || null) : null,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit('bimtek', 'status_change', bimtekId, { status });
 }
 
-// ─── Peserta & Pengajar ───────────────────────────────────────────────────────
+// ─── PESERTA ────────────────────────────────────────────────────────────────
 
-export async function addPesertaToBimtek(bimtekId, noPesertaList) {
-  const existing = new Set((snapToDoc(await getDoc(doc(db, COL, bimtekId)))).pesertaIds ?? []);
-  noPesertaList.forEach(np => existing.add(np));
-  await updateDoc(doc(db, COL, bimtekId), { pesertaIds: [...existing], updatedAt: serverTimestamp() });
+export async function addPeserta(bimtekId, noPesertaList) {
+  const bimtek = await getBimtek(bimtekId);
+  const existing = bimtek.pesertaIds || [];
+  const toAdd = noPesertaList.filter(n => !existing.includes(n));
+  if (toAdd.length === 0) return;
+
+  const merged = [...existing, ...toAdd];
+  await updateDoc(doc(db, COL, bimtekId), {
+    pesertaIds: merged,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit('bimtek', 'peserta_add', bimtekId, { count: toAdd.length });
 }
 
-export async function removePesertaFromBimtek(bimtekId, noPeserta) {
-  const b = snapToDoc(await getDoc(doc(db, COL, bimtekId)));
-  await updateDoc(doc(db, COL, bimtekId), { pesertaIds: (b.pesertaIds ?? []).filter(np => np !== noPeserta), updatedAt: serverTimestamp() });
+export async function removePeserta(bimtekId, noPeserta) {
+  const bimtek = await getBimtek(bimtekId);
+  const updated = (bimtek.pesertaIds || []).filter(n => n !== noPeserta);
+  await updateDoc(doc(db, COL, bimtekId), {
+    pesertaIds: updated,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit('bimtek', 'peserta_remove', bimtekId, { noPeserta });
 }
 
-export async function addPengajarToBimtek(bimtekId, pengajarIdList) {
-  const existing = new Set((snapToDoc(await getDoc(doc(db, COL, bimtekId)))).pengajarIds ?? []);
-  pengajarIdList.forEach(id => existing.add(id));
-  await updateDoc(doc(db, COL, bimtekId), { pengajarIds: [...existing], updatedAt: serverTimestamp() });
-}
-
-// ─── Mapel ────────────────────────────────────────────────────────────────────
+// ─── MAPEL SUB-COLLECTION ───────────────────────────────────────────────────
 
 export async function listMapel(bimtekId) {
-  const snap = await getDocs(query(collection(db, COL, bimtekId, COL_MAPEL), orderBy('urutan','asc')));
-  return snapToArray(snap);
+  const snap = await getDocs(
+    query(
+      collection(db, COL, bimtekId, 'mapel'),
+      orderBy('urutan', 'asc')
+    )
+  );
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function getMapel(bimtekId, mapelId) {
-  const snap = await getDoc(doc(db, COL, bimtekId, COL_MAPEL, mapelId));
-  if (!snap.exists()) throw new Error(`Mapel tidak ditemukan`);
-  return snapToDoc(snap);
+  const snap = await getDoc(doc(db, COL, bimtekId, 'mapel', mapelId));
+  if (!snap.exists()) throw new Error('Mapel tidak ditemukan');
+  return { id: snap.id, ...snap.data() };
 }
 
 export async function createMapel(bimtekId, data) {
-  if (!data.pengajarIds.includes(data.pengajarPenilaiId))
-    throw new Error('Pengajar penilai harus salah satu dari pengajar pengampu');
-  if (!Number.isInteger(Number(data.totalJp)) || data.totalJp < 1 || data.totalJp > 9)
-    throw new Error('Total JP harus bilangan bulat antara 1-9');
+  validateMapel(data);
+  const user = getCurrentUser();
 
+  // Hitung urutan berikutnya
   const existing = await listMapel(bimtekId);
+  const nextUrutan = existing.length + 1;
+
   const payload = {
-    urutan: existing.length + 1,
+    urutan: nextUrutan,
     nama: data.nama.trim(),
     bidangId: data.bidangId,
-    ekIds: data.ekIds ?? null,
-    totalJp: Number(data.totalJp),
-    pengajarIds: data.pengajarIds,
+    ekIds: data.ekIds || null,
+    totalJp: data.totalJp,
+    pengajarIds: data.pengajarIds || [],
     pengajarPenilaiId: data.pengajarPenilaiId,
     jadwal: null,
-    keterangan: data.keterangan?.trim() ?? null,
+    keterangan: data.keterangan?.trim() || null,
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdBy: user.uid,
   };
 
-  const docRef = await addDoc(collection(db, COL, bimtekId, COL_MAPEL), payload);
-  await addPengajarToBimtek(bimtekId, data.pengajarIds);
-  await logAudit('create', 'mapel', docRef.id, { bimtekId, nama: payload.nama });
-  return { mapelId: docRef.id, ...payload };
+  const ref = await addDoc(collection(db, COL, bimtekId, 'mapel'), payload);
+  await logAudit('bimtek_mapel', 'create', `${bimtekId}/${ref.id}`, { nama: payload.nama });
+  return ref.id;
 }
 
-export async function updateMapel(bimtekId, mapelId, fields) {
-  if (fields.pengajarIds || fields.pengajarPenilaiId) {
-    const ex = await getMapel(bimtekId, mapelId);
-    const ids = fields.pengajarIds ?? ex.pengajarIds;
-    const pid = fields.pengajarPenilaiId ?? ex.pengajarPenilaiId;
-    if (!ids.includes(pid)) throw new Error('Pengajar penilai harus salah satu dari pengajar pengampu');
-    if (fields.pengajarIds) await addPengajarToBimtek(bimtekId, fields.pengajarIds);
+export async function updateMapel(bimtekId, mapelId, data) {
+  validateMapel(data);
+  const allowed = [
+    'urutan', 'nama', 'bidangId', 'ekIds', 'totalJp',
+    'pengajarIds', 'pengajarPenilaiId', 'jadwal', 'keterangan',
+  ];
+  const payload = {};
+  for (const key of allowed) {
+    if (key in data) payload[key] = data[key];
   }
-  if (fields.totalJp !== undefined) {
-    if (!Number.isInteger(Number(fields.totalJp)) || fields.totalJp < 1 || fields.totalJp > 9)
-      throw new Error('Total JP harus bilangan bulat antara 1-9');
-    fields.totalJp = Number(fields.totalJp);
-  }
-  await updateDoc(doc(db, COL, bimtekId, COL_MAPEL, mapelId), { ...fields, updatedAt: serverTimestamp() });
-  await logAudit('update', 'mapel', mapelId, { bimtekId });
+  payload.updatedAt = serverTimestamp();
+
+  await updateDoc(doc(db, COL, bimtekId, 'mapel', mapelId), payload);
+  await logAudit('bimtek_mapel', 'update', `${bimtekId}/${mapelId}`, {});
 }
 
 export async function deleteMapel(bimtekId, mapelId) {
-  await deleteDoc(doc(db, COL, bimtekId, COL_MAPEL, mapelId));
-  const remaining = await listMapel(bimtekId);
-  await Promise.all(remaining.map((m, i) =>
-    updateDoc(doc(db, COL, bimtekId, COL_MAPEL, m.id), { urutan: i + 1 })
-  ));
-  await logAudit('delete', 'mapel', mapelId, { bimtekId });
+  await deleteDoc(doc(db, COL, bimtekId, 'mapel', mapelId));
+  await logAudit('bimtek_mapel', 'delete', `${bimtekId}/${mapelId}`, {});
 }
 
-export async function reorderMapel(bimtekId, mapelId, direction) {
-  const all = await listMapel(bimtekId);
-  const idx = all.findIndex(m => m.id === mapelId);
-  if (idx === -1) return;
-  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-  if (swapIdx < 0 || swapIdx >= all.length) return;
-  await Promise.all([
-    updateDoc(doc(db, COL, bimtekId, COL_MAPEL, all[idx].id),     { urutan: all[swapIdx].urutan }),
-    updateDoc(doc(db, COL, bimtekId, COL_MAPEL, all[swapIdx].id), { urutan: all[idx].urutan })
-  ]);
+// Reorder urutan mapel setelah delete
+export async function reorderMapel(bimtekId) {
+  const mapels = await listMapel(bimtekId);
+  const batch = writeBatch(db);
+  mapels.forEach((m, i) => {
+    batch.update(doc(db, COL, bimtekId, 'mapel', m.id), { urutan: i + 1 });
+  });
+  await batch.commit();
 }
 
-// ─── Sesi ─────────────────────────────────────────────────────────────────────
+// ─── SESI SUB-COLLECTION ────────────────────────────────────────────────────
 
 export async function listSesi(bimtekId) {
-  const snap = await getDocs(query(
-    collection(db, COL, bimtekId, COL_SESI),
-    orderBy('tanggal','asc'), orderBy('jamMulai','asc')
-  ));
-  return snapToArray(snap);
+  const snap = await getDocs(
+    query(
+      collection(db, COL, bimtekId, 'sesi'),
+      orderBy('urutan', 'asc')
+    )
+  );
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function createSesi(bimtekId, data) {
+  const user = getCurrentUser();
   const existing = await listSesi(bimtekId);
+  const nextUrutan = existing.length + 1;
+
   const payload = {
-    urutan: existing.length + 1,
-    tanggal: data.tanggal instanceof Timestamp ? data.tanggal : Timestamp.fromDate(new Date(data.tanggal)),
+    urutan: nextUrutan,
+    tanggal: data.tanggal,
     jamMulai: data.jamMulai,
     jamSelesai: data.jamSelesai,
-    tipe: data.tipe,
-    mapelId: data.mapelId ?? null,
-    jp: data.jp ?? null,
-    keterangan: data.keterangan ?? null
+    tipe: data.tipe, // 'mapel'|'break'|'ishoma'|'pembukaan'|'penutupan'
+    mapelId: data.mapelId || null,
+    jp: data.jp || null,
+    keterangan: data.keterangan || null,
+    createdAt: serverTimestamp(),
+    createdBy: user.uid,
   };
-  const docRef = await addDoc(collection(db, COL, bimtekId, COL_SESI), payload);
-  return { sesiId: docRef.id, ...payload };
+
+  const ref = await addDoc(collection(db, COL, bimtekId, 'sesi'), payload);
+  return ref.id;
 }
 
-export async function clearJadwal(bimtekId) {
-  const allSesi = await listSesi(bimtekId);
-  await Promise.all(allSesi.map(s => deleteDoc(doc(db, COL, bimtekId, COL_SESI, s.id))));
-  const allMapel = await listMapel(bimtekId);
-  await Promise.all(allMapel.map(m => updateDoc(doc(db, COL, bimtekId, COL_MAPEL, m.id), { jadwal: null })));
-  await logAudit('clear_jadwal', 'bimtek', bimtekId);
+export async function deleteSesi(bimtekId, sesiId) {
+  await deleteDoc(doc(db, COL, bimtekId, 'sesi', sesiId));
+}
+
+// ─── VALIDASI MAPEL ─────────────────────────────────────────────────────────
+
+export function validateMapel(data) {
+  const errors = [];
+
+  if (!data.nama?.trim()) errors.push('Nama mapel wajib diisi');
+  if (!data.bidangId) errors.push('Bidang wajib dipilih');
+  if (!data.totalJp || data.totalJp < 1 || data.totalJp > 9) {
+    errors.push('Total JP harus antara 1-9');
+  }
+  if (!data.pengajarIds || data.pengajarIds.length === 0) {
+    errors.push('Minimal 1 pengajar pengampu');
+  }
+  if (!data.pengajarPenilaiId) {
+    errors.push('Pengajar penilai wajib dipilih');
+  }
+  if (data.pengajarPenilaiId && !data.pengajarIds?.includes(data.pengajarPenilaiId)) {
+    errors.push('Pengajar penilai harus salah satu dari pengajar pengampu');
+  }
+
+  if (errors.length > 0) throw new Error(errors.join('; '));
+}
+
+// ─── VALIDASI JADWAL ────────────────────────────────────────────────────────
+
+/**
+ * Validasi jadwal sebelum disimpan.
+ * Returns { valid: bool, errors: string[], warnings: string[] }
+ */
+export function validateJadwalMapel(mapel, tanggal, jamMulai, jamSelesai, allSesi) {
+  const errors = [];
+  const warnings = [];
+
+  const date = tanggal instanceof Date ? tanggal : tanggal.toDate();
+  const dayOfWeek = date.getDay(); // 0=Minggu, 5=Jumat, 6=Sabtu
+  const isJumat = dayOfWeek === 5;
+
+  // Blocker: mapel >7 JP tidak boleh di hari Jumat
+  if (isJumat && mapel.totalJp > 7) {
+    errors.push(`Mapel "${mapel.nama}" (${mapel.totalJp} JP) tidak bisa dijadwalkan hari Jumat. ISHOMA Jumat 11:15-13:45 membuat waktu aktif terbatas.`);
+  }
+
+  // Warning: total JP hari Senin-Kamis > 8
+  if (!isJumat) {
+    const sesiHariIni = allSesi.filter(s => {
+      if (s.tipe !== 'mapel') return false;
+      const tgl = s.tanggal instanceof Date ? s.tanggal : s.tanggal.toDate();
+      return tgl.toDateString() === date.toDateString();
+    });
+    const totalJpHariIni = sesiHariIni.reduce((sum, s) => sum + (s.jp || 0), 0);
+    if (totalJpHariIni + mapel.totalJp > 8) {
+      warnings.push(`Total JP di hari ini akan menjadi ${totalJpHariIni + mapel.totalJp} JP. Hari padat — hati-hati kelelahan peserta.`);
+    }
+  }
+
+  // Blocker: overlap jam dengan sesi lain di hari yang sama
+  const [mulaiH, mulaiM] = jamMulai.split(':').map(Number);
+  const [selesaiH, selesaiM] = jamSelesai.split(':').map(Number);
+  const mulaiMenit = mulaiH * 60 + mulaiM;
+  const selesaiMenit = selesaiH * 60 + selesaiM;
+
+  const sesiHariIniSemua = allSesi.filter(s => {
+    const tgl = s.tanggal instanceof Date ? s.tanggal : s.tanggal.toDate();
+    return tgl.toDateString() === date.toDateString();
+  });
+
+  for (const s of sesiHariIniSemua) {
+    const [sH, sM] = s.jamMulai.split(':').map(Number);
+    const [eH, eM] = s.jamSelesai.split(':').map(Number);
+    const sMenit = sH * 60 + sM;
+    const eMenit = eH * 60 + eM;
+
+    const overlap = mulaiMenit < eMenit && selesaiMenit > sMenit;
+    if (overlap) {
+      errors.push(`Jadwal bertabrakan dengan sesi "${s.keterangan || s.mapelId || s.tipe}" (${s.jamMulai}-${s.jamSelesai})`);
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+// ─── HITUNG JAM SELESAI ─────────────────────────────────────────────────────
+
+/**
+ * Hitung jamSelesai berdasarkan jamMulai + totalJp, dengan melewati jeda break/ISHOMA.
+ * breaks = [{ mulai: "10:15", selesai: "10:30" }, ...]
+ */
+export function hitungJamSelesai(jamMulai, totalJp, breaks = []) {
+  const toMenit = (str) => {
+    const [h, m] = str.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toStr = (menit) => {
+    const h = Math.floor(menit / 60);
+    const m = menit % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  let sisa = totalJp * 45; // menit aktif yang harus diisi
+  let cursor = toMenit(jamMulai);
+
+  while (sisa > 0) {
+    // Cek apakah cursor saat ini kena break
+    const jeda = breaks.find(b => toMenit(b.mulai) === cursor);
+    if (jeda) {
+      cursor = toMenit(jeda.selesai);
+      continue;
+    }
+
+    // Cek apakah ada break yang dimulai dalam interval berikutnya
+    const nextBreak = breaks
+      .filter(b => toMenit(b.mulai) > cursor)
+      .sort((a, b) => toMenit(a.mulai) - toMenit(b.mulai))[0];
+
+    if (nextBreak && toMenit(nextBreak.mulai) - cursor < sisa) {
+      const sebelumBreak = toMenit(nextBreak.mulai) - cursor;
+      sisa -= sebelumBreak;
+      cursor = toMenit(nextBreak.selesai);
+    } else {
+      cursor += sisa;
+      sisa = 0;
+    }
+  }
+
+  return toStr(cursor);
 }

@@ -1,223 +1,214 @@
-/**
- * bimtek/form-mapel.js
- * Lokasi: admin/js/modules/bimtek/form-mapel.js
- */
-
-import { createMapel, updateMapel, getBimtek } from './api.js';
+// admin/js/modules/bimtek/form-mapel.js
+import { createMapel, updateMapel, validateMapel } from './api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { showToast } from '../../components/toast.js';
 
-export async function renderFormMapel(mapel, bimtekId, onSuccess) {
+// ─── PUBLIC API ─────────────────────────────────────────────────────────────
+
+/**
+ * Tampilkan modal add/edit mapel.
+ * @param {string} bimtekId
+ * @param {object|null} mapel - null = mode create, ada isinya = mode edit
+ * @param {string[]} pengajarOptions - list { id, nama } pengajar yang tersedia
+ * @param {function} onSuccess - callback setelah save berhasil
+ */
+export function showMapelModal(bimtekId, mapel, pengajarOptions, onSuccess) {
+  removeExistingModal();
+
   const isEdit = !!mapel;
+  const modal = buildModal(isEdit, mapel, pengajarOptions);
+  document.body.appendChild(modal);
 
-  // Load pengajar di bimtek ini
-  let pengajarList = [];
-  try {
-    const bimtek = await getBimtek(bimtekId);
-    const { getPengajar } = await import('../pengajar-master/api.js');
-    pengajarList = await Promise.all(
-      (bimtek.pengajarIds ?? []).map(id => getPengajar(id).catch(() => null))
-    ).then(list => list.filter(Boolean));
-  } catch { /* lanjut dengan list kosong */ }
+  // Bind pengajar penilai dropdown ke pengajar pengampu yang dipilih
+  const pengampu = modal.querySelector('#mapel-pengajar-ids');
+  const penilai = modal.querySelector('#mapel-pengajar-penilai');
+  pengampu.addEventListener('change', () => syncPenilaiOptions(pengampu, penilai));
+  if (isEdit) syncPenilaiOptions(pengampu, penilai, mapel.pengajarPenilaiId);
 
-  // Buat modal overlay
-  const existing = document.getElementById('modal-form-mapel');
-  if (existing) existing.remove();
+  // Submit
+  modal.querySelector('#mapel-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await handleSubmit(modal, bimtekId, mapel?.id, onSuccess);
+  });
 
-  const overlay = document.createElement('div');
-  overlay.id = 'modal-form-mapel';
-  overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
-  document.body.appendChild(overlay);
+  // Tutup modal
+  modal.querySelectorAll('[data-dismiss]').forEach(el => {
+    el.addEventListener('click', () => removeExistingModal());
+  });
 
-  const activeBidang       = BIDANG_LIST.filter(b => b.active);
-  const currentPengajarIds = mapel?.pengajarIds ?? [];
-  const currentPenilaiId   = mapel?.pengajarPenilaiId ?? '';
+  // Klik backdrop
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) removeExistingModal();
+  });
 
-  overlay.innerHTML = `
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
-      <!-- Header modal -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-        <h2 class="text-sm font-semibold text-white">${isEdit ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran'}</h2>
-        <button id="btn-close-modal" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+  modal.style.display = 'flex';
+  modal.querySelector('#mapel-nama').focus();
+}
+
+// ─── BUILD MODAL HTML ───────────────────────────────────────────────────────
+
+function buildModal(isEdit, mapel, pengajarOptions) {
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.id = 'mapel-modal';
+
+  const bidangOptions = BIDANG_LIST.filter(b => b.active)
+    .map(b => `<option value="${b.id}" ${mapel?.bidangId === b.id ? 'selected' : ''}>${b.nama}</option>`)
+    .join('');
+
+  const pengajarOpts = pengajarOptions.map(p =>
+    `<option value="${p.id}" ${mapel?.pengajarIds?.includes(p.id) ? 'selected' : ''}>${escHtml(p.nama)}</option>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h5 class="modal-title">${isEdit ? 'Edit' : 'Tambah'} Mata Pelajaran</h5>
+        <button type="button" class="btn-close" data-dismiss></button>
       </div>
 
-      <!-- Body -->
-      <div class="p-5 space-y-4">
-        <!-- Nama -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-1.5">Nama Mata Pelajaran <span class="text-red-400">*</span></label>
-          <input type="text" id="mapel-nama" class="form-input w-full" maxlength="200"
-            value="${_esc(mapel?.nama ?? '')}"
-            placeholder="cth: Operasi dan Pemeliharaan IPA">
-        </div>
+      <form id="mapel-form" novalidate>
+        <div class="modal-body">
 
-        <!-- Bidang + JP -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Bidang <span class="text-red-400">*</span></label>
-            <select id="mapel-bidang" class="form-select w-full">
-              <option value="">— Pilih bidang —</option>
-              ${activeBidang.map(b =>
-                `<option value="${b.id}" ${mapel?.bidangId===b.id?'selected':''}>${_esc(b.nama)}</option>`
-              ).join('')}
-            </select>
+          <div class="form-group mb-3">
+            <label class="form-label required">Nama Mata Pelajaran</label>
+            <input type="text" id="mapel-nama" class="form-control"
+              value="${escHtml(mapel?.nama || '')}"
+              placeholder="cth: Operasi IPA, Penurunan NRW" required>
           </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Total JP <span class="text-red-400">*</span> <span class="text-gray-600">(1–9)</span></label>
-            <div class="flex items-center gap-2">
-              <input type="number" id="mapel-jp" class="form-input w-full" min="1" max="9" step="1"
-                value="${mapel?.totalJp ?? ''}">
-              <span id="durasi-preview" class="text-xs text-gray-500 shrink-0 w-20"></span>
+
+          <div class="row">
+            <div class="col-md-6 form-group mb-3">
+              <label class="form-label required">Bidang</label>
+              <select id="mapel-bidang" class="form-select" required>
+                <option value="">-- Pilih Bidang --</option>
+                ${bidangOptions}
+              </select>
+            </div>
+            <div class="col-md-6 form-group mb-3">
+              <label class="form-label required">Total JP
+                <span class="text-muted small">(1 JP = 45 menit, maks 9 JP)</span>
+              </label>
+              <input type="number" id="mapel-jp" class="form-control"
+                min="1" max="9" step="1"
+                value="${mapel?.totalJp || ''}"
+                placeholder="1-9" required>
             </div>
           </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label required">Pengajar Pengampu
+              <span class="text-muted small">(bisa lebih dari 1)</span>
+            </label>
+            <select id="mapel-pengajar-ids" class="form-select" multiple size="4" required>
+              ${pengajarOpts}
+            </select>
+            <small class="text-muted">Ctrl+klik untuk pilih lebih dari 1</small>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label required">Pengajar Penilai
+              <span class="text-muted small">(yang input nilai peserta, harus salah satu pengampu)</span>
+            </label>
+            <select id="mapel-pengajar-penilai" class="form-select" required>
+              <option value="">-- Pilih pengajar pengampu dulu --</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label">Keterangan <span class="text-muted small">(opsional)</span></label>
+            <textarea id="mapel-keterangan" class="form-control" rows="2"
+              placeholder="Catatan atau deskripsi singkat">${escHtml(mapel?.keterangan || '')}</textarea>
+          </div>
+
+          <div id="mapel-form-error" class="alert alert-danger d-none"></div>
+
         </div>
 
-        <!-- Pengajar Pengampu -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-1.5">
-            Pengajar Pengampu <span class="text-red-400">*</span>
-            <span class="text-gray-600">(bisa lebih dari 1)</span>
-          </label>
-          ${pengajarList.length === 0 ? `
-            <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-lg px-3 py-2 text-xs text-yellow-400">
-              Belum ada pengajar di Bimtek ini. Tambahkan dulu di tab Pengajar.
-            </div>` : `
-            <div class="bg-gray-800 rounded-lg p-3 space-y-2 max-h-36 overflow-y-auto">
-              ${pengajarList.map(p => `
-                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-300 hover:text-white">
-                  <input type="checkbox" class="pengajar-check w-4 h-4 rounded" value="${p.id}"
-                    ${currentPengajarIds.includes(p.id)?'checked':''}>
-                  ${_esc(p.nama)}
-                </label>`).join('')}
-            </div>`}
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss>Batal</button>
+          <button type="submit" id="mapel-submit" class="btn btn-primary">
+            ${isEdit ? 'Simpan Perubahan' : 'Tambah Mapel'}
+          </button>
         </div>
-
-        <!-- Pengajar Penilai -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-1.5">
-            Pengajar Penilai <span class="text-red-400">*</span>
-            <span class="text-gray-600">(yang input nilai peserta)</span>
-          </label>
-          <select id="mapel-penilai" class="form-select w-full" ${pengajarList.length===0?'disabled':''}>
-            <option value="">— Pilih dari pengampu —</option>
-            ${pengajarList.filter(p => currentPengajarIds.includes(p.id)).map(p =>
-              `<option value="${p.id}" ${currentPenilaiId===p.id?'selected':''}>${_esc(p.nama)}</option>`
-            ).join('')}
-          </select>
-        </div>
-
-        <!-- Keterangan -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-1.5">Keterangan <span class="text-gray-600">(opsional)</span></label>
-          <textarea id="mapel-ket" class="form-input w-full resize-none" rows="2" maxlength="500"
-            placeholder="Catatan tambahan">${_esc(mapel?.keterangan ?? '')}</textarea>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-800">
-        <button id="btn-cancel-modal" class="px-4 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-          Batal
-        </button>
-        <button id="btn-save-mapel" class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
-          ${isEdit ? 'Simpan' : 'Tambah Mapel'}
-        </button>
-      </div>
+      </form>
     </div>
   `;
 
-  // Close handlers
-  const closeModal = () => overlay.remove();
-  overlay.querySelector('#btn-close-modal').addEventListener('click', closeModal);
-  overlay.querySelector('#btn-cancel-modal').addEventListener('click', closeModal);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  return el;
+}
 
-  // JP → preview durasi
-  const jpInput  = overlay.querySelector('#mapel-jp');
-  const durasiEl = overlay.querySelector('#durasi-preview');
-  function updateDurasi() {
-    const jp = parseInt(jpInput.value) || 0;
-    if (jp > 0) {
-      const menit = jp * 45;
-      const jam  = Math.floor(menit / 60);
-      const sisa = menit % 60;
-      durasiEl.textContent = jam > 0 ? `${jam}j ${sisa>0?sisa+'m':''}` : `${sisa}m`;
-    } else { durasiEl.textContent = ''; }
+// ─── SYNC PENILAI OPTIONS ───────────────────────────────────────────────────
+
+function syncPenilaiOptions(pengampuSelect, penilaiSelect, selectedId = null) {
+  const selected = Array.from(pengampuSelect.selectedOptions).map(o => ({
+    id: o.value,
+    nama: o.text,
+  }));
+
+  penilaiSelect.innerHTML = selected.length === 0
+    ? `<option value="">-- Pilih pengajar pengampu dulu --</option>`
+    : `<option value="">-- Pilih Pengajar Penilai --</option>` +
+      selected.map(p =>
+        `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escHtml(p.nama)}</option>`
+      ).join('');
+}
+
+// ─── HANDLE SUBMIT ──────────────────────────────────────────────────────────
+
+async function handleSubmit(modal, bimtekId, mapelId, onSuccess) {
+  const errEl = modal.querySelector('#mapel-form-error');
+  const submitBtn = modal.querySelector('#mapel-submit');
+  errEl.classList.add('d-none');
+
+  const pengajarIds = Array.from(modal.querySelector('#mapel-pengajar-ids').selectedOptions)
+    .map(o => o.value);
+
+  const data = {
+    nama: modal.querySelector('#mapel-nama').value,
+    bidangId: modal.querySelector('#mapel-bidang').value,
+    totalJp: parseInt(modal.querySelector('#mapel-jp').value, 10),
+    pengajarIds,
+    pengajarPenilaiId: modal.querySelector('#mapel-pengajar-penilai').value,
+    keterangan: modal.querySelector('#mapel-keterangan').value,
+  };
+
+  try {
+    validateMapel(data);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('d-none');
+    return;
   }
-  jpInput.addEventListener('input', updateDurasi);
-  updateDurasi();
 
-  // Checkbox pengampu → sync penilai dropdown
-  overlay.querySelectorAll('.pengajar-check').forEach(cb => {
-    cb.addEventListener('change', () => _syncPenilai(overlay, pengajarList));
-  });
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Menyimpan...';
 
-  // Save
-  overlay.querySelector('#btn-save-mapel').addEventListener('click', async () => {
-    const nama      = overlay.querySelector('#mapel-nama').value.trim();
-    const bidangId  = overlay.querySelector('#mapel-bidang').value;
-    const totalJp   = parseInt(overlay.querySelector('#mapel-jp').value);
-    const penilaiId = overlay.querySelector('#mapel-penilai').value;
-    const ket       = overlay.querySelector('#mapel-ket').value.trim();
-    const checked   = [...overlay.querySelectorAll('.pengajar-check:checked')].map(cb => cb.value);
-
-    if (!nama)                                     { showToast('Nama mapel wajib diisi', 'warning'); return; }
-    if (!bidangId)                                 { showToast('Bidang wajib dipilih', 'warning'); return; }
-    if (!totalJp || totalJp < 1 || totalJp > 9)   { showToast('JP harus antara 1–9', 'warning'); return; }
-    if (pengajarList.length > 0 && checked.length === 0)      { showToast('Pilih minimal 1 pengajar pengampu', 'warning'); return; }
-    if (pengajarList.length > 0 && !penilaiId)                { showToast('Pengajar penilai wajib dipilih', 'warning'); return; }
-    if (pengajarList.length > 0 && !checked.includes(penilaiId)) { showToast('Pengajar penilai harus ada di daftar pengampu', 'warning'); return; }
-
-    const btn = overlay.querySelector('#btn-save-mapel');
-    btn.disabled = true;
-    btn.textContent = 'Menyimpan…';
-
-    try {
-      const data = {
-        nama, bidangId, totalJp,
-        pengajarIds:       checked.length > 0 ? checked : [],
-        pengajarPenilaiId: penilaiId || checked[0] || '',
-        ekIds:             mapel?.ekIds ?? null,
-        keterangan:        ket || null
-      };
-
-      if (isEdit) {
-        await updateMapel(bimtekId, mapel.id, data);
-        showToast('Mapel berhasil diperbarui', 'success');
-      } else {
-        await createMapel(bimtekId, data);
-        showToast('Mapel berhasil ditambahkan', 'success');
-      }
-
-      closeModal();
-      if (typeof onSuccess === 'function') await onSuccess();
-    } catch (err) {
-      showToast('Gagal: ' + err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = isEdit ? 'Simpan' : 'Tambah Mapel';
+  try {
+    if (mapelId) {
+      await updateMapel(bimtekId, mapelId, data);
+      showToast('Mapel berhasil diperbarui', 'success');
+    } else {
+      await createMapel(bimtekId, data);
+      showToast('Mapel berhasil ditambahkan', 'success');
     }
-  });
+    removeExistingModal();
+    if (onSuccess) onSuccess();
+  } catch (err) {
+    errEl.textContent = 'Gagal menyimpan: ' + err.message;
+    errEl.classList.remove('d-none');
+    submitBtn.disabled = false;
+    submitBtn.textContent = mapelId ? 'Simpan Perubahan' : 'Tambah Mapel';
+  }
 }
 
-function _syncPenilai(overlay, pengajarList) {
-  const checked = [...overlay.querySelectorAll('.pengajar-check:checked')].map(cb => cb.value);
-  const sel = overlay.querySelector('#mapel-penilai');
-  const prev = sel.value;
-  sel.innerHTML = `<option value="">— Pilih dari pengampu —</option>`;
-  pengajarList.filter(p => checked.includes(p.id)).forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.nama;
-    if (prev === p.id) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  if (checked.length === 1) sel.value = checked[0];
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+
+function removeExistingModal() {
+  document.getElementById('mapel-modal')?.remove();
 }
 
-function _esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
