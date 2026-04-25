@@ -49,11 +49,11 @@ export function showMapelModal(bimtekId, mapel, pengajarOptions, onSuccess) {
 
 function buildModal(isEdit, mapel, pengajarOptions) {
   const el = document.createElement('div');
-  el.className = 'modal-overlay';
+  el.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
   el.id = 'mapel-modal';
 
   const bidangOptions = BIDANG_LIST.filter(b => b.active)
-    .map(b => `<option value="${b.id}" ${mapel?.bidangId === b.id ? 'selected' : ''}>${b.nama}</option>`)
+    .map(b => `<option value="${b.bidangId}" ${mapel?.bidangId === b.bidangId ? 'selected' : ''}>${b.nama}</option>`)
     .join('');
 
   const pengajarOpts = pengajarOptions.map(p =>
@@ -61,73 +61,66 @@ function buildModal(isEdit, mapel, pengajarOptions) {
   ).join('');
 
   el.innerHTML = `
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h5 class="modal-title">${isEdit ? 'Edit' : 'Tambah'} Mata Pelajaran</h5>
-        <button type="button" class="btn-close" data-dismiss></button>
+    <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+        <h5 class="font-semibold text-white">${isEdit ? 'Edit' : 'Tambah'} Mata Pelajaran</h5>
+        <button type="button" class="text-gray-400 hover:text-white text-xl leading-none" data-dismiss>×</button>
       </div>
 
       <form id="mapel-form" novalidate>
-        <div class="modal-body">
+        <div class="p-5 space-y-4">
 
-          <div class="form-group mb-3">
-            <label class="form-label required">Nama Mata Pelajaran</label>
-            <input type="text" id="mapel-nama" class="form-control"
+          <div>
+            <label class="block text-xs text-gray-400 mb-1.5">Nama Mata Pelajaran <span class="text-red-400">*</span></label>
+            <input type="text" id="mapel-nama" class="form-input w-full"
               value="${escHtml(mapel?.nama || '')}"
-              placeholder="cth: Operasi IPA, Penurunan NRW" required>
+              placeholder="cth: Operasi IPA, Penurunan NRW">
           </div>
 
-          <div class="row">
-            <div class="col-md-6 form-group mb-3">
-              <label class="form-label required">Bidang</label>
-              <select id="mapel-bidang" class="form-select" required>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Bidang <span class="text-red-400">*</span></label>
+              <select id="mapel-bidang" class="form-select w-full">
                 <option value="">-- Pilih Bidang --</option>
                 ${bidangOptions}
               </select>
             </div>
-            <div class="col-md-6 form-group mb-3">
-              <label class="form-label required">Total JP
-                <span class="text-muted small">(1 JP = 45 menit, maks 9 JP)</span>
-              </label>
-              <input type="number" id="mapel-jp" class="form-control"
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Total JP <span class="text-red-400">*</span> <span class="text-gray-500">(maks 9)</span></label>
+              <input type="number" id="mapel-jp" class="form-input w-full"
                 min="1" max="9" step="1"
                 value="${mapel?.totalJp || ''}"
-                placeholder="1-9" required>
+                placeholder="1-9">
             </div>
           </div>
 
-          <div class="form-group mb-3">
-            <label class="form-label required">Pengajar Pengampu
-              <span class="text-muted small">(bisa lebih dari 1)</span>
-            </label>
-            <select id="mapel-pengajar-ids" class="form-select" multiple size="4" required>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1.5">Pengajar Pengampu <span class="text-red-400">*</span> <span class="text-gray-500">(Ctrl+klik multi)</span></label>
+            <select id="mapel-pengajar-ids" class="form-select w-full" multiple size="4">
               ${pengajarOpts}
             </select>
-            <small class="text-muted">Ctrl+klik untuk pilih lebih dari 1</small>
           </div>
 
-          <div class="form-group mb-3">
-            <label class="form-label required">Pengajar Penilai
-              <span class="text-muted small">(yang input nilai peserta, harus salah satu pengampu)</span>
-            </label>
-            <select id="mapel-pengajar-penilai" class="form-select" required>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1.5">Pengajar Penilai <span class="text-red-400">*</span></label>
+            <select id="mapel-pengajar-penilai" class="form-select w-full">
               <option value="">-- Pilih pengajar pengampu dulu --</option>
             </select>
           </div>
 
-          <div class="form-group mb-3">
-            <label class="form-label">Keterangan <span class="text-muted small">(opsional)</span></label>
-            <textarea id="mapel-keterangan" class="form-control" rows="2"
+          <div>
+            <label class="block text-xs text-gray-400 mb-1.5">Keterangan <span class="text-gray-500">(opsional)</span></label>
+            <textarea id="mapel-keterangan" class="form-input w-full" rows="2"
               placeholder="Catatan atau deskripsi singkat">${escHtml(mapel?.keterangan || '')}</textarea>
           </div>
 
-          <div id="mapel-form-error" class="alert alert-danger d-none"></div>
+          <div id="mapel-form-error" class="hidden text-red-400 text-sm bg-red-900/30 rounded p-3"></div>
 
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss>Batal</button>
-          <button type="submit" id="mapel-submit" class="btn btn-primary">
+        <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800">
+          <button type="button" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors" data-dismiss>Batal</button>
+          <button type="submit" id="mapel-submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">
             ${isEdit ? 'Simpan Perubahan' : 'Tambah Mapel'}
           </button>
         </div>
@@ -159,7 +152,7 @@ function syncPenilaiOptions(pengampuSelect, penilaiSelect, selectedId = null) {
 async function handleSubmit(modal, bimtekId, mapelId, onSuccess) {
   const errEl = modal.querySelector('#mapel-form-error');
   const submitBtn = modal.querySelector('#mapel-submit');
-  errEl.classList.add('d-none');
+  errEl.classList.add('hidden');
 
   const pengajarIds = Array.from(modal.querySelector('#mapel-pengajar-ids').selectedOptions)
     .map(o => o.value);
@@ -177,7 +170,7 @@ async function handleSubmit(modal, bimtekId, mapelId, onSuccess) {
     validateMapel(data);
   } catch (err) {
     errEl.textContent = err.message;
-    errEl.classList.remove('d-none');
+    errEl.classList.remove('hidden');
     return;
   }
 
@@ -196,7 +189,7 @@ async function handleSubmit(modal, bimtekId, mapelId, onSuccess) {
     if (onSuccess) onSuccess();
   } catch (err) {
     errEl.textContent = 'Gagal menyimpan: ' + err.message;
-    errEl.classList.remove('d-none');
+    errEl.classList.remove('hidden');
     submitBtn.disabled = false;
     submitBtn.textContent = mapelId ? 'Simpan Perubahan' : 'Tambah Mapel';
   }

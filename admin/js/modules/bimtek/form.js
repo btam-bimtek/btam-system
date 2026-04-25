@@ -261,7 +261,7 @@ function _buildWeightInputs(weights, hasTugas, hasPresentasi) {
     <div>
       <label class="block text-xs text-gray-400 mb-1.5">${WEIGHT_LABELS[k]}</label>
       <div class="flex items-center gap-1">
-        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100" value="${weights[k]??0}">
+        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100" value="${Math.round((weights[k]??0) * 100)}">
         <span class="text-xs text-gray-500 shrink-0">%</span>
       </div>
     </div>`).join('');
@@ -329,9 +329,9 @@ async function _handleSubmit(bimtekId, isEdit) {
       showToast('Bimtek berhasil diperbarui', 'success');
       window.location.hash = `#/bimtek/${bimtekId}`;
     } else {
-      const result = await createBimtek(payload);
+      const newId = await createBimtek(payload);
       showToast('Bimtek berhasil dibuat', 'success');
-      window.location.hash = `#/bimtek/${result.bimtekId}`;
+      window.location.hash = `#/bimtek/${newId}`;
     }
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
