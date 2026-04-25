@@ -4,33 +4,25 @@ import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { setPageTitle } from '../../layout/navbar.js';
+import { navigate } from '../../router.js';
 
-// ─── STATE ──────────────────────────────────────────────────────────────────
+let _state = { data: [], filter: { tipe: '', status: '', bidangId: '' } };
 
-let state = {
-  data: [],
-  filter: { tipe: '', status: '', bidangId: '' },
-  loading: false,
-};
-
-// ─── RENDER ─────────────────────────────────────────────────────────────────
-
-export async function renderBimtekList(container) {
+export async function renderBimtekList({ query } = {}) {
+  const app = document.getElementById('app');
   setPageTitle('Daftar Bimtek');
-  container.innerHTML = buildShell();
-  bindEvents(container);
-  await load(container);
-}
 
-function buildShell() {
-  return `
-    <div class="page-header">
-      <h2>Daftar Bimtek</h2>
-      <button id="btn-create-bimtek" class="btn btn-primary">+ Bimtek Baru</button>
+  app.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-lg font-bold text-white">Daftar Bimtek</h1>
+      <button id="btn-baru" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+        + Bimtek Baru
+      </button>
     </div>
 
-    <div class="filter-bar" id="filter-bar">
-      <select id="filter-tipe" class="form-select form-select-sm">
+    <!-- Filter -->
+    <div class="flex flex-wrap gap-3 mb-5">
+      <select id="filter-tipe" class="form-select text-sm">
         <option value="">Semua Tipe</option>
         <option value="reguler">Reguler</option>
         <option value="pnbp">PNBP</option>
@@ -38,8 +30,7 @@ function buildShell() {
         <option value="ojt">OJT</option>
         <option value="lainnya">Lainnya</option>
       </select>
-
-      <select id="filter-status" class="form-select form-select-sm">
+      <select id="filter-status" class="form-select text-sm">
         <option value="">Semua Status</option>
         <option value="draft">Draft</option>
         <option value="planned">Direncanakan</option>
@@ -47,182 +38,180 @@ function buildShell() {
         <option value="completed">Selesai</option>
         <option value="cancelled">Dibatalkan</option>
       </select>
-
-      <select id="filter-bidang" class="form-select form-select-sm">
+      <select id="filter-bidang" class="form-select text-sm">
         <option value="">Semua Bidang</option>
         ${BIDANG_LIST.filter(b => b.active).map(b =>
-          `<option value="${b.id}">${b.nama}</option>`
+          `<option value="${b.bidangId}">${b.nama}</option>`
         ).join('')}
       </select>
-
-      <button id="btn-reset-filter" class="btn btn-sm btn-outline-secondary">Reset</button>
+      <button id="btn-reset" class="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+        Reset
+      </button>
     </div>
 
-    <div id="bimtek-list-content">
-      <div class="text-center py-5 text-muted">Memuat data...</div>
+    <!-- Content -->
+    <div id="list-content">
+      <div class="text-gray-400 text-center py-16">Memuat...</div>
     </div>
   `;
-}
 
-function buildTable(items) {
-  if (items.length === 0) {
-    return `<div class="empty-state">Belum ada Bimtek yang sesuai filter.</div>`;
-  }
+  app.querySelector('#btn-baru').addEventListener('click', () => navigate('/bimtek/baru'));
 
-  const rows = items.map(b => {
-    const mulai = b.periode?.mulai?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) || '-';
-    const selesai = b.periode?.selesai?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) || '-';
-    const bidangNama = b.bidangIds?.map(id => BIDANG_LIST.find(b => b.id === id)?.namaShort || id).join(', ') || '-';
-
-    return `
-      <tr>
-        <td>
-          <div class="fw-semibold">${escHtml(b.nama)}</div>
-          <small class="text-muted">${b.kodeBimtek || ''}</small>
-        </td>
-        <td><span class="badge badge-tipe-${b.tipe}">${labelTipe(b.tipe)}</span></td>
-        <td><span class="badge badge-mode-${b.mode}">${b.mode}</span></td>
-        <td>${escHtml(bidangNama)}</td>
-        <td>${mulai} – ${selesai}</td>
-        <td>${b.pesertaIds?.length ?? 0} / ${b.kapasitas}</td>
-        <td><span class="badge badge-status-${b.status}">${labelStatus(b.status)}</span></td>
-        <td>
-          <div class="action-btns">
-            <a href="#bimtek/${b.id}" class="btn btn-sm btn-outline-primary">Detail</a>
-            ${b.status === 'draft' ? `<button class="btn btn-sm btn-outline-secondary btn-publish" data-id="${b.id}">Publikasi</button>` : ''}
-            ${['draft','planned'].includes(b.status) ? `<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="${b.id}">Batalkan</button>` : ''}
-          </div>
-        </td>
-      </tr>
-    `;
+  ['filter-tipe', 'filter-status', 'filter-bidang'].forEach(id => {
+    app.querySelector(`#${id}`).addEventListener('change', () => _applyFilter(app));
   });
 
-  return `
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Nama Bimtek</th>
-            <th>Tipe</th>
-            <th>Mode</th>
-            <th>Bidang</th>
-            <th>Periode</th>
-            <th>Peserta</th>
-            <th>Status</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>${rows.join('')}</tbody>
-      </table>
-    </div>
-    <div class="text-muted small mt-2">${items.length} Bimtek ditemukan</div>
-  `;
-}
-
-// ─── EVENTS ─────────────────────────────────────────────────────────────────
-
-function bindEvents(container) {
-  // Buat bimtek baru
-  container.querySelector('#btn-create-bimtek')?.addEventListener('click', () => {
-    window.location.hash = '#bimtek/new';
+  app.querySelector('#btn-reset').addEventListener('click', () => {
+    app.querySelector('#filter-tipe').value = '';
+    app.querySelector('#filter-status').value = '';
+    app.querySelector('#filter-bidang').value = '';
+    _state.filter = { tipe: '', status: '', bidangId: '' };
+    _renderContent(app);
   });
 
-  // Filter
-  const applyFilter = () => {
-    state.filter.tipe = container.querySelector('#filter-tipe').value;
-    state.filter.status = container.querySelector('#filter-status').value;
-    state.filter.bidangId = container.querySelector('#filter-bidang').value;
-    renderContent(container);
-  };
+  app.querySelector('#list-content').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, id } = btn.dataset;
 
-  container.querySelector('#filter-tipe')?.addEventListener('change', applyFilter);
-  container.querySelector('#filter-status')?.addEventListener('change', applyFilter);
-  container.querySelector('#filter-bidang')?.addEventListener('change', applyFilter);
-
-  container.querySelector('#btn-reset-filter')?.addEventListener('click', () => {
-    container.querySelector('#filter-tipe').value = '';
-    container.querySelector('#filter-status').value = '';
-    container.querySelector('#filter-bidang').value = '';
-    state.filter = { tipe: '', status: '', bidangId: '' };
-    renderContent(container);
-  });
-
-  // Action buttons (event delegation)
-  container.querySelector('#bimtek-list-content')?.addEventListener('click', async (e) => {
-    const publishBtn = e.target.closest('.btn-publish');
-    const cancelBtn = e.target.closest('.btn-cancel');
-
-    if (publishBtn) {
-      const id = publishBtn.dataset.id;
-      const ok = await confirmDialog('Publikasikan Bimtek ini? Status akan berubah menjadi "Direncanakan".');
+    if (action === 'publish') {
+      const ok = await confirmDialog('Publikasikan Bimtek ini? Status jadi "Direncanakan".');
       if (!ok) return;
       try {
         await updateStatus(id, 'planned');
-        showToast('Bimtek berhasil dipublikasikan', 'success');
-        await load(container);
-      } catch (err) {
-        showToast('Gagal: ' + err.message, 'error');
-      }
+        showToast('Bimtek dipublikasikan', 'success');
+        await _load(app);
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
     }
 
-    if (cancelBtn) {
-      const id = cancelBtn.dataset.id;
+    if (action === 'cancel') {
       const alasan = prompt('Alasan pembatalan (opsional):');
-      if (alasan === null) return; // user tekan Cancel
+      if (alasan === null) return;
       try {
         await updateStatus(id, 'cancelled', alasan || null);
         showToast('Bimtek dibatalkan', 'success');
-        await load(container);
-      } catch (err) {
-        showToast('Gagal: ' + err.message, 'error');
-      }
+        await _load(app);
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
     }
   });
+
+  await _load(app);
 }
 
-// ─── LOAD & RENDER ──────────────────────────────────────────────────────────
-
-async function load(container) {
-  const content = container.querySelector('#bimtek-list-content');
-  content.innerHTML = `<div class="text-center py-5 text-muted">Memuat...</div>`;
-
+async function _load(app) {
+  const el = app.querySelector('#list-content');
+  el.innerHTML = `<div class="text-gray-400 text-center py-16">Memuat...</div>`;
   try {
-    state.data = await listBimtek();
-    renderContent(container);
+    _state.data = await listBimtek();
+    _renderContent(app);
   } catch (err) {
-    content.innerHTML = `<div class="alert alert-danger">Gagal memuat data: ${err.message}</div>`;
+    el.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
   }
 }
 
-function renderContent(container) {
-  const { tipe, status, bidangId } = state.filter;
-  let filtered = state.data;
-  if (tipe) filtered = filtered.filter(b => b.tipe === tipe);
-  if (status) filtered = filtered.filter(b => b.status === status);
-  if (bidangId) filtered = filtered.filter(b => b.bidangIds?.includes(bidangId));
-
-  container.querySelector('#bimtek-list-content').innerHTML = buildTable(filtered);
+function _applyFilter(app) {
+  _state.filter.tipe     = app.querySelector('#filter-tipe').value;
+  _state.filter.status   = app.querySelector('#filter-status').value;
+  _state.filter.bidangId = app.querySelector('#filter-bidang').value;
+  _renderContent(app);
 }
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+function _renderContent(app) {
+  const { tipe, status, bidangId } = _state.filter;
+  let items = _state.data;
+  if (tipe)     items = items.filter(b => b.tipe === tipe);
+  if (status)   items = items.filter(b => b.status === status);
+  if (bidangId) items = items.filter(b => b.bidangIds?.includes(bidangId));
 
-function labelTipe(tipe) {
-  const map = { reguler: 'Reguler', pnbp: 'PNBP', e_learning: 'e-Learning', ojt: 'OJT', lainnya: 'Lainnya' };
-  return map[tipe] || tipe;
+  app.querySelector('#list-content').innerHTML = items.length === 0
+    ? `<div class="text-gray-500 text-center py-16">Belum ada Bimtek.</div>`
+    : _buildTable(items);
 }
 
-function labelStatus(status) {
-  const map = {
-    draft: 'Draft',
-    planned: 'Direncanakan',
-    ongoing: 'Berlangsung',
-    completed: 'Selesai',
-    cancelled: 'Dibatalkan',
-  };
-  return map[status] || status;
+function _buildTable(items) {
+  const rows = items.map(b => {
+    const mulai   = _fmtDate(b.periode?.mulai);
+    const selesai = _fmtDate(b.periode?.selesai);
+    const bidang  = b.bidangIds?.map(id => BIDANG_LIST.find(x => x.bidangId === id)?.namaShort || id).join(', ') || '-';
+
+    return `
+      <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+        <td class="py-3 px-4">
+          <div class="font-medium text-white text-sm">${_esc(b.nama)}</div>
+          <div class="text-xs text-gray-500">${_esc(b.kodeBimtek || '')}</div>
+        </td>
+        <td class="py-3 px-4 text-sm text-gray-300">${_esc(bidang)}</td>
+        <td class="py-3 px-4">
+          <span class="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">${b.tipe}</span>
+        </td>
+        <td class="py-3 px-4 text-xs text-gray-400">${mulai} – ${selesai}</td>
+        <td class="py-3 px-4">
+          <span class="text-xs px-2 py-0.5 rounded-full ${_statusColor(b.status)}">${_labelStatus(b.status)}</span>
+        </td>
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-2">
+            <button onclick="location.hash='#/bimtek/${b.id}'"
+              class="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors">
+              Detail
+            </button>
+            <button onclick="location.hash='#/bimtek/${b.id}/edit'"
+              class="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors">
+              Edit
+            </button>
+            ${b.status === 'draft' ? `
+              <button data-action="publish" data-id="${b.id}"
+                class="text-xs px-2 py-1 rounded bg-blue-700 hover:bg-blue-600 text-white transition-colors">
+                Publikasi
+              </button>` : ''}
+            ${['draft','planned'].includes(b.status) ? `
+              <button data-action="cancel" data-id="${b.id}"
+                class="text-xs px-2 py-1 rounded bg-red-900 hover:bg-red-800 text-white transition-colors">
+                Batalkan
+              </button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="text-xs text-gray-500 mb-3">${items.length} Bimtek ditemukan</div>
+    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+            <th class="py-3 px-4 text-left font-medium">Nama</th>
+            <th class="py-3 px-4 text-left font-medium">Bidang</th>
+            <th class="py-3 px-4 text-left font-medium">Tipe</th>
+            <th class="py-3 px-4 text-left font-medium">Periode</th>
+            <th class="py-3 px-4 text-left font-medium">Status</th>
+            <th class="py-3 px-4 text-left font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
-function escHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function _fmtDate(ts) {
+  if (!ts) return '-';
+  const d = ts?.toDate?.() ?? new Date(ts);
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function _labelStatus(s) {
+  return { draft:'Draft', planned:'Direncanakan', ongoing:'Berlangsung', completed:'Selesai', cancelled:'Dibatalkan' }[s] || s;
+}
+
+function _statusColor(s) {
+  return {
+    draft:     'bg-gray-700 text-gray-300',
+    planned:   'bg-blue-900/60 text-blue-300',
+    ongoing:   'bg-green-900/60 text-green-300',
+    completed: 'bg-purple-900/60 text-purple-300',
+    cancelled: 'bg-red-900/60 text-red-300',
+  }[s] || 'bg-gray-700 text-gray-300';
+}
+
+function _esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
