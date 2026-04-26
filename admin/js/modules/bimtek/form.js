@@ -1,12 +1,12 @@
-/**
- * bimtek/form.js
- * Lokasi: admin/js/modules/bimtek/form.js
- */
-
+// admin/js/modules/bimtek/form.js
 import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
-import { createBimtek, updateBimtek, getBimtek, DEFAULT_WEIGHTS, validateWeights } from './api.js';
-import { BIDANG_LIST } from '../../../../shared/constants.js';
+import { confirmDialog } from '../../components/modal.js';
+import { navigate } from '../../router.js';
+import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS } from './api.js';
+import { BIDANG_LIST, KOMPONEN_NILAI } from '../../../../shared/constants.js';
+
+// ─── ENTRY POINT ─────────────────────────────────────────────────────────────
 
 export async function renderBimtekForm({ id } = {}) {
   const isEdit = !!id;
@@ -27,10 +27,10 @@ export async function renderBimtekForm({ id } = {}) {
     }
   }
 
-  const weights     = d?.weights ?? { ...DEFAULT_WEIGHTS };
-  const hasTugas    = d?.hasTugas ?? false;
+  const weights     = d?.weights     ?? { ...DEFAULT_WEIGHTS };
+  const hasTugas    = d?.hasTugas    ?? false;
   const hasPresentasi = d?.hasPresentasi ?? false;
-  const tipe        = d?.tipe ?? 'reguler';
+  const tipe        = d?.tipe        ?? 'reguler';
   const activeBidang = BIDANG_LIST.filter(b => b.active);
 
   app.innerHTML = `
@@ -44,8 +44,9 @@ export async function renderBimtekForm({ id } = {}) {
         </button>
         <div>
           <h1 class="text-lg font-bold text-white">${isEdit ? 'Edit Bimtek' : 'Bimtek Baru'}</h1>
-          ${isEdit ? `<p class="text-xs text-gray-500">${_esc(d.kodeBimtek)}</p>` : ''}
+          ${isEdit && d?.kodeBimtek ? `<p class="text-xs text-gray-500">${_esc(d.kodeBimtek)}</p>` : ''}
         </div>
+        ${isEdit ? `<span class="badge badge-gray ml-auto">${_labelStatus(d?.status)}</span>` : ''}
       </div>
 
       <!-- Tab nav -->
@@ -56,29 +57,30 @@ export async function renderBimtekForm({ id } = {}) {
 
       <!-- Tab: Informasi -->
       <div id="tab-info">
-        <!-- Informasi Dasar -->
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-4">
           <h2 class="text-sm font-semibold text-gray-300 mb-4">Informasi Dasar</h2>
           <div class="space-y-4">
+
             <div>
               <label class="block text-xs text-gray-400 mb-1.5">Nama Bimtek <span class="text-red-400">*</span></label>
               <input type="text" id="nama" class="form-input w-full" maxlength="200"
                 value="${_esc(d?.nama ?? '')}"
                 placeholder="cth: Bimtek Operator IPA Lanjutan Batch 3">
             </div>
+
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="block text-xs text-gray-400 mb-1.5">Tipe <span class="text-red-400">*</span></label>
                 <select id="tipe" class="form-select w-full">
-                  <option value="reguler" ${tipe==='reguler'?'selected':''}>Reguler</option>
-                  <option value="pnbp"    ${tipe==='pnbp'   ?'selected':''}>PNBP</option>
+                  <option value="reguler" ${tipe === 'reguler' ? 'selected' : ''}>Reguler</option>
+                  <option value="pnbp"    ${tipe === 'pnbp'    ? 'selected' : ''}>PNBP</option>
                 </select>
               </div>
               <div>
                 <label class="block text-xs text-gray-400 mb-1.5">Mode <span class="text-red-400">*</span></label>
                 <select id="mode" class="form-select w-full">
-                  <option value="offline" ${d?.mode==='offline'?'selected':''}>Offline (maks 17)</option>
-                  <option value="online"  ${d?.mode==='online' ?'selected':''}>Online (maks 25)</option>
+                  <option value="offline" ${d?.mode === 'offline' ? 'selected' : ''}>Offline (maks 17)</option>
+                  <option value="online"  ${d?.mode === 'online'  ? 'selected' : ''}>Online (maks 25)</option>
                 </select>
               </div>
               <div>
@@ -87,14 +89,16 @@ export async function renderBimtekForm({ id } = {}) {
                   value="${d?.kapasitas ?? ''}" placeholder="Auto">
               </div>
             </div>
+
             <div>
               <label class="block text-xs text-gray-400 mb-1.5">Bidang <span class="text-red-400">*</span></label>
               <div id="bidang-field">${_buildBidangField(activeBidang, tipe, d?.bidangIds ?? [])}</div>
+              <p class="text-xs text-gray-500 mt-1">Reguler: 1 bidang. PNBP: bisa multi.</p>
             </div>
+
           </div>
         </div>
 
-        <!-- Jadwal & Lokasi -->
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-4">
           <h2 class="text-sm font-semibold text-gray-300 mb-4">Jadwal & Lokasi</h2>
           <div class="grid grid-cols-3 gap-4">
@@ -116,21 +120,20 @@ export async function renderBimtekForm({ id } = {}) {
           </div>
         </div>
 
-        <!-- Konfigurasi Penilaian -->
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-4">
           <h2 class="text-sm font-semibold text-gray-300 mb-4">Konfigurasi Penilaian</h2>
           <div class="flex items-start gap-8">
             <div>
-              <label class="block text-xs text-gray-400 mb-1.5">KKM (Nilai Minimum Lulus)</label>
+              <label class="block text-xs text-gray-400 mb-1.5">KKM</label>
               <input type="number" id="kkm" class="form-input w-24" min="0" max="100" value="${d?.kkm ?? 60}">
             </div>
             <div class="space-y-2 pt-5">
               <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
-                <input type="checkbox" id="has-tugas" class="w-4 h-4 rounded" ${hasTugas?'checked':''}>
+                <input type="checkbox" id="has-tugas" class="w-4 h-4 rounded" ${hasTugas ? 'checked' : ''}>
                 Komponen Tugas aktif
               </label>
               <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
-                <input type="checkbox" id="has-presentasi" class="w-4 h-4 rounded" ${hasPresentasi?'checked':''}>
+                <input type="checkbox" id="has-presentasi" class="w-4 h-4 rounded" ${hasPresentasi ? 'checked' : ''}>
                 Komponen Presentasi aktif
               </label>
             </div>
@@ -141,37 +144,37 @@ export async function renderBimtekForm({ id } = {}) {
       <!-- Tab: Bobot -->
       <div id="tab-weights" class="hidden">
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-4">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-1">
             <h2 class="text-sm font-semibold text-gray-300">Bobot Penilaian</h2>
             <div class="flex items-center gap-3">
               <span id="weight-sum" class="text-xs font-mono px-2 py-1 rounded bg-gray-800 text-gray-300"></span>
-              <button type="button" id="btn-reset-weights" class="text-xs text-gray-400 hover:text-white transition-colors">
-                Reset Default
-              </button>
+              <button type="button" id="btn-reset-weights" class="text-xs text-gray-400 hover:text-white transition-colors">Reset Default</button>
             </div>
           </div>
-          <p class="text-xs text-gray-500 mb-4">Total bobot komponen aktif harus = <span class="text-white font-mono">100</span>.</p>
+          <p class="text-xs text-gray-500 mb-4">Total bobot komponen aktif harus = <span class="text-white font-mono">100</span>. Bobot tugas/presentasi yang tidak aktif dialihkan ke Nilai Pengajar.</p>
           <div id="weights-grid" class="grid grid-cols-4 gap-3">
             ${_buildWeightInputs(weights, hasTugas, hasPresentasi)}
           </div>
         </div>
       </div>
 
-      <!-- Action bar -->
+      <!-- Actions -->
       <div class="flex items-center gap-3 pt-2">
         <button id="btn-submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
           ${isEdit ? 'Simpan Perubahan' : 'Buat Bimtek'}
         </button>
-        <button id="btn-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-          Batal
-        </button>
+        <button id="btn-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Batal</button>
+        ${isEdit && ['draft','planned'].includes(d?.status) ? `
+          <button id="btn-delete" class="ml-auto px-4 py-2 rounded-lg text-sm bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors">Hapus Bimtek</button>
+        ` : ''}
       </div>
+      <div id="form-error" class="hidden mt-3 text-red-400 text-sm bg-red-900/30 rounded p-3"></div>
     </div>
   `;
 
   _updateWeightSum();
 
-  // Tab navigation
+  // ── Tab navigation ──
   app.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       app.querySelectorAll('.tab-btn').forEach(b => {
@@ -180,49 +183,63 @@ export async function renderBimtekForm({ id } = {}) {
       btn.className = 'tab-btn px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400';
       app.querySelector('#tab-info').classList.toggle('hidden', btn.dataset.tab !== 'info');
       app.querySelector('#tab-weights').classList.toggle('hidden', btn.dataset.tab !== 'weights');
-      if (btn.dataset.tab === 'weights') _updateWeightSum();
     });
   });
 
+  // ── Navigasi ──
   app.querySelector('#btn-back').addEventListener('click', () => _goBack(id));
   app.querySelector('#btn-cancel').addEventListener('click', () => _goBack(id));
 
+  // ── Tipe → update bidang field ──
   app.querySelector('#tipe').addEventListener('change', e => {
     app.querySelector('#bidang-field').innerHTML = _buildBidangField(activeBidang, e.target.value, []);
   });
 
-  // Simpan state weights terpisah supaya tidak tergantung hidden input
+  // ── Toggle tugas/presentasi → redistribute bobot ──
   let currentWeights = { ...weights };
-
-  ['has-tugas','has-presentasi'].forEach(cid => {
+  ['has-tugas', 'has-presentasi'].forEach(cid => {
     app.querySelector(`#${cid}`).addEventListener('change', () => {
       const ht = app.querySelector('#has-tugas').checked;
       const hp = app.querySelector('#has-presentasi').checked;
-      // Baca dari input kalau tab weights sedang visible, kalau tidak pakai state
-      const tabWeightsVisible = !app.querySelector('#tab-weights').classList.contains('hidden');
-      if (tabWeightsVisible) currentWeights = _readWeights();
+      // Baca bobot terkini kalau tab weights sedang terbuka
+      if (!app.querySelector('#tab-weights').classList.contains('hidden')) {
+        currentWeights = _readWeights();
+      }
       app.querySelector('#weights-grid').innerHTML = _buildWeightInputs(currentWeights, ht, hp);
       _attachWeightEvents();
       _updateWeightSum();
     });
   });
 
+  // ── Weight events ──
   _attachWeightEvents();
-
   app.querySelector('#btn-reset-weights').addEventListener('click', () => {
     const ht = app.querySelector('#has-tugas').checked;
     const hp = app.querySelector('#has-presentasi').checked;
-    app.querySelector('#weights-grid').innerHTML = _buildWeightInputs(DEFAULT_WEIGHTS, ht, hp);
+    currentWeights = { ...DEFAULT_WEIGHTS };
+    app.querySelector('#weights-grid').innerHTML = _buildWeightInputs(currentWeights, ht, hp);
     _attachWeightEvents();
     _updateWeightSum();
   });
 
-  app.querySelector('#btn-submit').addEventListener('click', async () => {
-    await _handleSubmit(id, isEdit);
+  // ── Submit ──
+  app.querySelector('#btn-submit').addEventListener('click', () => _handleSubmit(app, id, isEdit));
+
+  // ── Delete ──
+  app.querySelector('#btn-delete')?.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Hapus Bimtek', message: 'Hapus Bimtek ini? Tindakan tidak bisa dibatalkan.', danger: true });
+    if (!ok) return;
+    try {
+      await deleteBimtek(id);
+      showToast('Bimtek dihapus', 'success');
+      navigate('/bimtek');
+    } catch (err) {
+      showToast('Gagal: ' + err.message, 'error');
+    }
   });
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── BUILD BIDANG FIELD ───────────────────────────────────────────────────────
 
 function _buildBidangField(activeBidang, tipe, currentIds) {
   if (tipe === 'reguler') {
@@ -230,17 +247,18 @@ function _buildBidangField(activeBidang, tipe, currentIds) {
       <select id="bidang-single" class="form-select w-full">
         <option value="">— Pilih bidang —</option>
         ${activeBidang.map(b =>
-          `<option value="${b.bidangId}" ${currentIds[0]===b.bidangId?'selected':''}>${_esc(b.nama)}</option>`
+          `<option value="${b.bidangId}" ${currentIds[0] === b.bidangId ? 'selected' : ''}>${_esc(b.nama)}</option>`
         ).join('')}
       </select>`;
   }
-  return `<div class="flex flex-wrap gap-4">
-    ${activeBidang.map(b => `
-      <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
-        <input type="checkbox" class="bidang-check w-4 h-4 rounded" value="${b.bidangId}" ${currentIds.includes(b.bidangId)?'checked':''}>
-        ${_esc(b.nama)}
-      </label>`).join('')}
-  </div>`;
+  return `
+    <div class="flex flex-wrap gap-4">
+      ${activeBidang.map(b => `
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
+          <input type="checkbox" class="bidang-check w-4 h-4 rounded" value="${b.bidangId}" ${currentIds.includes(b.bidangId) ? 'checked' : ''}>
+          ${_esc(b.nama)}
+        </label>`).join('')}
+    </div>`;
 }
 
 function _readBidangIds() {
@@ -253,14 +271,16 @@ function _readBidangIds() {
   return [...app.querySelectorAll('.bidang-check:checked')].map(cb => cb.value);
 }
 
+// ─── BUILD WEIGHT INPUTS ──────────────────────────────────────────────────────
+
 const WEIGHT_LABELS = {
-  pretest:'Pre-Test', posttest:'Post-Test', pengajar:'Nilai Pengajar',
-  kehadiran:'Kehadiran', keaktifan:'Keaktifan', respek:'Respek & Etika',
-  tugas:'Tugas', presentasi:'Presentasi'
+  pretest: 'Pre-Test', posttest: 'Post-Test', pengajar: 'Nilai Pengajar',
+  kehadiran: 'Kehadiran', keaktifan: 'Keaktifan', respek: 'Respek & Etika',
+  tugas: 'Tugas', presentasi: 'Presentasi',
 };
 
 function _buildWeightInputs(weights, hasTugas, hasPresentasi) {
-  const keys = ['pretest','posttest','pengajar','kehadiran','keaktifan','respek'];
+  const keys = ['pretest', 'posttest', 'pengajar', 'kehadiran', 'keaktifan', 'respek'];
   if (hasTugas) keys.push('tugas');
   if (hasPresentasi) keys.push('presentasi');
 
@@ -273,7 +293,8 @@ function _buildWeightInputs(weights, hasTugas, hasPresentasi) {
     <div>
       <label class="block text-xs text-gray-400 mb-1.5">${WEIGHT_LABELS[k]}</label>
       <div class="flex items-center gap-1">
-        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100" value="${Math.round((display[k] ?? 0) * 100)}">
+        <input type="number" class="form-input w-full weight-input" data-key="${k}" min="0" max="100"
+          value="${Math.round((display[k] ?? 0) * 100)}">
         <span class="text-xs text-gray-500 shrink-0">%</span>
       </div>
     </div>`).join('');
@@ -296,35 +317,49 @@ function _readWeights() {
 function _updateWeightSum() {
   const el = document.getElementById('weight-sum');
   if (!el) return;
-  const sum = [...document.querySelectorAll('.weight-input')].reduce((a,i) => a+(Number(i.value)||0), 0);
-  const ok = Math.abs(sum-100) < 0.01;
+  const sum = [...document.querySelectorAll('.weight-input')].reduce((a, i) => a + (Number(i.value) || 0), 0);
+  const ok = Math.abs(sum - 100) < 0.01;
   el.textContent = `Total: ${sum}%`;
   el.className = `text-xs font-mono px-2 py-1 rounded ${ok ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`;
 }
 
-async function _handleSubmit(bimtekId, isEdit) {
-  const app   = document.getElementById('app');
+// ─── HANDLE SUBMIT ────────────────────────────────────────────────────────────
+
+async function _handleSubmit(app, bimtekId, isEdit) {
+  const errEl = app.querySelector('#form-error');
   const btn   = app.querySelector('#btn-submit');
-  const nama  = app.querySelector('#nama').value.trim();
-  const tipe  = app.querySelector('#tipe').value;
-  const mode  = app.querySelector('#mode').value;
-  const kap   = Number(app.querySelector('#kapasitas').value) || null;
-  const lokasi = app.querySelector('#lokasi').value.trim();
-  const pm    = app.querySelector('#periode-mulai').value;
-  const ps    = app.querySelector('#periode-selesai').value;
-  const kkm   = Number(app.querySelector('#kkm').value) || 60;
-  const ht    = app.querySelector('#has-tugas').checked;
-  const hp    = app.querySelector('#has-presentasi').checked;
+  errEl.classList.add('hidden');
+
+  const nama     = app.querySelector('#nama').value.trim();
+  const tipe     = app.querySelector('#tipe').value;
+  const mode     = app.querySelector('#mode').value;
+  const kap      = Number(app.querySelector('#kapasitas').value) || null;
+  const lokasi   = app.querySelector('#lokasi').value.trim();
+  const pm       = app.querySelector('#periode-mulai').value;
+  const ps       = app.querySelector('#periode-selesai').value;
+  const kkm      = Number(app.querySelector('#kkm').value) || 60;
+  const ht       = app.querySelector('#has-tugas').checked;
+  const hp       = app.querySelector('#has-presentasi').checked;
   const bidangIds = _readBidangIds();
-  const weights   = _readWeights();
+  const weights  = _readWeights();
 
-  if (!nama)             { showToast('Nama Bimtek wajib diisi', 'warning'); return; }
-  if (!bidangIds.length) { showToast('Bidang wajib dipilih', 'warning'); return; }
-  if (!pm || !ps)        { showToast('Periode wajib diisi', 'warning'); return; }
-  if (new Date(ps) < new Date(pm)) { showToast('Tanggal selesai harus setelah mulai', 'warning'); return; }
+  // Validasi
+  const errors = [];
+  if (!nama)              errors.push('Nama wajib diisi');
+  if (!tipe)              errors.push('Tipe wajib dipilih');
+  if (!mode)              errors.push('Mode wajib dipilih');
+  if (!bidangIds.length)  errors.push('Bidang wajib dipilih');
+  if (!pm || !ps)         errors.push('Periode wajib diisi');
+  if (pm && ps && pm > ps) errors.push('Tanggal selesai harus setelah mulai');
 
-  const wv = validateWeights(weights, ht, hp);
-  if (!wv.valid) { showToast(wv.message, 'warning'); return; }
+  const wSum = Object.values(weights).reduce((s, v) => s + v, 0);
+  if (Math.abs(Math.round(wSum * 100) - 100) > 1) errors.push(`Total bobot harus 100% (sekarang ${Math.round(wSum * 100)}%)`);
+
+  if (errors.length > 0) {
+    errEl.textContent = errors.join(' · ');
+    errEl.classList.remove('hidden');
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Menyimpan…';
@@ -333,30 +368,36 @@ async function _handleSubmit(bimtekId, isEdit) {
     const payload = {
       nama, tipe, mode, lokasi, kkm, weights,
       hasTugas: ht, hasPresentasi: hp, bidangIds,
-      kapasitas: kap || (mode==='online'?25:17),
-      clientInstansiId: null,
-      periode: { mulai: pm, selesai: ps }
+      kapasitas: kap || (mode === 'online' ? 25 : 17),
+      periode: { mulai: pm, selesai: ps },
     };
 
     if (isEdit) {
       await updateBimtek(bimtekId, payload);
       showToast('Bimtek berhasil diperbarui', 'success');
-      window.location.hash = `#/bimtek/${bimtekId}`;
+      navigate(`/bimtek/${bimtekId}`);
     } else {
       const newId = await createBimtek(payload);
       showToast('Bimtek berhasil dibuat', 'success');
-      window.location.hash = `#/bimtek/${newId}`;
+      navigate(`/bimtek/${newId}`);
     }
   } catch (err) {
-    showToast('Gagal: ' + err.message, 'error');
+    errEl.textContent = 'Gagal: ' + err.message;
+    errEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = isEdit ? 'Simpan Perubahan' : 'Buat Bimtek';
   }
 }
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
 function _goBack(bimtekId) {
-  if (bimtekId) window.location.hash = `#/bimtek/${bimtekId}`;
-  else window.location.hash = '#/bimtek';
+  if (bimtekId) navigate(`/bimtek/${bimtekId}`);
+  else navigate('/bimtek');
+}
+
+function _labelStatus(s) {
+  return { draft:'Draft', planned:'Direncanakan', ongoing:'Berlangsung', completed:'Selesai', cancelled:'Dibatalkan' }[s] || s;
 }
 
 function _toInputDate(ts) {
