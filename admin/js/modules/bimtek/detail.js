@@ -327,11 +327,16 @@ function _buildTabJadwal() {
             const label = s.tipe === 'mapel'
               ? `${mapel?.nama || 'Mapel'} (${s.jp} JP)`
               : (s.keterangan || s.tipe);
-            // Tombol hapus: untuk mapel multi-segmen hapus semua segmen sekaligus
+            // Untuk mapel multi-segmen: tombol × hanya di segmen pertama (segmenKe=1)
+            // Klik = hapus semua segmen mapel itu di hari yang sama
+            const isFirstSegmen = !s.totalSegmen || s.totalSegmen === 1 || s.segmenKe === 1;
             const delBtn = canEdit ? (
-              s.tipe === 'mapel'
+              s.tipe === 'mapel' && isFirstSegmen
                 ? `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
-                    data-id="${s.id}" data-mapel-id="${s.mapelId}" data-tgl="${s.tanggal?.toDate?.()?.toISOString().slice(0,10) || ''}">×</button>`
+                    data-id="${s.id}" data-mapel-id="${s.mapelId}" data-tgl="${tglStr}"
+                    title="Hapus semua segmen mapel ini">×</button>`
+              : s.tipe === 'mapel'
+                ? '' // segmen lanjutan tidak perlu tombol hapus
                 : `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
                     data-id="${s.id}">×</button>`
             ) : '';
