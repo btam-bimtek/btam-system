@@ -453,7 +453,6 @@ function _bindJadwalEvents(app, el) {
       const mapelId = btn.dataset.mapelId;
       const tgl     = btn.dataset.tgl;
       const isMapel = !!mapelId;
-      console.log('[DEL] klik hapus sesi', { mapelId, tgl, isMapel, sesiId: btn.dataset.id });
 
       const ok = await confirmDialog({
         title: isMapel ? 'Hapus Jadwal Mapel' : 'Hapus Sesi',
@@ -462,16 +461,20 @@ function _bindJadwalEvents(app, el) {
           : 'Hapus sesi ini dari jadwal?',
         danger: true,
       });
-      console.log('[DEL] confirmDialog result:', ok);
       if (!ok) return;
       try {
-        console.log('[DEL] eksekusi hapus...');
         if (isMapel && tgl) {
-          console.log('[DEL] deleteSesiByMapel:', S.id, mapelId, tgl);
-          // Debug: cek S.sesis yang ada
-          const debugMatch = S.sesis.filter(s => s.mapelId === mapelId);
-          console.log('[DEL] sesi dengan mapelId ini:', debugMatch.length, debugMatch.map(s => ({id:s.id, mapelId:s.mapelId, tgl: s.tanggal?.toDate?.()?.toISOString?.()})));
-          await deleteSesiByMapel(S.id, mapelId, tgl);
+          // Hapus semua segmen mapel ini dari S.sesis langsung — tidak perlu query ulang
+          const [y, m, d] = tgl.split('-').map(Number);
+          const tglDate = new Date(y, m - 1, d).toDateString();
+          const toDelete = S.sesis.filter(s => {
+            if (s.mapelId !== mapelId) return false;
+            const t = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+            return t.toDateString() === tglDate;
+          });
+          for (const s of toDelete) {
+            await deleteSesi(S.id, s.id);
+          }
         } else {
           await deleteSesi(S.id, btn.dataset.id);
         }
