@@ -319,6 +319,15 @@ function _buildTabJadwal() {
     html += `<div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center text-gray-500 text-sm mb-4">Jadwal belum dibuat. Pilih tanggal dan klik "Inisialisasi Hari" untuk mulai.</div>`;
   } else {
     const colors = { mapel:'badge-blue', break:'badge-gray', ishoma:'badge-yellow', pembukaan:'badge-green', penutupan:'badge-purple' };
+    // Pre-group segmen mapel per mapelId agar bisa simpan semua IDs di tombol hapus
+    const segmenIds = {}; // key: mapelId → array of sesi.id
+    for (const s of S.sesis) {
+      if (s.tipe === 'mapel' && s.mapelId) {
+        if (!segmenIds[s.mapelId]) segmenIds[s.mapelId] = [];
+        segmenIds[s.mapelId].push(s.id);
+      }
+    }
+
     html += Object.entries(byDate).sort(([a],[b]) => a.localeCompare(b)).map(([tglStr, { label, list }]) => `
       <div class="mb-5">
         <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">${label}</div>
@@ -330,16 +339,16 @@ function _buildTabJadwal() {
             const label = s.tipe === 'mapel'
               ? `${mapel?.nama || 'Mapel'} (${s.jp} JP)`
               : (s.keterangan || s.tipe);
-            // Untuk mapel multi-segmen: tombol × hanya di segmen pertama (segmenKe=1)
-            // Klik = hapus semua segmen mapel itu di hari yang sama
+            // Tombol hapus: simpan semua ID segmen langsung di data attribute
             const isFirstSegmen = !s.totalSegmen || s.totalSegmen === 1 || s.segmenKe === 1;
+            const allSegIds = (segmenIds[s.mapelId] || [s.id]).join(',');
             const delBtn = canEdit ? (
               s.tipe === 'mapel' && isFirstSegmen
                 ? `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
-                    data-id="${s.id}" data-mapel-id="${s.mapelId}" data-tgl="${tglStr}"
+                    data-del-ids="${allSegIds}"
                     title="Hapus semua segmen mapel ini">×</button>`
               : s.tipe === 'mapel'
-                ? '' // segmen lanjutan tidak perlu tombol hapus
+                ? ''
                 : `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
                     data-id="${s.id}">×</button>`
             ) : '';
@@ -453,9 +462,10 @@ function _bindJadwalEvents(app, el) {
   // Hapus sesi
   el.querySelectorAll('.btn-del-sesi').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const mapelId = btn.dataset.mapelId;
-      const tgl     = btn.dataset.tgl;
-      const isMapel = !!mapelId;
+      // data-del-ids = comma-separated list semua ID segmen (untuk mapel)
+      // data-id      = single ID (untuk break/ishoma/pembukaan/penutupan)
+      const delIdsRaw = btn.dataset.delIds;
+      const isMapel   = !!delIdsRaw;
 
       const ok = await confirmDialog({
         title: isMapel ? 'Hapus Jadwal Mapel' : 'Hapus Sesi',
@@ -466,17 +476,10 @@ function _bindJadwalEvents(app, el) {
       });
       if (!ok) return;
       try {
-        if (isMapel && tgl) {
-          // Hapus semua segmen mapel ini dari S.sesis langsung — tidak perlu query ulang
-          const [y, m, d] = tgl.split('-').map(Number);
-          const tglDate = new Date(y, m - 1, d).toDateString();
-          const toDelete = S.sesis.filter(s => {
-            if (s.mapelId !== mapelId) return false;
-            const t = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
-            return t.toDateString() === tglDate;
-          });
-          for (const s of toDelete) {
-            await deleteSesi(S.id, s.id);
+        if (isMapel) {
+          const ids = delIdsRaw.split(',').filter(Boolean);
+          for (const id of ids) {
+            await deleteSesi(S.id, id);
           }
         } else {
           await deleteSesi(S.id, btn.dataset.id);
