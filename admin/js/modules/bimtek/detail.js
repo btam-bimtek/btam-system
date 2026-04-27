@@ -1,8 +1,8 @@
 // admin/js/modules/bimtek/detail.js
 import {
   getBimtek, listMapel, deleteMapel, reorderMapel,
-  addPeserta, removePeserta, listSesi, createSesi, deleteSesi,
-  hitungJamSelesai, validateJadwalMapel, updateStatus,
+  addPeserta, removePeserta, listSesi, createSesi, deleteSesi, deleteSesiByMapel,
+  hitungSegmenMapel, validateJadwalMapel, updateStatus,
 } from './api.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -322,14 +322,27 @@ function _buildTabJadwal() {
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
           ${list.sort((a,b) => a.jamMulai.localeCompare(b.jamMulai)).map(s => {
             const mapel = S.mapels.find(m => m.id === s.mapelId);
-            const label = s.tipe === 'mapel' ? `${mapel?.nama || 'Mapel'} (${s.jp} JP)` : (s.keterangan || s.tipe);
+            const segmenLabel = s.tipe === 'mapel' && s.totalSegmen > 1
+              ? ` <span class="text-xs text-gray-500">Bag. ${s.segmenKe}/${s.totalSegmen}</span>` : '';
+            const label = s.tipe === 'mapel'
+              ? `${mapel?.nama || 'Mapel'} (${s.jp} JP)`
+              : (s.keterangan || s.tipe);
+            // Tombol hapus: untuk mapel multi-segmen hapus semua segmen sekaligus
+            const delBtn = canEdit ? (
+              s.tipe === 'mapel'
+                ? `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
+                    data-id="${s.id}" data-mapel-id="${s.mapelId}" data-tgl="${s.tanggal?.toDate?.()?.toISOString().slice(0,10) || ''}">×</button>`
+                : `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
+                    data-id="${s.id}">×</button>`
+            ) : '';
             return `
               <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800 last:border-0">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                   <span class="badge ${colors[s.tipe]||'badge-gray'} shrink-0">${s.jamMulai}–${s.jamSelesai}</span>
                   <span class="text-sm text-gray-200">${_esc(label)}</span>
+                  ${segmenLabel}
                 </div>
-                ${canEdit ? `<button class="btn-del-sesi text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors" data-id="${s.id}">×</button>` : ''}
+                ${delBtn}
               </div>`;
           }).join('')}
         </div>
@@ -432,13 +445,28 @@ function _bindJadwalEvents(app, el) {
   // Hapus sesi
   el.querySelectorAll('.btn-del-sesi').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const ok = await confirmDialog({ title: 'Hapus Sesi', message: 'Hapus sesi ini dari jadwal?' });
+      const mapelId = btn.dataset.mapelId;
+      const tgl     = btn.dataset.tgl;
+      const isMapel = !!mapelId;
+
+      const ok = await confirmDialog({
+        title: isMapel ? 'Hapus Jadwal Mapel' : 'Hapus Sesi',
+        message: isMapel
+          ? 'Hapus semua segmen mapel ini dari jadwal hari ini?'
+          : 'Hapus sesi ini dari jadwal?',
+        danger: true,
+      });
       if (!ok) return;
       try {
-        await deleteSesi(S.id, btn.dataset.id);
+        if (isMapel && tgl) {
+          await deleteSesiByMapel(S.id, mapelId, tgl);
+        } else {
+          await deleteSesi(S.id, btn.dataset.id);
+        }
         S.sesis = await listSesi(S.id);
         el.innerHTML = _buildTabJadwal();
         _bindJadwalEvents(app, el);
+        showToast('Jadwal dihapus', 'success');
       } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
     });
   });
@@ -501,26 +529,36 @@ function _bindJadwalEvents(app, el) {
     if (!mapel)    { errEl.textContent = 'Mapel tidak ditemukan'; errEl.classList.remove('hidden'); return; }
 
     const breakSlots = _isJumat(tgl) ? BREAK_SLOTS_JUMAT : BREAK_SLOTS_REGULAR;
-    const jamSelesai = hitungJamSelesai(jamMulai, mapel.totalJp, breakSlots);
+    const segmen = hitungSegmenMapel(jamMulai, mapel.totalJp, breakSlots);
 
+    // Validasi overlap — cek jam mulai segmen pertama hingga jam selesai segmen terakhir
     const tanggalTs = Timestamp.fromDate(new Date(tgl.replace(/-/g, '/')));
-    const valid = validateJadwalMapel(mapel, tanggalTs, jamMulai, jamSelesai, S.sesis);
+    const jamSelesaiFinal = segmen[segmen.length - 1].jamSelesai;
+    const valid = validateJadwalMapel(mapel, tanggalTs, jamMulai, jamSelesaiFinal, S.sesis);
     if (!valid.valid) { errEl.textContent = valid.errors.join('; '); errEl.classList.remove('hidden'); return; }
     if (valid.warnings?.length) showToast('⚠ ' + valid.warnings.join('; '), 'warning');
 
     try {
-      await createSesi(S.id, {
-        tanggal: tanggalTs,
-        jamMulai, jamSelesai,
-        tipe: 'mapel',
-        mapelId,
-        jp: mapel.totalJp,
-        keterangan: null,
-      });
+      const totalSegmen = segmen.length;
+      for (let i = 0; i < segmen.length; i++) {
+        const sg = segmen[i];
+        await createSesi(S.id, {
+          tanggal: tanggalTs,
+          jamMulai: sg.jamMulai,
+          jamSelesai: sg.jamSelesai,
+          tipe: 'mapel',
+          mapelId,
+          jp: sg.jp,
+          segmenKe: i + 1,
+          totalSegmen,
+          keterangan: null,
+        });
+      }
       S.sesis = await listSesi(S.id);
       el.innerHTML = _buildTabJadwal();
       _bindJadwalEvents(app, el);
-      showToast(`${mapel.nama} ditambahkan ke jadwal`, 'success');
+      const segLabel = totalSegmen > 1 ? ` (${totalSegmen} segmen)` : '';
+      showToast(`${mapel.nama} ditambahkan ke jadwal${segLabel}`, 'success');
     } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
   });
 

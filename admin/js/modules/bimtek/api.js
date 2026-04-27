@@ -269,6 +269,8 @@ export async function createSesi(bimtekId, data) {
     tipe: data.tipe, // 'mapel'|'break'|'ishoma'|'pembukaan'|'penutupan'
     mapelId: data.mapelId || null,
     jp: data.jp || null,
+    segmenKe: data.segmenKe ?? null,       // urutan segmen (1, 2, 3, ...)
+    totalSegmen: data.totalSegmen ?? null, // total segmen mapel ini
     keterangan: data.keterangan || null,
     createdAt: serverTimestamp(),
     createdBy: user.uid,
@@ -280,6 +282,24 @@ export async function createSesi(bimtekId, data) {
 
 export async function deleteSesi(bimtekId, sesiId) {
   await deleteDoc(doc(db, COL, bimtekId, 'sesi', sesiId));
+}
+
+// Hapus semua segmen sesi dari satu mapel di satu tanggal
+export async function deleteSesiByMapel(bimtekId, mapelId, tanggalStr) {
+  const all = await listSesi(bimtekId);
+  const [y, m, d] = tanggalStr.split('-').map(Number);
+  const tglDate = new Date(y, m - 1, d).toDateString();
+
+  const toDelete = all.filter(s => {
+    if (s.mapelId !== mapelId) return false;
+    const t = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+    return t.toDateString() === tglDate;
+  });
+
+  const batch = writeBatch(db);
+  toDelete.forEach(s => batch.delete(doc(db, COL, bimtekId, 'sesi', s.id)));
+  await batch.commit();
+  return toDelete.length;
 }
 
 // ─── VALIDASI MAPEL ─────────────────────────────────────────────────────────
@@ -388,6 +408,80 @@ export function validateJadwalMapel(mapel, tanggal, jamMulai, jamSelesai, allSes
  * Hitung jamSelesai berdasarkan jamMulai + totalJp, dengan melewati jeda break/ISHOMA.
  * breaks = [{ mulai: "10:15", selesai: "10:30" }, ...]
  */
+/**
+ * Hitung segmen-segmen sesi ketika mapel dipecah oleh break/ISHOMA.
+ * Return array segmen: [{ jamMulai, jamSelesai, jp }, ...]
+ * JP per segmen proporsional terhadap menit aktif.
+ */
+export function hitungSegmenMapel(jamMulai, totalJp, breaks = []) {
+  const toMenit = (str) => {
+    const [h, m] = str.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toStr = (menit) => {
+    const h = Math.floor(menit / 60);
+    const m = menit % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  };
+
+  // Sort breaks ascending
+  const sortedBreaks = [...breaks].sort((a, b) => toMenit(a.mulai) - toMenit(b.mulai));
+
+  let sisa = totalJp * 45; // total menit aktif
+  let cursor = toMenit(jamMulai);
+  const segmen = [];
+  let segStart = cursor;
+
+  while (sisa > 0) {
+    // Cek apakah cursor tepat di awal break
+    const jedaSekarang = sortedBreaks.find(b => toMenit(b.mulai) === cursor);
+    if (jedaSekarang) {
+      // Simpan segmen sebelumnya kalau ada menit aktif
+      if (cursor > segStart) {
+        const menitSegmen = cursor - segStart;
+        segmen.push({ jamMulai: toStr(segStart), jamSelesai: toStr(cursor), menitAktif: menitSegmen });
+      }
+      cursor = toMenit(jedaSekarang.selesai);
+      segStart = cursor;
+      continue;
+    }
+
+    // Cek break berikutnya
+    const nextBreak = sortedBreaks.find(b => toMenit(b.mulai) > cursor);
+
+    if (nextBreak && toMenit(nextBreak.mulai) - cursor < sisa) {
+      // Ada break yang memotong sebelum sisa habis
+      const menitSebelumBreak = toMenit(nextBreak.mulai) - cursor;
+      sisa -= menitSebelumBreak;
+      cursor = toMenit(nextBreak.mulai);
+      // Simpan segmen ini
+      segmen.push({ jamMulai: toStr(segStart), jamSelesai: toStr(cursor), menitAktif: menitSebelumBreak });
+      // Skip break
+      cursor = toMenit(nextBreak.selesai);
+      segStart = cursor;
+    } else {
+      // Tidak ada break yang memotong, habiskan sisa
+      cursor += sisa;
+      sisa = 0;
+      segmen.push({ jamMulai: toStr(segStart), jamSelesai: toStr(cursor), menitAktif: cursor - segStart });
+    }
+  }
+
+  // Konversi menitAktif ke JP (bulatkan, pastikan total = totalJp)
+  const totalMenit = segmen.reduce((s, sg) => s + sg.menitAktif, 0);
+  let jpTerpakai = 0;
+  return segmen.map((sg, i) => {
+    let jp;
+    if (i === segmen.length - 1) {
+      jp = totalJp - jpTerpakai; // segmen terakhir = sisa JP supaya total pas
+    } else {
+      jp = Math.round((sg.menitAktif / totalMenit) * totalJp);
+    }
+    jpTerpakai += jp;
+    return { jamMulai: sg.jamMulai, jamSelesai: sg.jamSelesai, jp };
+  });
+}
+
 export function hitungJamSelesai(jamMulai, totalJp, breaks = []) {
   const toMenit = (str) => {
     const [h, m] = str.split(':').map(Number);
