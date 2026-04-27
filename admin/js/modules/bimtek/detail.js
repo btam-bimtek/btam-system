@@ -315,8 +315,29 @@ function _buildTabJadwal() {
 
   let html = '';
 
-  if (S.sesis.length === 0) {
-    html += `<div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center text-gray-500 text-sm mb-4">Jadwal belum dibuat. Pilih tanggal dan klik "Inisialisasi Hari" untuk mulai.</div>`;
+  // Bangun grid semua hari bimtek (bukan hanya hari yang punya sesi)
+  const allDays = [];
+  if (S.bimtek?.periode?.mulai && S.bimtek?.periode?.selesai) {
+    const [sy, sm, sd] = S.bimtek.periode.mulai.split('-').map(Number);
+    const [ey, em, ed] = S.bimtek.periode.selesai.split('-').map(Number);
+    let cur = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    while (cur <= end) {
+      const k = cur.getFullYear() + '-'
+        + String(cur.getMonth() + 1).padStart(2, '0') + '-'
+        + String(cur.getDate()).padStart(2, '0');
+      allDays.push(k);
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  // Merge: semua hari dari periode + hari yang punya sesi (jaga-jaga)
+  for (const k of Object.keys(byDate)) {
+    if (!allDays.includes(k)) allDays.push(k);
+  }
+  allDays.sort();
+
+  if (allDays.length === 0) {
+    html += `<div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center text-gray-500 text-sm mb-4">Periode bimtek belum diset.</div>`;
   } else {
     const colors = { mapel:'badge-blue', break:'badge-gray', ishoma:'badge-yellow', pembukaan:'badge-green', penutupan:'badge-purple' };
     // Pre-group segmen mapel per mapelId agar bisa simpan semua IDs di tombol hapus
@@ -328,11 +349,25 @@ function _buildTabJadwal() {
       }
     }
 
-    html += Object.entries(byDate).sort(([a],[b]) => a.localeCompare(b)).map(([tglStr, { label, list }]) => `
+    html += allDays.map(tglStr => {
+      const dayData = byDate[tglStr];
+      const list    = dayData?.list ?? [];
+      const [dy, dm, dd] = tglStr.split('-').map(Number);
+      const dayObj  = new Date(dy, dm - 1, dd);
+      const label   = dayObj.toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      return `
       <div class="mb-5">
         <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">${label}</div>
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          ${list.sort((a,b) => a.jamMulai.localeCompare(b.jamMulai)).map(s => {
+          ${(() => {
+            const sorted = list.sort((a,b) => a.jamMulai.localeCompare(b.jamMulai));
+            const hasMapel = sorted.some(s => s.tipe === 'mapel');
+            const kosongRow = !hasMapel ? `
+              <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-800 last:border-0">
+                <span class="badge badge-gray shrink-0">—</span>
+                <span class="text-sm text-gray-600 italic">Belum ada mata pelajaran</span>
+              </div>` : '';
+            return sorted.map(s => {
             const mapel = S.mapels.find(m => m.id === s.mapelId);
             const segmenLabel = s.tipe === 'mapel' && s.totalSegmen > 1
               ? ` <span class="text-xs text-gray-500">Bag. ${s.segmenKe}/${s.totalSegmen}</span>` : '';
@@ -361,9 +396,11 @@ function _buildTabJadwal() {
                 </div>
                 ${delBtn}
               </div>`;
-          }).join('')}
+          }).join('') + kosongRow;
+          })()}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   if (canEdit) {
@@ -371,19 +408,16 @@ function _buildTabJadwal() {
     html += `
       <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mt-2 space-y-5">
 
-        <!-- Bagian 1: Inisialisasi hari baru -->
+        <!-- Bagian 1: Inisialisasi semua hari bimtek -->
         <div>
-          <h3 class="text-sm font-semibold text-gray-300 mb-3">Inisialisasi Hari</h3>
-          <p class="text-xs text-gray-500 mb-3">Pilih tanggal → break &amp; ISHOMA otomatis dibuat sesuai hari (Jumat: ISHOMA 11:15–13:45, hari lain: Break 10:15–10:30 + ISHOMA 12:00–13:00).</p>
-          <div class="flex items-end gap-3">
-            <div class="flex-1">
-              <label class="block text-xs text-gray-400 mb-1.5">Tanggal</label>
-              <input type="date" id="init-tgl" class="form-input w-full">
-            </div>
-            <button id="btn-init-hari" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-colors whitespace-nowrap">
-              Inisialisasi Hari
-            </button>
-          </div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Inisialisasi Jadwal</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Buat otomatis break &amp; ISHOMA untuk semua hari bimtek (${S.bimtek?.periode?.mulai || '?'} s/d ${S.bimtek?.periode?.selesai || '?'}).
+            Hari yang sudah diinisialisasi akan dilewati.
+          </p>
+          <button id="btn-init-semua" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
+            Inisialisasi Semua Hari
+          </button>
           <div id="init-error" class="hidden text-red-400 text-xs mt-2"></div>
         </div>
 
@@ -492,44 +526,63 @@ function _bindJadwalEvents(app, el) {
     });
   });
 
-  // ── Inisialisasi Hari ──────────────────────────────────────
-  el.querySelector('#btn-init-hari')?.addEventListener('click', async () => {
+  // ── Inisialisasi Semua Hari Bimtek ───────────────────────
+  el.querySelector('#btn-init-semua')?.addEventListener('click', async () => {
     const errEl = el.querySelector('#init-error');
     errEl.classList.add('hidden');
-    const tgl = el.querySelector('#init-tgl').value;
 
-    if (!tgl) { errEl.textContent = 'Pilih tanggal dahulu'; errEl.classList.remove('hidden'); return; }
-    if (_hariSudahDiinisialisasi(tgl)) { errEl.textContent = 'Hari ini sudah diinisialisasi (break/ISHOMA sudah ada)'; errEl.classList.remove('hidden'); return; }
+    if (!S.bimtek?.periode?.mulai || !S.bimtek?.periode?.selesai) {
+      errEl.textContent = 'Periode bimtek belum diset. Isi dulu di form edit bimtek.';
+      errEl.classList.remove('hidden');
+      return;
+    }
 
-    const jumat   = _isJumat(tgl);
-    const template = jumat ? BREAKS_JUMAT : BREAKS_REGULAR;
-    const tanggalTs = Timestamp.fromDate(new Date(tgl.replace(/-/g, '/')));
-
-    const btn = el.querySelector('#btn-init-hari');
+    const btn = el.querySelector('#btn-init-semua');
     btn.disabled = true;
     btn.textContent = 'Membuat...';
 
     try {
-      for (const t of template) {
-        await createSesi(S.id, {
-          tanggal: tanggalTs,
-          jamMulai: t.jamMulai,
-          jamSelesai: t.jamSelesai,
-          tipe: t.tipe,
-          mapelId: null,
-          jp: null,
-          keterangan: t.keterangan,
-        });
+      const [sy, sm, sd] = S.bimtek.periode.mulai.split('-').map(Number);
+      const [ey, em, ed] = S.bimtek.periode.selesai.split('-').map(Number);
+      let cur = new Date(sy, sm - 1, sd);
+      const end = new Date(ey, em - 1, ed);
+      let created = 0;
+
+      while (cur <= end) {
+        const tglStr = cur.getFullYear() + '-'
+          + String(cur.getMonth() + 1).padStart(2, '0') + '-'
+          + String(cur.getDate()).padStart(2, '0');
+
+        if (!_hariSudahDiinisialisasi(tglStr)) {
+          const jumat    = _isJumat(tglStr);
+          const template = jumat ? BREAKS_JUMAT : BREAKS_REGULAR;
+          const tanggalTs = Timestamp.fromDate(new Date(cur));
+
+          for (const t of template) {
+            await createSesi(S.id, {
+              tanggal: tanggalTs,
+              jamMulai: t.jamMulai,
+              jamSelesai: t.jamSelesai,
+              tipe: t.tipe,
+              mapelId: null,
+              jp: null,
+              keterangan: t.keterangan,
+            });
+          }
+          created++;
+        }
+        cur.setDate(cur.getDate() + 1);
       }
+
       S.sesis = await listSesi(S.id);
       el.innerHTML = _buildTabJadwal();
       _bindJadwalEvents(app, el);
-      showToast(`Hari ${jumat ? 'Jumat' : 'reguler'} diinisialisasi`, 'success');
+      showToast(created > 0 ? `${created} hari diinisialisasi` : 'Semua hari sudah diinisialisasi', 'success');
     } catch (err) {
       errEl.textContent = 'Gagal: ' + err.message;
       errEl.classList.remove('hidden');
       btn.disabled = false;
-      btn.textContent = 'Inisialisasi Hari';
+      btn.textContent = 'Inisialisasi Semua Hari';
     }
   });
 
