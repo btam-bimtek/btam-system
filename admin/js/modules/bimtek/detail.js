@@ -453,6 +453,7 @@ function _bindJadwalEvents(app, el) {
       const mapelId = btn.dataset.mapelId;
       const tgl     = btn.dataset.tgl;
       const isMapel = !!mapelId;
+      console.log('[DEL] klik hapus sesi', { mapelId, tgl, isMapel, sesiId: btn.dataset.id });
 
       const ok = await confirmDialog({
         title: isMapel ? 'Hapus Jadwal Mapel' : 'Hapus Sesi',
@@ -461,9 +462,12 @@ function _bindJadwalEvents(app, el) {
           : 'Hapus sesi ini dari jadwal?',
         danger: true,
       });
+      console.log('[DEL] confirmDialog result:', ok);
       if (!ok) return;
       try {
+        console.log('[DEL] eksekusi hapus...');
         if (isMapel && tgl) {
+          console.log('[DEL] deleteSesiByMapel:', S.id, mapelId, tgl);
           await deleteSesiByMapel(S.id, mapelId, tgl);
         } else {
           await deleteSesi(S.id, btn.dataset.id);
