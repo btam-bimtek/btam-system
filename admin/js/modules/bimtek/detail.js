@@ -248,18 +248,27 @@ function _bindMapelEvents(app, el) {
 
 // ─── JADWAL CONSTANTS ───────────────────────────────────────────────────────
 
-// Template break/ISHOMA per jenis hari
+// Template break/ISHOMA per jenis hari — untuk inisialisasi sesi ke Firestore
 const BREAKS_REGULAR = [
-  { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break' },
+  { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break pagi' },
   { tipe: 'ishoma', jamMulai: '12:00', jamSelesai: '13:00', keterangan: 'ISHOMA' },
+  { tipe: 'break',  jamMulai: '14:30', jamSelesai: '14:45', keterangan: 'Break sore' },
 ];
 const BREAKS_JUMAT = [
+  { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break pagi' },
   { tipe: 'ishoma', jamMulai: '11:15', jamSelesai: '13:45', keterangan: 'ISHOMA Jumat' },
 ];
 
-// Untuk hitungJamSelesai — format { mulai, selesai }
-const BREAK_SLOTS_REGULAR = [{ mulai: '10:15', selesai: '10:30' }, { mulai: '12:00', selesai: '13:00' }];
-const BREAK_SLOTS_JUMAT   = [{ mulai: '11:15', selesai: '13:45' }];
+// Slot statis untuk hitungJamSelesai — sesuai OPUSPLAN
+const BREAK_SLOTS_REGULAR = [
+  { mulai: '10:15', selesai: '10:30' }, // Break pagi
+  { mulai: '12:00', selesai: '13:00' }, // ISHOMA
+  { mulai: '14:30', selesai: '14:45' }, // Break sore
+];
+const BREAK_SLOTS_JUMAT = [
+  { mulai: '10:15', selesai: '10:30' }, // Break pagi
+  { mulai: '11:15', selesai: '13:45' }, // ISHOMA Jumat
+];
 
 function _isJumat(tglStr) {
   // tglStr format YYYY-MM-DD, new Date() bisa salah timezone → parse manual
@@ -491,8 +500,7 @@ function _bindJadwalEvents(app, el) {
     const mapel    = S.mapels.find(m => m.id === mapelId);
     if (!mapel)    { errEl.textContent = 'Mapel tidak ditemukan'; errEl.classList.remove('hidden'); return; }
 
-    const jumat    = _isJumat(tgl);
-    const breakSlots = jumat ? BREAK_SLOTS_JUMAT : BREAK_SLOTS_REGULAR;
+    const breakSlots = _isJumat(tgl) ? BREAK_SLOTS_JUMAT : BREAK_SLOTS_REGULAR;
     const jamSelesai = hitungJamSelesai(jamMulai, mapel.totalJp, breakSlots);
 
     const tanggalTs = Timestamp.fromDate(new Date(tgl.replace(/-/g, '/')));
