@@ -39,12 +39,17 @@ export async function renderBimtekDetail({ id } = {}) {
     </div>`;
 
   try {
-    [S.bimtek, S.mapels, S.sesis, S.pengajars] = await Promise.all([
+    const [bimtek, mapels, sesis, pengajarsResult] = await Promise.all([
       getBimtek(id),
       listMapel(id),
       listSesi(id),
-      listPengajar(),
+      listPengajar({ pageSize: 999 }),
     ]);
+    S.bimtek    = bimtek;
+    S.mapels    = mapels;
+    S.sesis     = sesis;
+    // listPengajar() return { data: [...], lastDoc } bukan array
+    S.pengajars = pengajarsResult.data ?? [];
     _render(app);
   } catch (err) {
     app.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
@@ -419,7 +424,7 @@ async function _loadPeserta(app, el) {
     listEl.innerHTML = `<div class="text-center py-10 text-gray-500 text-sm">Belum ada peserta.</div>`;
   } else {
     try {
-      const all      = await listPeserta();
+      const { data: all } = await listPeserta({ pageSize: 999 });
       const enrolled = all.filter(p => pesertaIds.includes(p.noPeserta));
 
       const rows = enrolled.map(p => `
@@ -466,7 +471,7 @@ async function _loadPeserta(app, el) {
 
 async function _showAddPesertaModal(app, el) {
   try {
-    const all       = await listPeserta();
+    const { data: all }  = await listPeserta({ pageSize: 999 });
     const enrolled  = S.bimtek?.pesertaIds || [];
     const available = all.filter(p => !enrolled.includes(p.noPeserta));
 
