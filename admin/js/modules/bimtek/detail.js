@@ -468,6 +468,9 @@ function _bindJadwalEvents(app, el) {
         console.log('[DEL] eksekusi hapus...');
         if (isMapel && tgl) {
           console.log('[DEL] deleteSesiByMapel:', S.id, mapelId, tgl);
+          // Debug: cek S.sesis yang ada
+          const debugMatch = S.sesis.filter(s => s.mapelId === mapelId);
+          console.log('[DEL] sesi dengan mapelId ini:', debugMatch.length, debugMatch.map(s => ({id:s.id, mapelId:s.mapelId, tgl: s.tanggal?.toDate?.()?.toISOString?.()})));
           await deleteSesiByMapel(S.id, mapelId, tgl);
         } else {
           await deleteSesi(S.id, btn.dataset.id);
