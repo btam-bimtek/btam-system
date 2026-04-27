@@ -305,7 +305,10 @@ function _buildTabJadwal() {
   const byDate = {};
   for (const s of S.sesis) {
     const dateObj = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
-    const tglStr  = dateObj.toISOString().slice(0, 10);
+    // Pakai local date parts — bukan toISOString() yang UTC dan bisa mundur 1 hari di Jakarta (UTC+7)
+    const tglStr  = dateObj.getFullYear() + '-'
+      + String(dateObj.getMonth() + 1).padStart(2, '0') + '-'
+      + String(dateObj.getDate()).padStart(2, '0');
     if (!byDate[tglStr]) byDate[tglStr] = { label: dateObj.toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }), list: [] };
     byDate[tglStr].list.push(s);
   }
