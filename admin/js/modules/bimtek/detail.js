@@ -246,37 +246,74 @@ function _bindMapelEvents(app, el) {
 
 // ─── TAB: JADWAL ────────────────────────────────────────────────────────────
 
+// ─── JADWAL CONSTANTS ───────────────────────────────────────────────────────
+
+// Template break/ISHOMA per jenis hari
+const BREAKS_REGULAR = [
+  { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break' },
+  { tipe: 'ishoma', jamMulai: '12:00', jamSelesai: '13:00', keterangan: 'ISHOMA' },
+];
+const BREAKS_JUMAT = [
+  { tipe: 'ishoma', jamMulai: '11:15', jamSelesai: '13:45', keterangan: 'ISHOMA Jumat' },
+];
+
+// Untuk hitungJamSelesai — format { mulai, selesai }
+const BREAK_SLOTS_REGULAR = [{ mulai: '10:15', selesai: '10:30' }, { mulai: '12:00', selesai: '13:00' }];
+const BREAK_SLOTS_JUMAT   = [{ mulai: '11:15', selesai: '13:45' }];
+
+function _isJumat(tglStr) {
+  // tglStr format YYYY-MM-DD, new Date() bisa salah timezone → parse manual
+  const [y, m, d] = tglStr.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay() === 5;
+}
+
+function _hariSudahDiinisialisasi(tglStr) {
+  // Cek apakah sudah ada sesi break/ishoma di hari itu
+  const [y, m, d] = tglStr.split('-').map(Number);
+  const tglDate = new Date(y, m - 1, d).toDateString();
+  return S.sesis.some(s => {
+    if (!['break', 'ishoma'].includes(s.tipe)) return false;
+    const t = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+    return t.toDateString() === tglDate;
+  });
+}
+
+function _sesiHariIni(tglStr) {
+  const [y, m, d] = tglStr.split('-').map(Number);
+  const tglDate = new Date(y, m - 1, d).toDateString();
+  return S.sesis.filter(s => {
+    const t = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+    return t.toDateString() === tglDate;
+  });
+}
+
+// ─── BUILD TAB JADWAL ───────────────────────────────────────────────────────
+
 function _buildTabJadwal() {
   const canEdit = ['draft','planned'].includes(S.bimtek?.status);
 
-  // Group by tanggal
+  // Group by tanggal — key = tglStr YYYY-MM-DD untuk sorting, display = label
   const byDate = {};
   for (const s of S.sesis) {
-    const tgl = s.tanggal?.toDate?.()?.toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) || '?';
-    if (!byDate[tgl]) byDate[tgl] = [];
-    byDate[tgl].push(s);
+    const dateObj = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+    const tglStr  = dateObj.toISOString().slice(0, 10);
+    if (!byDate[tglStr]) byDate[tglStr] = { label: dateObj.toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }), list: [] };
+    byDate[tglStr].list.push(s);
   }
 
-  const unscheduled = S.mapels.filter(m => !m.jadwal);
   let html = '';
 
-  if (unscheduled.length > 0) {
-    html += `<div class="mb-4 p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-300 text-sm">
-      ⚠️ ${unscheduled.length} mapel belum dijadwalkan: ${unscheduled.map(m => `<strong>${_esc(m.nama)}</strong>`).join(', ')}
-    </div>`;
-  }
-
   if (S.sesis.length === 0) {
-    html += `<div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center text-gray-500 text-sm mb-4">Jadwal belum dibuat.</div>`;
+    html += `<div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center text-gray-500 text-sm mb-4">Jadwal belum dibuat. Pilih tanggal dan klik "Inisialisasi Hari" untuk mulai.</div>`;
   } else {
-    html += Object.entries(byDate).map(([tgl, list]) => `
+    const colors = { mapel:'badge-blue', break:'badge-gray', ishoma:'badge-yellow', pembukaan:'badge-green', penutupan:'badge-purple' };
+    html += Object.entries(byDate).sort(([a],[b]) => a.localeCompare(b)).map(([tglStr, { label, list }]) => `
       <div class="mb-5">
-        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">${tgl}</div>
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">${label}</div>
         <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
           ${list.sort((a,b) => a.jamMulai.localeCompare(b.jamMulai)).map(s => {
             const mapel = S.mapels.find(m => m.id === s.mapelId);
             const label = s.tipe === 'mapel' ? `${mapel?.nama || 'Mapel'} (${s.jp} JP)` : (s.keterangan || s.tipe);
-            const colors = { mapel:'badge-blue', break:'badge-gray', ishoma:'badge-yellow', pembukaan:'badge-green', penutupan:'badge-purple' };
             return `
               <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800 last:border-0">
                 <div class="flex items-center gap-3">
@@ -293,56 +330,100 @@ function _buildTabJadwal() {
   if (canEdit) {
     const mapelOpts = S.mapels.map(m => `<option value="${m.id}">${_esc(m.nama)} (${m.totalJp} JP)</option>`).join('');
     html += `
-      <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mt-2">
-        <h3 class="text-sm font-semibold text-gray-300 mb-4">Tambah Sesi</h3>
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Tanggal</label>
-            <input type="date" id="sesi-tgl" class="form-input w-full">
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mt-2 space-y-5">
+
+        <!-- Bagian 1: Inisialisasi hari baru -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Inisialisasi Hari</h3>
+          <p class="text-xs text-gray-500 mb-3">Pilih tanggal → break &amp; ISHOMA otomatis dibuat sesuai hari (Jumat: ISHOMA 11:15–13:45, hari lain: Break 10:15–10:30 + ISHOMA 12:00–13:00).</p>
+          <div class="flex items-end gap-3">
+            <div class="flex-1">
+              <label class="block text-xs text-gray-400 mb-1.5">Tanggal</label>
+              <input type="date" id="init-tgl" class="form-input w-full">
+            </div>
+            <button id="btn-init-hari" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-colors whitespace-nowrap">
+              Inisialisasi Hari
+            </button>
           </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Tipe</label>
-            <select id="sesi-tipe" class="form-select w-full">
-              <option value="mapel">Mata Pelajaran</option>
-              <option value="break">Break</option>
-              <option value="ishoma">ISHOMA</option>
-              <option value="pembukaan">Pembukaan</option>
-              <option value="penutupan">Penutupan</option>
-            </select>
-          </div>
-          <div id="sesi-mapel-wrap">
-            <label class="block text-xs text-gray-400 mb-1.5">Mata Pelajaran</label>
-            <select id="sesi-mapel" class="form-select w-full">
-              <option value="">-- Pilih --</option>
-              ${mapelOpts}
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Jam Mulai</label>
-            <input type="time" id="sesi-jam" class="form-input w-full">
-          </div>
+          <div id="init-error" class="hidden text-red-400 text-xs mt-2"></div>
         </div>
-        <div id="sesi-error" class="hidden text-red-400 text-xs mb-3"></div>
-        <button id="btn-add-sesi" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">
-          + Tambah Sesi
-        </button>
+
+        <div class="border-t border-gray-800"></div>
+
+        <!-- Bagian 2: Tambah mapel ke hari yang sudah ada -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Tambah Mata Pelajaran</h3>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Tanggal</label>
+              <input type="date" id="sesi-tgl" class="form-input w-full">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Jam Mulai</label>
+              <input type="time" id="sesi-jam" class="form-input w-full" value="08:00">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-xs text-gray-400 mb-1.5">Mata Pelajaran</label>
+              <select id="sesi-mapel" class="form-select w-full">
+                <option value="">-- Pilih Mata Pelajaran --</option>
+                ${mapelOpts}
+              </select>
+            </div>
+          </div>
+          <div id="sesi-error" class="hidden text-red-400 text-xs mb-3"></div>
+          <button id="btn-add-sesi" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+            + Tambah ke Jadwal
+          </button>
+        </div>
+
+        <div class="border-t border-gray-800"></div>
+
+        <!-- Bagian 3: Sesi non-mapel manual (pembukaan/penutupan) -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Tambah Sesi Lain</h3>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Tanggal</label>
+              <input type="date" id="other-tgl" class="form-input w-full">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Tipe</label>
+              <select id="other-tipe" class="form-select w-full">
+                <option value="pembukaan">Pembukaan</option>
+                <option value="penutupan">Penutupan</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Jam Mulai</label>
+              <input type="time" id="other-jam-mulai" class="form-input w-full" value="07:30">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Jam Selesai</label>
+              <input type="time" id="other-jam-selesai" class="form-input w-full" value="08:00">
+            </div>
+          </div>
+          <div id="other-error" class="hidden text-red-400 text-xs mb-3"></div>
+          <button id="btn-add-other" class="px-4 py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-white transition-colors">
+            + Tambah Sesi
+          </button>
+        </div>
+
       </div>`;
   }
 
   return html;
 }
 
+// ─── BIND JADWAL EVENTS ─────────────────────────────────────────────────────
+
 function _bindJadwalEvents(app, el) {
   const canEdit = ['draft','planned'].includes(S.bimtek?.status);
   if (!canEdit) return;
 
-  el.querySelector('#sesi-tipe')?.addEventListener('change', e => {
-    el.querySelector('#sesi-mapel-wrap').style.display = e.target.value === 'mapel' ? '' : 'none';
-  });
-
+  // Hapus sesi
   el.querySelectorAll('.btn-del-sesi').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const ok = await confirmDialog({ title: 'Hapus Sesi', message: 'Hapus sesi ini?' });
+      const ok = await confirmDialog({ title: 'Hapus Sesi', message: 'Hapus sesi ini dari jadwal?' });
       if (!ok) return;
       try {
         await deleteSesi(S.id, btn.dataset.id);
@@ -353,36 +434,117 @@ function _bindJadwalEvents(app, el) {
     });
   });
 
+  // ── Inisialisasi Hari ──────────────────────────────────────
+  el.querySelector('#btn-init-hari')?.addEventListener('click', async () => {
+    const errEl = el.querySelector('#init-error');
+    errEl.classList.add('hidden');
+    const tgl = el.querySelector('#init-tgl').value;
+
+    if (!tgl) { errEl.textContent = 'Pilih tanggal dahulu'; errEl.classList.remove('hidden'); return; }
+    if (_hariSudahDiinisialisasi(tgl)) { errEl.textContent = 'Hari ini sudah diinisialisasi (break/ISHOMA sudah ada)'; errEl.classList.remove('hidden'); return; }
+
+    const jumat   = _isJumat(tgl);
+    const template = jumat ? BREAKS_JUMAT : BREAKS_REGULAR;
+    const tanggalTs = Timestamp.fromDate(new Date(tgl.replace(/-/g, '/')));
+
+    const btn = el.querySelector('#btn-init-hari');
+    btn.disabled = true;
+    btn.textContent = 'Membuat...';
+
+    try {
+      for (const t of template) {
+        await createSesi(S.id, {
+          tanggal: tanggalTs,
+          jamMulai: t.jamMulai,
+          jamSelesai: t.jamSelesai,
+          tipe: t.tipe,
+          mapelId: null,
+          jp: null,
+          keterangan: t.keterangan,
+        });
+      }
+      S.sesis = await listSesi(S.id);
+      el.innerHTML = _buildTabJadwal();
+      _bindJadwalEvents(app, el);
+      showToast(`Hari ${jumat ? 'Jumat' : 'reguler'} diinisialisasi`, 'success');
+    } catch (err) {
+      errEl.textContent = 'Gagal: ' + err.message;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Inisialisasi Hari';
+    }
+  });
+
+  // ── Tambah Mapel ke Jadwal ────────────────────────────────
   el.querySelector('#btn-add-sesi')?.addEventListener('click', async () => {
     const errEl = el.querySelector('#sesi-error');
     errEl.classList.add('hidden');
 
     const tgl      = el.querySelector('#sesi-tgl').value;
-    const tipe     = el.querySelector('#sesi-tipe').value;
     const jamMulai = el.querySelector('#sesi-jam').value;
-    const mapelId  = el.querySelector('#sesi-mapel')?.value || null;
+    const mapelId  = el.querySelector('#sesi-mapel').value;
 
-    if (!tgl || !jamMulai) { errEl.textContent = 'Tanggal dan jam mulai wajib diisi'; errEl.classList.remove('hidden'); return; }
-    if (tipe === 'mapel' && !mapelId) { errEl.textContent = 'Pilih mata pelajaran'; errEl.classList.remove('hidden'); return; }
+    if (!tgl)      { errEl.textContent = 'Pilih tanggal'; errEl.classList.remove('hidden'); return; }
+    if (!jamMulai) { errEl.textContent = 'Isi jam mulai'; errEl.classList.remove('hidden'); return; }
+    if (!mapelId)  { errEl.textContent = 'Pilih mata pelajaran'; errEl.classList.remove('hidden'); return; }
 
-    const mapel  = tipe === 'mapel' ? S.mapels.find(m => m.id === mapelId) : null;
-    const jpFinal = mapel?.totalJp || 0;
-    const breaks  = [{ mulai:'10:15', selesai:'10:30' }, { mulai:'12:00', selesai:'13:00' }];
-    const jamSelesai = tipe === 'mapel' && jpFinal > 0 ? hitungJamSelesai(jamMulai, jpFinal, breaks) : jamMulai;
+    const mapel    = S.mapels.find(m => m.id === mapelId);
+    if (!mapel)    { errEl.textContent = 'Mapel tidak ditemukan'; errEl.classList.remove('hidden'); return; }
 
-    if (tipe === 'mapel' && mapel) {
-      const tanggalTs = Timestamp.fromDate(new Date(tgl));
-      const result = validateJadwalMapel(mapel, tanggalTs, jamMulai, jamSelesai, S.sesis);
-      if (!result.valid) { errEl.textContent = result.errors.join('; '); errEl.classList.remove('hidden'); return; }
+    const jumat    = _isJumat(tgl);
+    const breakSlots = jumat ? BREAK_SLOTS_JUMAT : BREAK_SLOTS_REGULAR;
+    const jamSelesai = hitungJamSelesai(jamMulai, mapel.totalJp, breakSlots);
+
+    const tanggalTs = Timestamp.fromDate(new Date(tgl.replace(/-/g, '/')));
+    const valid = validateJadwalMapel(mapel, tanggalTs, jamMulai, jamSelesai, S.sesis);
+    if (!valid.valid) { errEl.textContent = valid.errors.join('; '); errEl.classList.remove('hidden'); return; }
+    if (valid.warnings?.length) showToast('⚠ ' + valid.warnings.join('; '), 'warning');
+
+    try {
+      await createSesi(S.id, {
+        tanggal: tanggalTs,
+        jamMulai, jamSelesai,
+        tipe: 'mapel',
+        mapelId,
+        jp: mapel.totalJp,
+        keterangan: null,
+      });
+      S.sesis = await listSesi(S.id);
+      el.innerHTML = _buildTabJadwal();
+      _bindJadwalEvents(app, el);
+      showToast(`${mapel.nama} ditambahkan ke jadwal`, 'success');
+    } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+  });
+
+  // ── Tambah Sesi Lain (pembukaan/penutupan) ───────────────
+  el.querySelector('#btn-add-other')?.addEventListener('click', async () => {
+    const errEl = el.querySelector('#other-error');
+    errEl.classList.add('hidden');
+
+    const tgl        = el.querySelector('#other-tgl').value;
+    const tipe       = el.querySelector('#other-tipe').value;
+    const jamMulai   = el.querySelector('#other-jam-mulai').value;
+    const jamSelesai = el.querySelector('#other-jam-selesai').value;
+
+    if (!tgl || !jamMulai || !jamSelesai) {
+      errEl.textContent = 'Tanggal, jam mulai, dan jam selesai wajib diisi';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (jamSelesai <= jamMulai) {
+      errEl.textContent = 'Jam selesai harus setelah jam mulai';
+      errEl.classList.remove('hidden');
+      return;
     }
 
     try {
       await createSesi(S.id, {
-        tanggal: Timestamp.fromDate(new Date(tgl)),
-        jamMulai, jamSelesai, tipe,
-        mapelId: tipe === 'mapel' ? mapelId : null,
-        jp: tipe === 'mapel' ? jpFinal : null,
-        keterangan: tipe !== 'mapel' ? tipe : null,
+        tanggal: Timestamp.fromDate(new Date(tgl.replace(/-/g, '/'))),
+        jamMulai, jamSelesai,
+        tipe,
+        mapelId: null,
+        jp: null,
+        keterangan: tipe,
       });
       S.sesis = await listSesi(S.id);
       el.innerHTML = _buildTabJadwal();
