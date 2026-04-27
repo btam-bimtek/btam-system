@@ -307,7 +307,7 @@ function _attachWeightEvents() {
 }
 
 function _readWeights() {
-  const w = { ...DEFAULT_WEIGHTS };
+  const w = {};
   document.querySelectorAll('.weight-input').forEach(inp => {
     w[inp.dataset.key] = (Number(inp.value) || 0) / 100;
   });
