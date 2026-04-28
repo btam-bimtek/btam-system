@@ -302,6 +302,125 @@ export async function deleteSesiByMapel(bimtekId, mapelId, tanggalStr) {
   return toDelete.length;
 }
 
+// ─── JADWAL INISIALISASI ─────────────────────────────────────────────────────
+
+// Break templates (internal) — dipakai oleh initSesiHari
+const _BR = {
+  regular: [
+    { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break pagi' },
+    { tipe: 'ishoma', jamMulai: '12:00', jamSelesai: '13:00', keterangan: 'ISHOMA' },
+    { tipe: 'break',  jamMulai: '14:30', jamSelesai: '14:45', keterangan: 'Break sore' },
+  ],
+  jumat: [
+    { tipe: 'break',  jamMulai: '10:15', jamSelesai: '10:30', keterangan: 'Break pagi' },
+    { tipe: 'ishoma', jamMulai: '11:15', jamSelesai: '13:45', keterangan: 'ISHOMA Jumat' },
+  ],
+};
+const _tm = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+const _ts = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+
+/**
+ * Inisialisasi 1 hari: buat semua slot (break, ishoma, kosong) sekaligus.
+ * Kosong slot = 1 JP per slot, 45 menit.
+ * @param {string} tanggalStr - YYYY-MM-DD local
+ * @param {number} totalJp    - jumlah JP hari ini (max 9)
+ */
+export async function initSesiHari(bimtekId, tanggalStr, totalJp) {
+  const [y, mo, d] = tanggalStr.split('-').map(Number);
+  const dateObj = new Date(y, mo - 1, d);
+  const isJumat = dateObj.getDay() === 5;
+  const tanggalTs = Timestamp.fromDate(dateObj);
+
+  const breaksTemplate = isJumat ? _BR.jumat : _BR.regular;
+  const sortedBreaks = [...breaksTemplate].sort((a, b) => _tm(a.jamMulai) - _tm(b.jamMulai));
+
+  const slots = [];
+  let cursor = _tm('08:00');
+  let jpCount = 0;
+  let bIdx = 0;
+
+  while (jpCount < totalJp) {
+    const nb = sortedBreaks[bIdx];
+    // Insert break kalau mulainya <= cursor atau memotong slot berikutnya
+    if (nb && _tm(nb.jamMulai) <= cursor) {
+      slots.push(nb);
+      cursor = _tm(nb.jamSelesai);
+      bIdx++;
+      continue;
+    }
+    const slotEnd = cursor + 45;
+    if (nb && _tm(nb.jamMulai) < slotEnd) {
+      slots.push(nb);
+      cursor = _tm(nb.jamSelesai);
+      bIdx++;
+      continue;
+    }
+    // Tambah slot kosong
+    jpCount++;
+    slots.push({ tipe: 'kosong', jamMulai: _ts(cursor), jamSelesai: _ts(slotEnd), jp: 1, keterangan: `JP ${jpCount}` });
+    cursor = slotEnd;
+  }
+  // Break yang tersisa (misal break sore muncul setelah JP penuh)
+  while (bIdx < sortedBreaks.length) slots.push(sortedBreaks[bIdx++]);
+
+  const user = getCurrentUser();
+  const colRef = collection(db, COL, bimtekId, 'sesi');
+  const batch = writeBatch(db);
+  for (const slot of slots) {
+    const ref = doc(colRef);
+    batch.set(ref, {
+      tanggal: tanggalTs,
+      jamMulai: slot.jamMulai,
+      jamSelesai: slot.jamSelesai,
+      tipe: slot.tipe,
+      mapelId: null,
+      jp: slot.jp ?? null,
+      segmenKe: null,
+      totalSegmen: null,
+      keterangan: slot.keterangan || null,
+      createdAt: serverTimestamp(),
+      createdBy: user.uid,
+    });
+  }
+  await batch.commit();
+  return slots.length;
+}
+
+/**
+ * Tambah 1 slot kosong di akhir hari.
+ * @param {object[]} sesiHariIni - sesi hari ini dari S.sesis (sudah terfilter)
+ */
+export async function tambahJpKosong(bimtekId, sesiHariIni) {
+  const sorted = [...sesiHariIni].sort((a, b) => b.jamSelesai.localeCompare(a.jamSelesai));
+  const last = sorted[0];
+  if (!last) return;
+  const jamMulai   = last.jamSelesai;
+  const jamSelesai = _ts(_tm(jamMulai) + 45);
+  const jpCount    = sesiHariIni.filter(s => s.tipe === 'kosong').length + 1;
+  const user = getCurrentUser();
+  await addDoc(collection(db, COL, bimtekId, 'sesi'), {
+    tanggal: last.tanggal,
+    jamMulai, jamSelesai,
+    tipe: 'kosong', mapelId: null, jp: 1,
+    segmenKe: null, totalSegmen: null,
+    keterangan: `JP ${jpCount}`,
+    createdAt: serverTimestamp(),
+    createdBy: user.uid,
+  });
+}
+
+/**
+ * Hapus slot kosong terakhir dari hari ini.
+ * Return false kalau slot terakhir bukan tipe kosong.
+ */
+export async function kurangJpKosong(bimtekId, sesiHariIni) {
+  const sorted = [...sesiHariIni].sort((a, b) => b.jamSelesai.localeCompare(a.jamSelesai));
+  const last = sorted[0];
+  if (!last || last.tipe !== 'kosong') return false;
+  await deleteDoc(doc(db, COL, bimtekId, 'sesi', last.id));
+  return true;
+}
+
 // ─── VALIDASI MAPEL ─────────────────────────────────────────────────────────
 
 export function validateMapel(data) {
