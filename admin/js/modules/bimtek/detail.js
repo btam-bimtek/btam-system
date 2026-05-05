@@ -6,6 +6,7 @@ import {
   hitungSegmenMapel, validateJadwalMapel, updateStatus,
   restoreSlotKosong,
 } from './api.js';
+import { renderTabUjian } from './tab-ujian.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
@@ -100,6 +101,7 @@ function _render(app) {
       ${_buildTabBtn('mapel',   'Mata Pelajaran')}
       ${_buildTabBtn('jadwal',  'Jadwal')}
       ${_buildTabBtn('peserta', 'Peserta')}
+      ${_buildTabBtn('ujian',   'Ujian')}
     </div>
 
     <!-- Tab content -->
@@ -138,6 +140,7 @@ function _renderTab(app) {
   if (S.tab === 'mapel')   { el.innerHTML = _buildTabMapel();   _bindMapelEvents(app, el); }
   if (S.tab === 'jadwal')  { el.innerHTML = _buildTabJadwal();  _bindJadwalEvents(app, el); }
   if (S.tab === 'peserta') { el.innerHTML = _buildTabPeserta(); _loadPeserta(app, el); }
+  if (S.tab === 'ujian')   { renderTabUjian(app, el, S); }
 }
 
 // ─── TAB: MATA PELAJARAN ────────────────────────────────────────────────────
