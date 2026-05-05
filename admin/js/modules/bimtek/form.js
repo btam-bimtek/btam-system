@@ -3,7 +3,7 @@ import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { navigate } from '../../router.js';
-import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS } from './api.js';
+import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS, listSesi, shiftSesiPeriode } from './api.js';
 import { BIDANG_LIST, KOMPONEN_NILAI } from '../../../../shared/constants.js';
 
 // ─── ENTRY POINT ─────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ export async function renderBimtekForm({ id } = {}) {
   });
 
   // ── Submit ──
-  app.querySelector('#btn-submit').addEventListener('click', () => _handleSubmit(app, id, isEdit));
+  app.querySelector('#btn-submit').addEventListener('click', () => _handleSubmit(app, id, isEdit, d));
 
   // ── Delete ──
   app.querySelector('#btn-delete')?.addEventListener('click', async () => {
@@ -325,7 +325,7 @@ function _updateWeightSum() {
 
 // ─── HANDLE SUBMIT ────────────────────────────────────────────────────────────
 
-async function _handleSubmit(app, bimtekId, isEdit) {
+async function _handleSubmit(app, bimtekId, isEdit, oldData) {
   const errEl = app.querySelector('#form-error');
   const btn   = app.querySelector('#btn-submit');
   errEl.classList.add('hidden');
@@ -373,6 +373,74 @@ async function _handleSubmit(app, bimtekId, isEdit) {
     };
 
     if (isEdit) {
+      // ── Deteksi perubahan periode & shift sesi ────────────────────────────
+      const oldMulai   = oldData?.periode?.mulai;   // YYYY-MM-DD string
+      const oldSelesai = oldData?.periode?.selesai;
+
+      if (oldMulai && oldMulai !== pm) {
+        const selisihHari = Math.round(
+          (new Date(pm) - new Date(oldMulai)) / (1000 * 60 * 60 * 24)
+        );
+
+        if (selisihHari !== 0) {
+          const sesis = await listSesi(bimtekId);
+
+          if (sesis.length > 0) {
+            // Shift semua sesi
+            await shiftSesiPeriode(bimtekId, sesis, selisihHari);
+
+            // Kumpulkan warnings
+            const warnings = [];
+
+            // Cek hari Jumat dengan JP > 6 setelah shift
+            const jpPerHari = {};
+            for (const s of sesis) {
+              if (!s.jp || s.tipe === 'break' || s.tipe === 'ishoma') continue;
+              const tglLama = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+              const tglBaru = new Date(tglLama);
+              tglBaru.setDate(tglBaru.getDate() + selisihHari);
+              const tglStr = tglBaru.toISOString().split('T')[0];
+              jpPerHari[tglStr] = (jpPerHari[tglStr] || 0) + (s.jp || 0);
+            }
+            for (const [tgl, jp] of Object.entries(jpPerHari)) {
+              if (new Date(tgl).getDay() === 5 && jp > 6) {
+                warnings.push(`⚠️ ${tgl} jadi hari Jumat dengan ${jp} JP (maks 6 JP)`);
+              }
+            }
+
+            // Cek periode diperpendek
+            if (oldSelesai) {
+              const newEnd  = new Date(ps);
+              const oldEnd  = new Date(oldSelesai);
+              const shiftedOldEnd = new Date(oldEnd);
+              shiftedOldEnd.setDate(shiftedOldEnd.getDate() + selisihHari);
+              if (newEnd < shiftedOldEnd) {
+                const selisihPotong = Math.round((shiftedOldEnd - newEnd) / (1000 * 60 * 60 * 24));
+                warnings.push(`⚠️ Periode diperpendek ${selisihPotong} hari — cek sesi di akhir jadwal`);
+              } else if (newEnd > shiftedOldEnd) {
+                const selisihTambah = Math.round((newEnd - shiftedOldEnd) / (1000 * 60 * 60 * 24));
+                warnings.push(`ℹ️ Periode bertambah ${selisihTambah} hari — jangan lupa inisialisasi hari baru`);
+              }
+            }
+
+            if (warnings.length > 0) {
+              showToast(warnings.join('\n'), 'warning', 8000);
+            }
+          }
+        }
+      } else if (oldSelesai && oldSelesai !== ps) {
+        // Tanggal mulai sama, tapi selesai berubah
+        const newEnd  = new Date(ps);
+        const oldEnd  = new Date(oldSelesai);
+        if (newEnd < oldEnd) {
+          const selisih = Math.round((oldEnd - newEnd) / (1000 * 60 * 60 * 24));
+          showToast(`⚠️ Periode diperpendek ${selisih} hari — cek sesi di akhir jadwal`, 'warning', 6000);
+        } else {
+          const selisih = Math.round((newEnd - oldEnd) / (1000 * 60 * 60 * 24));
+          showToast(`ℹ️ Periode bertambah ${selisih} hari — jangan lupa inisialisasi hari baru`, 'info', 6000);
+        }
+      }
+
       await updateBimtek(bimtekId, payload);
       showToast('Bimtek berhasil diperbarui', 'success');
       navigate(`/bimtek/${bimtekId}`);

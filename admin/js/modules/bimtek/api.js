@@ -280,6 +280,24 @@ export async function createSesi(bimtekId, data) {
   return ref.id;
 }
 
+/**
+ * Geser semua sesi sebesar selisihHari (positif = maju, negatif = mundur).
+ * @param {string} bimtekId
+ * @param {object[]} sesis - array sesi dari listSesi (sudah punya .id dan .tanggal)
+ * @param {number} selisihHari
+ */
+export async function shiftSesiPeriode(bimtekId, sesis, selisihHari) {
+  if (!sesis.length || selisihHari === 0) return;
+  const batch = writeBatch(db);
+  for (const s of sesis) {
+    const tglLama = s.tanggal?.toDate?.() ?? new Date(s.tanggal);
+    const tglBaru = new Date(tglLama.getFullYear(), tglLama.getMonth(), tglLama.getDate() + selisihHari);
+    const ref = doc(db, COL, bimtekId, 'sesi', s.id);
+    batch.update(ref, { tanggal: Timestamp.fromDate(tglBaru) });
+  }
+  await batch.commit();
+}
+
 export async function deleteSesi(bimtekId, sesiId) {
   await deleteDoc(doc(db, COL, bimtekId, 'sesi', sesiId));
 }
@@ -365,10 +383,16 @@ export async function initSesiHari(bimtekId, tanggalStr, totalJp) {
 
   const user = getCurrentUser();
   const colRef = collection(db, COL, bimtekId, 'sesi');
+
+  // Hitung offset urutan dari sesi yang sudah ada
+  const existingSnap = await getDocs(collection(db, COL, bimtekId, 'sesi'));
+  const urutanOffset = existingSnap.size;
+
   const batch = writeBatch(db);
-  for (const slot of slots) {
+  slots.forEach((slot, i) => {
     const ref = doc(colRef);
     batch.set(ref, {
+      urutan: urutanOffset + i + 1,
       tanggal: tanggalTs,
       jamMulai: slot.jamMulai,
       jamSelesai: slot.jamSelesai,
@@ -381,7 +405,7 @@ export async function initSesiHari(bimtekId, tanggalStr, totalJp) {
       createdAt: serverTimestamp(),
       createdBy: user.uid,
     });
-  }
+  });
   await batch.commit();
   return slots.length;
 }
