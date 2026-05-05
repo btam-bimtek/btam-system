@@ -827,49 +827,118 @@ async function _loadPeserta(app, el) {
 
 async function _showAddPesertaModal(app, el) {
   try {
-    const { data: all }  = await listPeserta({ pageSize: 999 });
-    const enrolled  = S.bimtek?.pesertaIds || [];
-    const available = all.filter(p => !enrolled.includes(p.noPeserta));
+    const { data: all } = await listPeserta({ pageSize: 999 });
+    const enrolled      = S.bimtek?.pesertaIds || [];
+    const available     = all.filter(p => !enrolled.includes(p.noPeserta));
 
     if (available.length === 0) { showToast('Tidak ada peserta yang tersedia', 'info'); return; }
+
+    // Derive daftar instansi unik dari data peserta
+    const instansiList = [...new Set(available.map(p => p.instansi).filter(Boolean))].sort();
 
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
     modal.innerHTML = `
-      <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md mx-4">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+      <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 flex flex-col" style="max-height:90vh">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <h3 class="font-semibold text-white">Tambah Peserta</h3>
           <button id="modal-close" class="text-gray-400 hover:text-white text-xl leading-none">×</button>
         </div>
-        <div class="p-5">
-          <label class="block text-xs text-gray-400 mb-1.5">Pilih Peserta <span class="text-gray-500">(Ctrl+klik multi-pilih)</span></label>
-          <select id="peserta-select" class="form-select w-full" multiple size="8">
-            ${available.map(p => `<option value="${_esc(p.noPeserta)}">${_esc(p.noPeserta)} — ${_esc(p.nama)} (${_esc(p.instansi || '-')})</option>`).join('')}
+        <div class="px-5 pt-4 pb-3 space-y-2 shrink-0">
+          <input id="peserta-search" type="text" placeholder="Cari nama atau noPeserta…"
+            class="form-input w-full text-sm" autocomplete="off">
+          <select id="peserta-filter-instansi" class="form-select w-full text-sm">
+            <option value="">— Semua Instansi —</option>
+            ${instansiList.map(i => `<option value="${_esc(i)}">${_esc(i)}</option>`).join('')}
           </select>
+          <div class="flex items-center justify-between">
+            <span id="peserta-count" class="text-xs text-gray-500">0 dipilih</span>
+            <button id="btn-pilih-semua" class="text-xs text-blue-400 hover:text-blue-300">Pilih semua hasil filter</button>
+          </div>
         </div>
-        <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800">
+        <div id="peserta-checklist" class="overflow-y-auto flex-1 px-5 pb-3 space-y-1 min-h-0"></div>
+        <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800 shrink-0">
           <button id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Batal</button>
           <button id="modal-confirm" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Tambahkan</button>
         </div>
       </div>`;
 
     document.body.appendChild(modal);
-    modal.querySelector('#modal-close').addEventListener('click', () => modal.remove());
-    modal.querySelector('#modal-cancel').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+    const selected  = new Set();
+    const searchEl  = modal.querySelector('#peserta-search');
+    const filterEl  = modal.querySelector('#peserta-filter-instansi');
+    const listEl    = modal.querySelector('#peserta-checklist');
+    const countEl   = modal.querySelector('#peserta-count');
+
+    function _filtered() {
+      const q    = searchEl.value.toLowerCase();
+      const inst = filterEl.value;
+      return available.filter(p => {
+        const matchInst = !inst || p.instansi === inst;
+        const matchQ    = !q || p.nama.toLowerCase().includes(q) || p.noPeserta.toLowerCase().includes(q);
+        return matchInst && matchQ;
+      });
+    }
+
+    function _renderList() {
+      const hasil = _filtered();
+      if (hasil.length === 0) {
+        listEl.innerHTML = `<p class="text-sm text-gray-500 text-center py-6">Tidak ada hasil.</p>`;
+        return;
+      }
+      listEl.innerHTML = hasil.map(p => `
+        <label class="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors">
+          <input type="checkbox" class="peserta-cb mt-0.5 shrink-0 accent-blue-500"
+            value="${_esc(p.noPeserta)}" ${selected.has(p.noPeserta) ? 'checked' : ''}>
+          <div class="min-w-0">
+            <p class="text-sm text-white font-medium truncate">${_esc(p.nama)}</p>
+            <p class="text-xs text-gray-400">${_esc(p.noPeserta)} · ${_esc(p.instansi || '-')}</p>
+          </div>
+        </label>`).join('');
+
+      listEl.querySelectorAll('.peserta-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+          cb.checked ? selected.add(cb.value) : selected.delete(cb.value);
+          countEl.textContent = `${selected.size} dipilih`;
+        });
+      });
+    }
+
+    searchEl.addEventListener('input', _renderList);
+    filterEl.addEventListener('change', _renderList);
+
+    modal.querySelector('#btn-pilih-semua').addEventListener('click', () => {
+      _filtered().forEach(p => selected.add(p.noPeserta));
+      _renderList();
+      countEl.textContent = `${selected.size} dipilih`;
+    });
+
+    const close = () => modal.remove();
+    modal.querySelector('#modal-close').addEventListener('click', close);
+    modal.querySelector('#modal-cancel').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
 
     modal.querySelector('#modal-confirm').addEventListener('click', async () => {
-      const selected = Array.from(modal.querySelector('#peserta-select').selectedOptions).map(o => o.value);
-      if (selected.length === 0) return;
+      if (selected.size === 0) { showToast('Pilih minimal 1 peserta', 'info'); return; }
+      const btn = modal.querySelector('#modal-confirm');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
       try {
-        await addPeserta(S.id, selected);
+        await addPeserta(S.id, [...selected]);
         S.bimtek = await getBimtek(S.id);
         modal.remove();
         el.innerHTML = _buildTabPeserta();
         await _loadPeserta(app, el);
-        showToast(`${selected.length} peserta ditambahkan`, 'success');
-      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+        showToast(`${selected.size} peserta ditambahkan`, 'success');
+      } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Tambahkan';
+      }
     });
+
+    _renderList();
   } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
 }
 
