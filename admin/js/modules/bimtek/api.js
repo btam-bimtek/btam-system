@@ -411,8 +411,6 @@ export async function initSesiHari(bimtekId, tanggalStr, totalJp) {
 }
 
 /**
- * Tambah 1 slot kosong di akhir hari.
-/**
  * Setelah hapus mapel, kembalikan slot kosong sejumlah JP mapel.
  * Slot kosong disisipkan di posisi jamMulai segmen pertama yang dihapus.
  * @param {string} bimtekId
@@ -451,6 +449,8 @@ export async function restoreSlotKosong(bimtekId, tanggal, jamMulaiPertama, tota
   await batch.commit();
 }
 
+/**
+ * Tambah 1 slot kosong di akhir hari.
  * @param {object[]} sesiHariIni - sesi hari ini dari S.sesis (sudah terfilter)
  */
 export async function tambahJpKosong(bimtekId, sesiHariIni) {
