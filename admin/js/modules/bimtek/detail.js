@@ -4,6 +4,7 @@ import {
   addPeserta, removePeserta, listSesi, createSesi, deleteSesi,
   initSesiHari, tambahJpKosong, kurangJpKosong,
   hitungSegmenMapel, validateJadwalMapel, updateStatus,
+  restoreSlotKosong,
 } from './api.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -598,7 +599,30 @@ function _bindJadwalEvents(app, el) {
       if (!ok) return;
       try {
         const ids = isMapel ? delIdsRaw.split(',').filter(Boolean) : [btn.dataset.id];
-        for (const id of ids) await deleteSesi(S.id, id);
+
+        if (isMapel) {
+          // Ambil info segmen pertama sebelum dihapus — untuk restore slot kosong
+          const segsToDelete = S.sesis.filter(s => ids.includes(s.id))
+            .sort((a, b) => a.jamMulai.localeCompare(b.jamMulai));
+          const segPertama = segsToDelete[0];
+          const totalJp    = segsToDelete.reduce((n, s) => n + (s.jp || 1), 0);
+
+          for (const id of ids) await deleteSesi(S.id, id);
+
+          if (segPertama) {
+            // Hitung urutan offset dari sesi yang tersisa di hari itu
+            const sesiHariLain = S.sesis.filter(s =>
+              !ids.includes(s.id) &&
+              (s.tanggal?.toDate?.() ?? new Date(s.tanggal)).toDateString() ===
+              (segPertama.tanggal?.toDate?.() ?? new Date(segPertama.tanggal)).toDateString()
+            );
+            const maxUrutan = sesiHariLain.reduce((mx, s) => Math.max(mx, s.urutan || 0), 0);
+            await restoreSlotKosong(S.id, segPertama.tanggal, segPertama.jamMulai, totalJp, maxUrutan + 1);
+          }
+        } else {
+          for (const id of ids) await deleteSesi(S.id, id);
+        }
+
         S.sesis = await listSesi(S.id);
         el.innerHTML = _buildTabJadwal();
         _bindJadwalEvents(app, el);

@@ -412,6 +412,45 @@ export async function initSesiHari(bimtekId, tanggalStr, totalJp) {
 
 /**
  * Tambah 1 slot kosong di akhir hari.
+/**
+ * Setelah hapus mapel, kembalikan slot kosong sejumlah JP mapel.
+ * Slot kosong disisipkan di posisi jamMulai segmen pertama yang dihapus.
+ * @param {string} bimtekId
+ * @param {object} tanggal - Firestore Timestamp (dari sesi yang dihapus)
+ * @param {string} jamMulaiPertama - jam mulai segmen pertama, e.g. '08:00'
+ * @param {number} totalJp - total JP mapel yang dihapus
+ * @param {number} urutanOffset - urutan awal untuk slot baru
+ */
+export async function restoreSlotKosong(bimtekId, tanggal, jamMulaiPertama, totalJp, urutanOffset) {
+  const JP_MENIT = 45;
+  const batch = writeBatch(db);
+  const colRef = collection(db, COL, bimtekId, 'sesi');
+  const user = getCurrentUser();
+
+  let cursor = _tm(jamMulaiPertama);
+  for (let i = 0; i < totalJp; i++) {
+    const jamMulai   = _ts(cursor);
+    const jamSelesai = _ts(cursor + JP_MENIT);
+    const ref = doc(colRef);
+    batch.set(ref, {
+      urutan: urutanOffset + i,
+      tanggal,
+      jamMulai,
+      jamSelesai,
+      tipe: 'kosong',
+      mapelId: null,
+      jp: 1,
+      segmenKe: null,
+      totalSegmen: null,
+      keterangan: `JP kosong`,
+      createdAt: serverTimestamp(),
+      createdBy: user.uid,
+    });
+    cursor += JP_MENIT;
+  }
+  await batch.commit();
+}
+
  * @param {object[]} sesiHariIni - sesi hari ini dari S.sesis (sudah terfilter)
  */
 export async function tambahJpKosong(bimtekId, sesiHariIni) {
