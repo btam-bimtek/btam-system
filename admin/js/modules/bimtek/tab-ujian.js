@@ -250,7 +250,7 @@ async function _showExamModal(app, el, S, exam) {
           </div>
         </div>
 
-        <!-- Soal picker --
+        <!-- Soal picker -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs text-gray-400">Pilih Soal dari Bank Soal</label>
