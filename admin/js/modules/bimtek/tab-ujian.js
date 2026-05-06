@@ -8,7 +8,8 @@ import {
   listExams, createExam, updateExam, deleteExam, publishExam,
   listSessions, generateSessions, deleteSession, resetSession,
 } from './exam-api.js';
-import { listSoal } from '../bank-soal/api.js';
+import { listSoal }   from '../bank-soal/api.js';
+import { BIDANG_LIST } from '../../../../shared/constants.js';
 
 // Exam host — base URL untuk magic link
 const EXAM_HOST = (() => {
@@ -180,12 +181,22 @@ function _buildExamCard(exam, sessions, S, canEdit) {
 // ─── EXAM MODAL (Create / Edit) ───────────────────────────────
 
 async function _showExamModal(app, el, S, exam) {
-  // Load soal dari bank soal untuk bidang bimtek ini
+  // Load soal dari bank soal untuk semua bidang bimtek ini
   let soalPool = [];
   try {
-    const bidangId = S.bimtek?.bidangIds?.[0] || '';
-    const { data } = await listSoal({ bidangId, activeOnly: true, pageSize: 200 });
-    soalPool = data;
+    const bidangIds = S.bimtek?.bidangIds || [];
+    if (bidangIds.length === 0) {
+      const { data } = await listSoal({ activeOnly: true, pageSize: 200 });
+      soalPool = data;
+    } else {
+      const results = await Promise.all(
+        bidangIds.map(bidangId => listSoal({ bidangId, activeOnly: true, pageSize: 200 }))
+      );
+      const seen = new Set();
+      results.forEach(({ data }) => data.forEach(s => {
+        if (!seen.has(s.soalId)) { seen.add(s.soalId); soalPool.push(s); }
+      }));
+    }
   } catch (err) {
     showToast('Gagal memuat bank soal: ' + err.message, 'error');
     return;
@@ -236,14 +247,22 @@ async function _showExamModal(app, el, S, exam) {
           </div>
         </div>
 
-        <!-- Soal picker -->
+        <!-- Soal picker --
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs text-gray-400">Pilih Soal dari Bank Soal</label>
             <span id="soal-count-label" class="text-xs text-blue-400">0 dipilih</span>
           </div>
-          <div class="flex gap-2 mb-2">
-            <input id="soal-search" type="text" placeholder="Cari pertanyaan atau EK…" class="form-input flex-1 text-xs">
+          <div class="flex gap-2 mb-2 flex-wrap">
+            <input id="soal-search" type="text" placeholder="Cari pertanyaan atau EK…" class="form-input flex-1 text-xs" style="min-width:140px">
+            ${(S.bimtek?.bidangIds?.length || 0) > 1 ? `
+            <select id="soal-filter-bidang" class="form-select text-xs">
+              <option value="">Semua Bidang</option>
+              ${(S.bimtek.bidangIds).map(bid => {
+                const nama = BIDANG_LIST.find(b => b.bidangId === bid)?.nama || bid;
+                return `<option value="${_esc(bid)}">${_esc(nama)}</option>`;
+              }).join('')}
+            </select>` : ''}
             <select id="soal-filter-bloom" class="form-select text-xs">
               <option value="">Semua Bloom</option>
               <option value="C1">C1 Mengingat</option>
@@ -270,6 +289,7 @@ async function _showExamModal(app, el, S, exam) {
   const soalListEl  = modal.querySelector('#soal-list');
   const searchEl    = modal.querySelector('#soal-search');
   const bloomEl     = modal.querySelector('#soal-filter-bloom');
+  const bidangEl    = modal.querySelector('#soal-filter-bidang');
   const countLbl    = modal.querySelector('#soal-count-label');
   const errEl       = modal.querySelector('#exam-error');
 
@@ -278,12 +298,14 @@ async function _showExamModal(app, el, S, exam) {
   }
 
   function _renderSoal() {
-    const q     = searchEl.value.toLowerCase();
-    const bloom = bloomEl.value;
-    const hasil = soalPool.filter(s => {
-      const matchQ = !q || s.pertanyaan?.toLowerCase().includes(q) || s.elemenKompetensi?.toLowerCase().includes(q);
-      const matchB = !bloom || s.bloomLevel === bloom;
-      return matchQ && matchB;
+    const q      = searchEl.value.toLowerCase();
+    const bloom  = bloomEl.value;
+    const bidang = bidangEl?.value || '';
+    const hasil  = soalPool.filter(s => {
+      const matchQ      = !q      || s.pertanyaan?.toLowerCase().includes(q) || s.elemenKompetensi?.toLowerCase().includes(q);
+      const matchBloom  = !bloom  || s.bloomLevel === bloom;
+      const matchBidang = !bidang || s.bidangId   === bidang;
+      return matchQ && matchBloom && matchBidang;
     });
 
     if (hasil.length === 0) {
@@ -316,6 +338,7 @@ async function _showExamModal(app, el, S, exam) {
 
   searchEl.addEventListener('input', _renderSoal);
   bloomEl.addEventListener('change', _renderSoal);
+  bidangEl?.addEventListener('change', _renderSoal);
   modal.querySelector('#exam-tipe').addEventListener('change', e => {
     const jumlahEl = modal.querySelector('#exam-jumlah');
     if (e.target.value === 'pretest_posttest') {
