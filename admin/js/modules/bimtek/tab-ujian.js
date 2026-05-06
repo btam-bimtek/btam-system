@@ -181,22 +181,24 @@ function _buildExamCard(exam, sessions, S, canEdit) {
 // ─── EXAM MODAL (Create / Edit) ───────────────────────────────
 
 async function _showExamModal(app, el, S, exam) {
-  // Load soal dari bank soal untuk semua bidang bimtek ini
+  // Load soal: ambil semua tanpa filter Firestore, filter bidang di client
+  // untuk menghindari masalah composite index
   let soalPool = [];
   try {
-    const bidangIds = S.bimtek?.bidangIds || [];
-    if (bidangIds.length === 0) {
-      const { data } = await listSoal({ activeOnly: true, pageSize: 200 });
-      soalPool = data;
-    } else {
-      const results = await Promise.all(
-        bidangIds.map(bidangId => listSoal({ bidangId, activeOnly: true, pageSize: 200 }))
-      );
-      const seen = new Set();
-      results.forEach(({ data }) => data.forEach(s => {
-        if (!seen.has(s.soalId)) { seen.add(s.soalId); soalPool.push(s); }
-      }));
+    const bidangIds = new Set(S.bimtek?.bidangIds || []);
+    let lastDoc = null;
+    let fetched = [];
+    // Paginate sampai habis (max 500 soal)
+    for (let i = 0; i < 5; i++) {
+      const { data, lastDoc: ld } = await listSoal({ activeOnly: true, pageSize: 100, lastDoc });
+      fetched = fetched.concat(data);
+      if (!ld || data.length < 100) break;
+      lastDoc = ld;
     }
+    // Filter bidang di client
+    soalPool = bidangIds.size > 0
+      ? fetched.filter(s => bidangIds.has(s.bidangId))
+      : fetched;
   } catch (err) {
     showToast('Gagal memuat bank soal: ' + err.message, 'error');
     return;
