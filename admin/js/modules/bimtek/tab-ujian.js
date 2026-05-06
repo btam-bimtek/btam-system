@@ -8,8 +8,12 @@ import {
   listExams, createExam, updateExam, deleteExam, publishExam,
   listSessions, generateSessions, deleteSession, resetSession,
 } from './exam-api.js';
-import { listSoal }   from '../bank-soal/api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
+import { db } from '../../../../shared/db.js';
+import {
+  collection, getDocs, query, where, orderBy, limit
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { COL } from '../../../../shared/constants.js';
 
 // Exam host — base URL untuk magic link
 const EXAM_HOST = (() => {
@@ -181,24 +185,21 @@ function _buildExamCard(exam, sessions, S, canEdit) {
 // ─── EXAM MODAL (Create / Edit) ───────────────────────────────
 
 async function _showExamModal(app, el, S, exam) {
-  // Load soal: ambil semua tanpa filter Firestore, filter bidang di client
-  // untuk menghindari masalah composite index
+  // Load soal langsung via Firestore — hanya filter active=true
+  // filter bidang dan deleted dilakukan di client untuk hindari composite index issue
   let soalPool = [];
   try {
-    const bidangIds = new Set(S.bimtek?.bidangIds || []);
-    let lastDoc = null;
-    let fetched = [];
-    // Paginate sampai habis (max 500 soal)
-    for (let i = 0; i < 5; i++) {
-      const { data, lastDoc: ld } = await listSoal({ activeOnly: true, pageSize: 100, lastDoc });
-      fetched = fetched.concat(data);
-      if (!ld || data.length < 100) break;
-      lastDoc = ld;
-    }
-    // Filter bidang di client
-    soalPool = bidangIds.size > 0
-      ? fetched.filter(s => bidangIds.has(s.bidangId))
-      : fetched;
+    const bidangIds  = new Set(S.bimtek?.bidangIds || []);
+    const snap = await getDocs(
+      query(collection(db, COL.BANK_SOAL), where('active', '==', true), limit(500))
+    );
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Filter deleted + bidang di client
+    soalPool = all.filter(s => {
+      if (s.deleted) return false;
+      if (bidangIds.size > 0 && !bidangIds.has(s.bidangId)) return false;
+      return true;
+    });
   } catch (err) {
     showToast('Gagal memuat bank soal: ' + err.message, 'error');
     return;
