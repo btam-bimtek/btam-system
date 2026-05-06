@@ -183,7 +183,7 @@ async function _showExamModal(app, el, S, exam) {
   // Load soal dari bank soal untuk bidang bimtek ini
   let soalPool = [];
   try {
-    const bidangId = S.bimtek?.bidangId;
+    const bidangId = S.bimtek?.bidangIds?.[0] || '';
     const { data } = await listSoal({ bidangId, activeOnly: true, pageSize: 200 });
     soalPool = data;
   } catch (err) {
