@@ -1,42 +1,64 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam App — Coming Soon</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 150px auto;
-            text-align: center;
-            background: #f5f5f5;
-        }
-        .card {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-        h2 { color: #333; }
-        p { color: #666; }
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 24px;
-            background: #0066cc;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BTAM — Ujian Online</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+    .option-card { transition: background-color 0.12s, border-color 0.12s; cursor: pointer; }
+    .option-card:hover { background-color: #eff6ff; border-color: #93c5fd; }
+    .option-card.selected { background-color: #dbeafe; border-color: #2563eb; }
+
+    /* Nonaktifkan seleksi teks saat ujian berjalan */
+    #exam-screen { user-select: none; -webkit-user-select: none; }
+
+    /* Watermark transparan */
+    #watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 4.5rem;
+      color: rgba(0, 0, 0, 0.035);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 999;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+    }
+
+    /* Timer pulse saat kritis */
+    .timer-critical { animation: blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+    /* Tombol navigasi soal */
+    .q-nav-btn {
+      width: 2.1rem;
+      height: 2.1rem;
+      font-size: 0.68rem;
+      border-radius: 0.3rem;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s;
+    }
+    .q-nav-btn:hover { transform: scale(1.12); }
+  </style>
 </head>
-<body>
-    <div class="card">
-        <h2>Exam App</h2>
-        <p>Halaman ini sedang dalam pengembangan.</p>
-        <p>Akan tersedia pada Milestone 1.5.</p>
-        <a href="/sistem-bimtek/">← Kembali</a>
-    </div>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Watermark noPeserta (muncul hanya saat ujian) -->
+  <div id="watermark"></div>
+
+  <!-- Container utama — semua screen di-render di sini oleh app.js -->
+  <div id="app" class="min-h-screen flex items-center justify-center p-4"></div>
+
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>
