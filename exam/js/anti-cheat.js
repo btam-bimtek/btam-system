@@ -18,9 +18,9 @@ let _fsWarnPending = false; // cegah double-warn saat fullscreen
  *   onWarn(count, max, reason)    — dipanggil setiap ada pelanggaran
  *   onAutoSubmit(reason)          — dipanggil saat warn count >= max
  */
-export function initAntiCheat({ maxWarnings = 3, onWarn, onAutoSubmit }) {
+export function initAntiCheat({ maxWarnings = 3, initialWarnCount = 0, onWarn, onAutoSubmit }) {
   _active       = true;
-  _warnCount    = 0;
+  _warnCount    = initialWarnCount;   // restore dari session saat resume
   _maxWarnings  = maxWarnings;
   _onWarn       = onWarn;
   _onAutoSubmit = onAutoSubmit;

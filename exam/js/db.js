@@ -49,14 +49,16 @@ export async function startSession(sessionId) {
 }
 
 /**
- * Auto-save jawaban ke session doc (dipanggil setiap 30 detik).
- * Hanya bisa dilakukan saat status == 'started' (sudah dijaga di Firestore rule).
+ * Auto-save jawaban + warningCount ke session doc (dipanggil setiap 30 detik).
+ * warningCount disimpan agar tidak reset saat peserta refresh.
  * @param {string} sessionId
- * @param {object} answers  { [soalId]: 'a'|'b'|'c'|'d' }
+ * @param {object} answers       { [soalId]: 'a'|'b'|'c'|'d' }
+ * @param {number} warningCount  jumlah peringatan saat ini
  */
-export async function autoSaveAnswers(sessionId, answers) {
+export async function autoSaveAnswers(sessionId, answers, warningCount = 0) {
   await updateDoc(doc(db, EXAM_SESSIONS, sessionId), {
     answers,
+    warningCount,
     lastSavedAt: serverTimestamp(),
   });
 }

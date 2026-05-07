@@ -52,11 +52,18 @@ export function initExamRunner({ session, exam, soalList, onComplete }) {
   _startTimer();
   _startAutoSave();
 
+  // Restore warning count dari session — penting saat resume setelah refresh
+  const restoredWarnCount = session.warningCount || 0;
+
   initAntiCheat({
-    maxWarnings:  EXAM_DEFAULTS.MAX_WARNINGS,
-    onWarn:       _handleWarn,
-    onAutoSubmit: _handleAutoSubmit,
+    maxWarnings:      EXAM_DEFAULTS.MAX_WARNINGS,
+    initialWarnCount: restoredWarnCount,
+    onWarn:           _handleWarn,
+    onAutoSubmit:     _handleAutoSubmit,
   });
+
+  // Sinkronkan badge warning di header dengan count yang di-restore
+  if (restoredWarnCount > 0) _updateWarnBadge(restoredWarnCount);
 }
 
 /** Bersihkan semua interval dan listener. Dipanggil setelah submit. */
@@ -330,9 +337,8 @@ function _updateTimerDisplay() {
 function _startAutoSave() {
   _saveRef = setInterval(async () => {
     try {
-      await autoSaveAnswers(_session.id, _answers);
+      await autoSaveAnswers(_session.id, _answers, getWarnCount());
     } catch (e) {
-      // Gagal auto-save tidak fatal — peserta tidak perlu tahu
       console.warn('[AutoSave] Gagal:', e.message);
     }
   }, EXAM_DEFAULTS.AUTOSAVE_DETIK * 1000);
@@ -341,14 +347,7 @@ function _startAutoSave() {
 // ─── Anti-cheat callbacks ─────────────────────────────────────
 
 function _handleWarn(count, max, reason) {
-  // Update badge di header
-  const badge = document.getElementById('warn-badge');
-  if (badge) {
-    badge.textContent = `⚠️ ${count}/${max}`;
-    badge.className   = count >= max - 1
-      ? 'text-xs font-semibold bg-red-100 text-red-600 px-2 py-1 rounded-full whitespace-nowrap'
-      : 'text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full whitespace-nowrap';
-  }
+  _updateWarnBadge(count);
 
   const msgs = {
     tab_switch:      'Anda berpindah tab atau aplikasi lain.',
@@ -356,13 +355,23 @@ function _handleWarn(count, max, reason) {
     exit_fullscreen: 'Anda keluar dari mode layar penuh.',
   };
   const isLast = count >= max;
-
   _showToast(
     `⚠️ Peringatan ${count}/${max}`,
     msgs[reason] || 'Aktivitas tidak sesuai terdeteksi.',
     isLast ? 'red' : 'amber',
     isLast ? 'Jawaban dikumpulkan otomatis!' : null,
   );
+}
+
+function _updateWarnBadge(count) {
+  const badge = document.getElementById('warn-badge');
+  if (!badge) return;
+  badge.textContent = `⚠️ ${count}/${EXAM_DEFAULTS.MAX_WARNINGS}`;
+  badge.className   = count >= EXAM_DEFAULTS.MAX_WARNINGS - 1
+    ? 'text-xs font-semibold bg-red-100 text-red-600 px-2 py-1 rounded-full whitespace-nowrap'
+    : count > 0
+      ? 'text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full whitespace-nowrap'
+      : 'text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-full whitespace-nowrap';
 }
 
 function _showToast(title, body, color = 'amber', extra = null) {
