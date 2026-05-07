@@ -19,7 +19,14 @@ window.addEventListener('DOMContentLoaded', _boot);
 async function _boot() {
   _renderLoading();
 
-  const token = new URLSearchParams(window.location.search).get('token');
+  // Support dua format URL:
+  // 1. ?token=UUID              (format baru — recommended)
+  // 2. #/session/UUID           (format lama dari M1.5)
+  let token = new URLSearchParams(window.location.search).get('token');
+  if (!token) {
+    const hashMatch = window.location.hash.match(/^#\/session\/(.+)$/);
+    if (hashMatch) token = hashMatch[1].trim();
+  }
 
   if (!token) {
     return _renderError({
