@@ -16,10 +16,13 @@ import {
 import { COL } from '../../../../shared/constants.js';
 
 // Exam host — base URL untuk magic link
+// Admin app: https://btam-bimtek.github.io/btam-system/admin/...
+// Exam app:  https://btam-bimtek.github.io/btam-system/exam/
+// Derive base path dari pathname saat ini agar works di semua environment
+// (GitHub Pages dengan subfolder, maupun local dev di root)
 const EXAM_HOST = (() => {
-  const loc = window.location;
-  // Asumsi exam app ada di /exam/ relatif ke root
-  return `${loc.protocol}//${loc.host}/exam/`;
+  const base = window.location.pathname.split('/admin/')[0];
+  return `${window.location.origin}${base}/exam/`;
 })();
 
 const TIPE_LABEL = {
