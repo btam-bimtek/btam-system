@@ -2,7 +2,7 @@
 // Mengelola UI ujian aktif: render soal, timer, auto-save, navigasi, submit.
 
 import { autoSaveAnswers, submitExam } from './db.js';
-import { initAntiCheat, destroyAntiCheat, getWarnCount } from './anti-cheat.js';
+import { initAntiCheat, destroyAntiCheat, getWarnCount, pauseAntiCheat, resumeAntiCheat } from './anti-cheat.js';
 import { EXAM_DEFAULTS } from '../../shared/constants.js';
 
 // ─── State ────────────────────────────────────────────────────
@@ -187,7 +187,10 @@ function _renderQuestion() {
     </p>
 
     <div class="space-y-2.5" id="options-list">
-      ${opsiAcak.map(opsi => `
+      ${opsiAcak.map((opsi, idx) => {
+        // Label posisi (A/B/C/D) berdasarkan urutan tampil, bukan opsi.id asli
+        const huruf = String.fromCharCode(65 + idx); // 0→A, 1→B, 2→C, 3→D
+        return `
         <label class="option-card flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 ${jawaban === opsi.id ? 'selected' : ''}">
           <input
             type="radio"
@@ -197,13 +200,13 @@ function _renderQuestion() {
             class="mt-0.5 w-4 h-4 accent-blue-600 cursor-pointer shrink-0"
           >
           <span class="font-bold text-gray-400 text-sm w-5 shrink-0">
-            ${opsi.id.toUpperCase()}.
+            ${huruf}.
           </span>
           <span class="text-gray-800 text-sm leading-relaxed">
             ${_esc(opsi.text)}
           </span>
-        </label>
-      `).join('')}
+        </label>`;
+      }).join('')}
     </div>
   `;
 
@@ -385,7 +388,14 @@ async function _handleSubmitClick() {
   const konfirmasi = belum > 0
     ? `Masih ada ${belum} soal yang belum dijawab.\n\nYakin ingin mengumpulkan?`
     : 'Yakin ingin mengumpulkan jawaban?\nUjian tidak dapat dilanjutkan setelah dikumpulkan.';
-  if (!confirm(konfirmasi)) return;
+
+  // Pause anti-cheat sementara — confirm() dialog bisa trigger blur/visibilitychange
+  // yang menyebabkan false warning saat peserta belum benar-benar curang
+  pauseAntiCheat();
+  const ok = confirm(konfirmasi);
+  resumeAntiCheat();
+
+  if (!ok) return;
   await _doSubmit('manual');
 }
 
