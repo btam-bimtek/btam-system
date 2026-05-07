@@ -66,6 +66,12 @@ export async function requestFullscreen() {
 
 export function getWarnCount() { return _warnCount; }
 
+/** Pause sementara — untuk saat confirm() dialog muncul */
+export function pauseAntiCheat() { _active = false; }
+
+/** Resume setelah confirm() dialog tutup */
+export function resumeAntiCheat() { if (_warnCount < _maxWarnings) _active = true; }
+
 // ─── Private ──────────────────────────────────────────────────
 
 function _warn(reason) {
