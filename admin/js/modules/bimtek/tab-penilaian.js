@@ -1,5 +1,5 @@
 // admin/js/modules/bimtek/tab-penilaian.js
-// Orchestrator tab "Penilaian" dengan 4 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan
+// Orchestrator tab "Penilaian" dengan 5 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan, Pelanggaran
 // Dipakai oleh detail.js
 
 import { listBimtekScores } from './penilaian-api.js';
@@ -8,7 +8,7 @@ import { renderSubKehadiran } from './sub-kehadiran.js';
 import { renderSubNilaiManual } from './sub-nilai-manual.js';
 import { renderSubPrePost } from './sub-prepost.js';
 import { renderSubKelulusan } from './sub-kelulusan.js';
-import { showToast } from '../../components/toast.js';
+import { renderSubPelanggaran } from './sub-pelanggaran.js';
 
 // ─── STATE ──────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ let S = {
   bimtek: null,
   scores: [],
   sesis: [],
-  subTab: 'kehadiran', // kehadiran | nilai | prepost | kelulusan
+  subTab: 'kehadiran', // kehadiran | nilai | prepost | kelulusan | pelanggaran
 };
 
 // ─── ENTRY POINT ────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export async function renderTabPenilaian(container, bimtekId, bimtek) {
 function _render(container) {
   container.innerHTML = `
     <!-- Sub-tab navigation -->
-    <div class="flex gap-2 mb-6 border-b border-gray-800">
+    <div class="flex gap-2 mb-6 border-b border-gray-800 flex-wrap">
       <button id="btn-sub-kehadiran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kehadiran' ? 'text-blue-400 border-blue-400' : ''}">
         Kehadiran
       </button>
@@ -60,6 +60,9 @@ function _render(container) {
       </button>
       <button id="btn-sub-kelulusan" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kelulusan' ? 'text-blue-400 border-blue-400' : ''}">
         Kelulusan
+      </button>
+      <button id="btn-sub-pelanggaran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'pelanggaran' ? 'text-red-400 border-red-400' : ''}">
+        Pelanggaran
       </button>
     </div>
 
@@ -78,10 +81,18 @@ function _render(container) {
       renderSubNilaiManual(contentDiv, S.bimtekId, S.bimtek, S.scores);
       break;
     case 'prepost':
-      renderSubPrePost(contentDiv, S.bimtekId, S.bimtek, S.scores);
+      renderSubPrePost(contentDiv, S.bimtekId, S.bimtek, S.scores, async () => {
+        // Setelah sync berhasil: refresh scores lalu pindah ke tab kelulusan
+        S.scores = await listBimtekScores(S.bimtekId);
+        S.subTab = 'kelulusan';
+        _render(container);
+      });
       break;
     case 'kelulusan':
       renderSubKelulusan(contentDiv, S.bimtekId, S.bimtek, S.scores);
+      break;
+    case 'pelanggaran':
+      renderSubPelanggaran(contentDiv, S.bimtekId);
       break;
   }
 
@@ -103,6 +114,11 @@ function _render(container) {
 
   container.querySelector('#btn-sub-kelulusan')?.addEventListener('click', () => {
     S.subTab = 'kelulusan';
+    _render(container);
+  });
+
+  container.querySelector('#btn-sub-pelanggaran')?.addEventListener('click', () => {
+    S.subTab = 'pelanggaran';
     _render(container);
   });
 }
