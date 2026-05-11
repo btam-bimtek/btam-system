@@ -18,78 +18,33 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
       return;
     }
 
-    // Load exam results (sudah di-score)
+    // Load exam results
     const results = await listExamResults(bimtekId);
 
     container.innerHTML = `
       <div class="space-y-6">
         ${prePostExams.map(exam => {
           const examResults = results.filter(r => r.examId === exam.id);
-
-          // Group by noPeserta
-          const byPeserta = {};
-          examResults.forEach(r => {
-            if (!byPeserta[r.noPeserta]) byPeserta[r.noPeserta] = {};
-            byPeserta[r.noPeserta][r.tipeSession] = r.skor;
-          });
-
-          const tipe = exam.tipe;
-          const showPre  = tipe === 'pretest' || tipe === 'pretest_posttest';
-          const showPost = tipe === 'posttest' || tipe === 'pretest_posttest';
-          const preCount  = examResults.filter(r => r.tipeSession === 'pretest').length;
+          const preCount = examResults.filter(r => r.tipeSession === 'pretest').length;
           const postCount = examResults.filter(r => r.tipeSession === 'posttest').length;
-
-          const hasSkor = Object.keys(byPeserta).length > 0;
 
           return `
             <div class="bg-gray-800 p-4 rounded-lg">
-              <div class="flex items-start justify-between gap-4 mb-4">
+              <div class="flex items-start justify-between gap-4">
                 <div>
                   <h3 class="font-medium text-white">${_esc(exam.judul)}</h3>
-                  <div class="text-xs text-gray-400 mt-1">
-                    Tipe: ${tipe === 'pretest_posttest' ? 'Pre & Post' : tipe === 'pretest' ? 'Pre-Test' : 'Post-Test'}
-                    · ${exam.published ? 'Dipublikasikan' : 'Draft'}
+                  <div class="text-xs text-gray-400 mt-2">
+                    <div>Tipe: ${exam.tipe === 'pretest_posttest' ? 'Pre & Post Bersamaan' : (exam.tipe === 'pretest' ? 'Pre-Test Saja' : 'Post-Test Saja')}</div>
+                    <div>Status: ${exam.published ? 'Dipublikasikan' : 'Draft'}</div>
                   </div>
-                  <div class="text-xs text-blue-400 mt-1">
-                    Pre: ${preCount} · Post: ${postCount} submission terscore
+                  <div class="text-xs text-blue-400 mt-2">
+                    Pre: ${preCount} submission · Post: ${postCount} submission
                   </div>
                 </div>
-                <button class="btn-sync-exam shrink-0 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors"
-                  data-exam-id="${exam.id}" data-exam-judul="${_esc(exam.judul)}">
+                <button class="btn-sync-exam px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors" data-exam-id="${exam.id}" data-exam-judul="${_esc(exam.judul)}">
                   Sinkronisasi
                 </button>
               </div>
-
-              ${hasSkor ? `
-                <div class="overflow-x-auto">
-                  <table class="btam-table">
-                    <thead>
-                      <tr>
-                        <th>Peserta</th>
-                        ${showPre  ? '<th class="text-center">Pre Test</th>' : ''}
-                        ${showPost ? '<th class="text-center">Post Test</th>' : ''}
-                        ${showPre && showPost ? '<th class="text-center">Peningkatan</th>' : ''}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${Object.entries(byPeserta).sort(([a],[b]) => a.localeCompare(b)).map(([noPeserta, skor]) => {
-                        const pre  = skor.pretest  ?? null;
-                        const post = skor.posttest ?? null;
-                        const delta = (pre !== null && post !== null) ? post - pre : null;
-                        const deltaClass = delta === null ? '' : delta >= 0 ? 'text-green-400' : 'text-red-400';
-                        return `
-                          <tr>
-                            <td class="font-medium text-sm">${_esc(noPeserta)}</td>
-                            ${showPre  ? `<td class="text-center">${pre  !== null ? pre  : '—'}</td>` : ''}
-                            ${showPost ? `<td class="text-center">${post !== null ? post : '—'}</td>` : ''}
-                            ${showPre && showPost ? `<td class="text-center ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>` : ''}
-                          </tr>
-                        `;
-                      }).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              ` : `<div class="text-xs text-gray-500 mt-2">Belum ada data skor — klik Sinkronisasi untuk memproses submissions.</div>`}
             </div>
           `;
         }).join('')}
@@ -97,8 +52,8 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
           <h4 class="font-medium text-sm text-white mb-2">ℹ️ Informasi</h4>
           <ul class="text-xs text-gray-400 space-y-1">
-            <li>• Sinkronisasi fetch semua submissions → hitung skor → update bimtek_scores</li>
-            <li>• Jika sudah ada hasil sebelumnya, akan di-overwrite (rescoring)</li>
+            <li>• Sinkronisasi akan fetch semua submissions → hitung skor → update bimtek_scores</li>
+            <li>• Jika sudah ada exam_results, akan di-overwrite (rescoring)</li>
             <li>• Peserta yang belum submit tidak akan diproses</li>
           </ul>
         </div>
@@ -108,7 +63,7 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
     // Bind sync buttons
     container.querySelectorAll('.btn-sync-exam').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const examId    = btn.dataset.examId;
+        const examId = btn.dataset.examId;
         const examJudul = btn.dataset.examJudul;
         await _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, onSyncComplete);
       });
@@ -147,8 +102,8 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, on
     // Re-render sub-tab ini agar tabel hasil muncul
     await renderSubPrePost(container, bimtekId, bimtek, [], onSyncComplete);
 
-    // Trigger refresh scores + pindah ke tab kelulusan di parent
-    if (onSyncComplete) onSyncComplete();
+    // Trigger refresh kelulusan di parent
+    if (onSyncComplete) await onSyncComplete();
   } catch (err) {
     showToast(`Gagal sinkronisasi: ${err.message}`, 'error');
     console.error(err);

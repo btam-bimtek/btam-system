@@ -4,8 +4,7 @@
 
 import { updateBimtek } from './api.js';
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
-import { showToast } from '../../components/toast.js';
-import { confirmDialog } from '../../components/modal.js';
+import { showToast, confirmDialog } from '../../components/modal.js';
 
 const DEFAULT_THRESHOLDS = {
   kehadiran: [
@@ -33,34 +32,6 @@ const BLACKLIST_WORDS = ['kurang', 'buruk', 'jelek', 'gagal', 'lemah', 'tidak'];
 export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
   const lulus = scores.filter(s => s.lulus);
   const tidakLulus = scores.filter(s => !s.lulus);
-  const kkm = bimtek.kkm || 60;
-
-  // Kolom komponen yang relevan
-  const komponen = [
-    { id: 'pretest',    label: 'Pre Test' },
-    { id: 'posttest',   label: 'Post Test' },
-    { id: 'pengajar',   label: 'Pengajar' },
-    { id: 'kehadiran',  label: 'Kehadiran' },
-    { id: 'keaktifan',  label: 'Keaktifan' },
-    { id: 'respek',     label: 'Respek' },
-  ];
-  if (bimtek.hasTugas)      komponen.push({ id: 'tugas',      label: 'Tugas' });
-  if (bimtek.hasPresentasi) komponen.push({ id: 'presentasi', label: 'Presentasi' });
-
-  const _val = v => (v !== null && v !== undefined) ? v : '—';
-
-  const _buildRow = (s) => `
-    <tr>
-      <td class="font-medium text-sm whitespace-nowrap">${_esc(s.noPeserta)}</td>
-      ${komponen.map(k => `<td class="text-center text-sm">${_val(s[k.id])}</td>`).join('')}
-      <td class="text-center font-bold">${s.nilaiAkhir}</td>
-      <td class="text-center">
-        ${s.lulus
-          ? '<span class="badge badge-green text-xs">LULUS</span>'
-          : `<span class="badge badge-red text-xs">BELUM</span>`}
-      </td>
-    </tr>
-  `;
 
   container.innerHTML = `
     <!-- Summary -->
@@ -85,7 +56,7 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
       <div class="space-y-4">
         <div>
           <label class="text-xs text-gray-400 block mb-1">KKM (Kriteria Ketuntasan Minimal)</label>
-          <input type="number" id="kkm-input" class="form-input w-24" min="0" max="100" value="${kkm}" />
+          <input type="number" id="kkm-input" class="form-input w-24" min="0" max="100" value="${bimtek.kkm || 60}" />
         </div>
         <button id="btn-config-threshold" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors">
           Konfigurasi Threshold Deskriptif
@@ -96,25 +67,44 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
       </div>
     </div>
 
-    <!-- Tabel semua peserta dengan semua komponen -->
+    <!-- List Kelulusan -->
     <div class="mb-6">
-      <h3 class="font-medium text-white mb-3">Rekapitulasi Nilai (KKM: ${kkm})</h3>
-      ${scores.length === 0 ? '<div class="text-xs text-gray-400">Belum ada data peserta.</div>' : `
-        <div class="overflow-x-auto">
-          <table class="btam-table">
-            <thead>
+      <h3 class="font-medium text-white mb-3">✅ Lulus (${lulus.length})</h3>
+      ${lulus.length === 0 ? '<div class="text-xs text-gray-400">-</div>' : `
+        <table class="btam-table">
+          <thead><tr><th>Peserta</th><th>Nilai Akhir</th><th>Status</th></tr></thead>
+          <tbody>
+            ${lulus.map(s => `
               <tr>
-                <th class="whitespace-nowrap">Peserta</th>
-                ${komponen.map(k => `<th class="text-center whitespace-nowrap">${k.label}</th>`).join('')}
-                <th class="text-center whitespace-nowrap">Nilai Akhir</th>
-                <th class="text-center whitespace-nowrap">Status</th>
+                <td class="font-medium">${_esc(s.noPeserta)}</td>
+                <td class="text-center">${s.nilaiAkhir}</td>
+                <td class="text-center"><span class="badge badge-green">LULUS</span></td>
               </tr>
-            </thead>
-            <tbody>
-              ${scores.map(s => _buildRow(s)).join('')}
-            </tbody>
-          </table>
-        </div>
+            `).join('')}
+          </tbody>
+        </table>
+      `}
+    </div>
+
+    <!-- List Tidak Lulus -->
+    <div>
+      <h3 class="font-medium text-white mb-3">⚠️ Belum Memenuhi Nilai Minimum (${tidakLulus.length})</h3>
+      ${tidakLulus.length === 0 ? '<div class="text-xs text-gray-400">-</div>' : `
+        <table class="btam-table">
+          <thead><tr><th>Peserta</th><th>Nilai Akhir</th><th>Selisih KKM</th></tr></thead>
+          <tbody>
+            ${tidakLulus.map(s => {
+              const selisih = (bimtek.kkm || 60) - s.nilaiAkhir;
+              return `
+                <tr>
+                  <td class="font-medium">${_esc(s.noPeserta)}</td>
+                  <td class="text-center">${s.nilaiAkhir}</td>
+                  <td class="text-center text-red-400">-${selisih}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
       `}
     </div>
 
