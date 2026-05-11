@@ -42,7 +42,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
               <th class="sticky left-0 bg-gray-900 z-10 min-w-32">Peserta</th>
               ${hari.map(d => `
                 <th colspan="${sesiPerHari[d].length}" class="text-center text-xs bg-gray-800">
-                  ${_fmtDate(new Date(d))}
+                  ${_fmtDate(d)}
                 </th>
               `).join('')}
             </tr>
@@ -108,13 +108,12 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 function _groupSesiPerHari(sesis) {
   const grouped = {};
   sesis.forEach(s => {
-    const tglStr = s.tanggal; // format: YYYY-MM-DD
+    const tglStr = s.tanggal || 'tanpa-tanggal';
     if (!grouped[tglStr]) grouped[tglStr] = [];
     grouped[tglStr].push(s);
   });
-  // Sort per hari by jamMulai
   for (const hari of Object.keys(grouped)) {
-    grouped[hari].sort((a, b) => a.jamMulai.localeCompare(b.jamMulai));
+    grouped[hari].sort((a, b) => (a.jamMulai || '').localeCompare(b.jamMulai || ''));
   }
   return grouped;
 }
@@ -194,9 +193,11 @@ async function _hitungKehadiran(bimtekId, scores, sesis, container) {
 
 // ─── HELPER: Format date ───────────────────────────────────────────
 
-function _fmtDate(date) {
-  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
-  return date.toLocaleDateString('id-ID', opts);
+function _fmtDate(dateStr) {
+  if (!dateStr || dateStr === 'tanpa-tanggal') return 'Tanpa Tanggal';
+  const date = new Date(dateStr + 'T00:00:00');
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function _esc(str) {

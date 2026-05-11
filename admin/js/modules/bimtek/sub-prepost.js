@@ -2,12 +2,13 @@
 // Sinkronisasi Pre/Post Test: fetch exam_submissions → score → update bimtek_scores
 // Trigger scoring engine
 
-import { scoreAllSubmissions, scoreSubmission } from './scorer.js';
+import { scoreAllSubmissions } from './scorer.js';
 import { listExams } from './exam-api.js';
-import { getExamResult, listExamResults } from './penilaian-api.js';
-import { showToast, confirmDialog } from '../../components/modal.js';
+import { listExamResults } from './penilaian-api.js';
+import { showToast } from '../../components/toast.js';
+import { confirmDialog } from '../../components/modal.js';
 
-export async function renderSubPrePost(container, bimtekId, bimtek, scores) {
+export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSyncComplete) {
   try {
     const exams = await listExams(bimtekId);
     const prePostExams = exams.filter(e => ['pretest', 'posttest', 'pretest_posttest'].includes(e.tipe));
@@ -61,10 +62,10 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores) {
 
     // Bind sync buttons
     container.querySelectorAll('.btn-sync-exam').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      btn.addEventListener('click', async () => {
         const examId = btn.dataset.examId;
         const examJudul = btn.dataset.examJudul;
-        await _syncExam(bimtekId, examId, examJudul, btn, container);
+        await _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, onSyncComplete);
       });
     });
   } catch (err) {
@@ -73,7 +74,8 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores) {
   }
 }
 
-async function _syncExam(bimtekId, examId, examJudul, btn, container) {
+async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, onSyncComplete) {
+  const origText = btn.textContent;
   try {
     const ok = await confirmDialog({
       title: 'Sinkronisasi Pre/Post Test',
@@ -83,7 +85,6 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container) {
     if (!ok) return;
 
     btn.disabled = true;
-    const origText = btn.textContent;
     btn.textContent = 'Menyinkronisasi...';
 
     const { processed, failed, errors } = await scoreAllSubmissions(bimtekId, examId);
@@ -98,10 +99,11 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container) {
     btn.disabled = false;
     btn.textContent = origText;
 
-    // Reload container
-    setTimeout(() => {
-      location.reload(); // Simple reload untuk refresh data
-    }, 1500);
+    // Re-render sub-tab ini agar tabel hasil muncul
+    await renderSubPrePost(container, bimtekId, bimtek, [], onSyncComplete);
+
+    // Trigger refresh kelulusan di parent
+    if (onSyncComplete) onSyncComplete();
   } catch (err) {
     showToast(`Gagal sinkronisasi: ${err.message}`, 'error');
     console.error(err);
