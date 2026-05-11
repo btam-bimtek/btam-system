@@ -7,6 +7,7 @@ import {
   restoreSlotKosong,
 } from './api.js';
 import { renderTabUjian } from './tab-ujian.js';
+import { renderTabPenilaian } from './tab-penilaian.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
@@ -102,6 +103,7 @@ function _render(app) {
       ${_buildTabBtn('jadwal',  'Jadwal')}
       ${_buildTabBtn('peserta', 'Peserta')}
       ${_buildTabBtn('ujian',   'Ujian')}
+      ${_buildTabBtn('penilaian', 'Penilaian')}
     </div>
 
     <!-- Tab content -->
@@ -137,10 +139,11 @@ function _setTabActive(btn, active) {
 
 function _renderTab(app) {
   const el = app.querySelector('#tab-content');
-  if (S.tab === 'mapel')   { el.innerHTML = _buildTabMapel();   _bindMapelEvents(app, el); }
-  if (S.tab === 'jadwal')  { el.innerHTML = _buildTabJadwal();  _bindJadwalEvents(app, el); }
-  if (S.tab === 'peserta') { el.innerHTML = _buildTabPeserta(); _loadPeserta(app, el); }
-  if (S.tab === 'ujian')   { renderTabUjian(app, el, S); }
+  if (S.tab === 'mapel')     { el.innerHTML = _buildTabMapel();   _bindMapelEvents(app, el); }
+  if (S.tab === 'jadwal')    { el.innerHTML = _buildTabJadwal();  _bindJadwalEvents(app, el); }
+  if (S.tab === 'peserta')   { el.innerHTML = _buildTabPeserta(); _loadPeserta(app, el); }
+  if (S.tab === 'ujian')     { renderTabUjian(app, el, S); }
+  if (S.tab === 'penilaian') { renderTabPenilaian(el, S.id, S.bimtek); }
 }
 
 // ─── TAB: MATA PELAJARAN ────────────────────────────────────────────────────
