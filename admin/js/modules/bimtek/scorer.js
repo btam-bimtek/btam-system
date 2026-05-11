@@ -105,9 +105,9 @@ export async function scoreAllSubmissions(bimtekId, examId) {
     ]);
 
     const soals = snapToArray(soalsSnap);
-    const answersMap = {};
+    const kunciMap = {};
     answersSnap.docs.forEach(d => {
-      answersMap[d.id] = d.data().jawaban;
+      kunciMap[d.id] = d.data().kunci; // field 'kunci' berisi jawaban benar
     });
 
     // 3. List submissions untuk exam ini
@@ -121,7 +121,7 @@ export async function scoreAllSubmissions(bimtekId, examId) {
 
     for (const submission of submissions) {
       try {
-        const { skor, detail } = hitungSkor(submission, exam, soals, answersMap);
+        const { skor, detail } = hitungSkor(submission, exam, soals, kunciMap);
 
         // Tulis/overwrite exam_results — sertakan tipeSession agar pretest & posttest tidak saling overwrite
         const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}__${submission.tipeSession}`);
@@ -197,9 +197,9 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     const soals = snapToArray(soalsSnap);
 
     const answersSnap = await getDocs(collection(db, COL.BANK_SOAL_ANSWERS));
-    const answersMap = {};
+    const kunciMap = {};
     answersSnap.docs.forEach(d => {
-      answersMap[d.id] = d.data().jawaban;
+      kunciMap[d.id] = d.data().kunci; // field 'kunci' berisi jawaban benar
     });
 
     // Hitung skor
@@ -207,7 +207,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       submission,
       exam.data(),
       soals,
-      answersMap
+      kunciMap
     );
 
     // Tulis exam_results + update bimtek_scores
