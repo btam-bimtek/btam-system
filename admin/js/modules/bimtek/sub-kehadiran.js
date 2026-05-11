@@ -59,8 +59,9 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
               ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
                 const mapel = mapelMap[mapelId];
                 const totalJp = sesiList.reduce((sum, s) => sum + (s.jp || 0), 0);
+                const mapelName = mapel?.nama || mapelId || 'Unknown';
                 return `<th class="text-center text-xs whitespace-nowrap" style="min-width:6rem">
-                  <div>${mapel ? _esc(mapel.nama) : _esc(mapelId)}</div>
+                  <div>${_esc(mapelName)}</div>
                   ${totalJp > 0 ? `<div class="text-gray-500 font-normal">${totalJp} JP</div>` : ''}
                 </th>`;
               }).join('')).join('')}
@@ -123,9 +124,16 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 
 function _normalizeTanggal(tanggal) {
   if (!tanggal) return null;
-  if (typeof tanggal === 'string') return tanggal;
-  if (tanggal.toDate) return tanggal.toDate().toISOString().split('T')[0];
-  if (tanggal.seconds) return new Date(tanggal.seconds * 1000).toISOString().split('T')[0];
+  if (typeof tanggal === 'string') {
+    if (tanggal === 'Invalid Date' || !tanggal.trim()) return null;
+    return tanggal;
+  }
+  try {
+    if (tanggal.toDate) return tanggal.toDate().toISOString().split('T')[0];
+    if (tanggal.seconds) return new Date(tanggal.seconds * 1000).toISOString().split('T')[0];
+  } catch (err) {
+    console.warn('Failed to parse tanggal:', tanggal, err);
+  }
   return null;
 }
 
@@ -238,9 +246,14 @@ async function _hitungKehadiran(bimtekId, scores, sesis, container) {
 
 function _fmtDate(dateStr) {
   if (!dateStr || dateStr === 'tanpa-tanggal') return 'Tanpa Tanggal';
-  const date = new Date(dateStr + 'T00:00:00');
-  if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric' });
+  try {
+    const date = new Date(dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateStr || 'Invalid Date';
+    return date.toLocaleDateString('id-ID', { weekday: 'short', month: 'short', day: 'numeric' });
+  } catch (err) {
+    console.warn('Failed to format date:', dateStr, err);
+    return 'Invalid Date';
+  }
 }
 
 function _esc(str) {

@@ -103,7 +103,7 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, on
     await renderSubPrePost(container, bimtekId, bimtek, [], onSyncComplete);
 
     // Trigger refresh kelulusan di parent
-    if (onSyncComplete) onSyncComplete();
+    if (onSyncComplete) await onSyncComplete();
   } catch (err) {
     showToast(`Gagal sinkronisasi: ${err.message}`, 'error');
     console.error(err);
