@@ -137,14 +137,16 @@ export async function scoreAllSubmissions(bimtekId, examId) {
           rescoredAt: serverTimestamp() // Mark saat rescoring
         }, { merge: false }); // Overwrite jika ada
 
-        // Update bimtek_scores
+        // Update bimtek_scores (set+merge agar otomatis buat dokumen jika belum ada)
         const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
         const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${submission.noPeserta}`);
-        batch.update(scoreRef, {
+        batch.set(scoreRef, {
+          noPeserta: submission.noPeserta,
+          bimtekId,
           [scoreKey]: skor,
           [`${scoreKey}_src`]: 'firebase',
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
 
         processed++;
       } catch (err) {
