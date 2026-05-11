@@ -26,7 +26,14 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 
     // Group sesi per hari per mapel
     const sesiPerHariPerMapel = _groupSesiPerHariPerMapel(mapelSesis);
-    const hari = Object.keys(sesiPerHariPerMapel).sort();
+    // Filter valid hari (exclude 'tanpa-tanggal'), sort by date
+    const hari = Object.keys(sesiPerHariPerMapel)
+      .filter(d => d !== 'tanpa-tanggal')
+      .sort();
+    // Add 'tanpa-tanggal' at the end jika ada
+    if (sesiPerHariPerMapel['tanpa-tanggal']) {
+      hari.push('tanpa-tanggal');
+    }
 
     // Load attendance per peserta
     const attendanceMap = {};
