@@ -1,7 +1,6 @@
 // admin/js/modules/bimtek/sub-kehadiran.js
-// Tab Kehadiran: matrix peserta × sesi mapel
-// Baris = peserta, kolom = sesi mapel (dikelompok per hari)
-// Scroll horizontal untuk hari banyak
+// Tab Kehadiran: matrix peserta × mapel per hari
+// Baris = peserta, kolom = mapel (dikelompok per hari), checkbox per mapel
 
 import {
   getAttendance, updateKehadiran, bulkUpdateKehadiran, hitungKehadiran,
@@ -14,7 +13,6 @@ import { showToast } from '../../components/toast.js';
 
 export async function renderSubKehadiran(container, bimtekId, bimtek, scores, sesis) {
   try {
-    // Filter hanya sesi mapel (bukan break/ISHOMA/pembukaan/penutupan)
     const mapelSesis = sesis.filter(s => s.tipe === 'mapel');
 
     if (mapelSesis.length === 0) {
@@ -22,9 +20,13 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
       return;
     }
 
-    // Group sesi per hari
-    const sesiPerHari = _groupSesiPerHari(mapelSesis);
-    const hari = Object.keys(sesiPerHari).sort();
+    // Load nama mapel untuk header kolom
+    const mapels = await listMapel(bimtekId);
+    const mapelMap = Object.fromEntries(mapels.map(m => [m.id, m]));
+
+    // Group sesi per hari per mapel
+    const sesiPerHariPerMapel = _groupSesiPerHariPerMapel(mapelSesis);
+    const hari = Object.keys(sesiPerHariPerMapel).sort();
 
     // Load attendance per peserta
     const attendanceMap = {};
@@ -33,7 +35,6 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
       attendanceMap[score.noPeserta] = att.sessions || {};
     }
 
-    // Render
     container.innerHTML = `
       <div class="overflow-x-auto">
         <table class="btam-table">
@@ -41,16 +42,21 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
             <tr>
               <th class="sticky left-0 bg-gray-900 z-10 min-w-32">Peserta</th>
               ${hari.map(d => `
-                <th colspan="${sesiPerHari[d].length}" class="text-center text-xs bg-gray-800">
+                <th colspan="${Object.keys(sesiPerHariPerMapel[d]).length}" class="text-center text-xs bg-gray-800">
                   ${_fmtDate(d)}
                 </th>
               `).join('')}
             </tr>
             <tr>
               <th class="sticky left-0 bg-gray-900 z-10"></th>
-              ${hari.map(d => sesiPerHari[d].map(s =>
-                `<th class="text-center text-xs whitespace-nowrap">${_calcDurasi(s.jamMulai, s.jamSelesai)}m</th>`
-              ).join('')).join('')}
+              ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
+                const mapel = mapelMap[mapelId];
+                const totalJp = sesiList.reduce((sum, s) => sum + (s.jp || 0), 0);
+                return `<th class="text-center text-xs whitespace-nowrap" style="min-width:6rem">
+                  <div>${mapel ? _esc(mapel.nama) : _esc(mapelId)}</div>
+                  ${totalJp > 0 ? `<div class="text-gray-500 font-normal">${totalJp} JP</div>` : ''}
+                </th>`;
+              }).join('')).join('')}
             </tr>
           </thead>
           <tbody>
@@ -59,11 +65,16 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
               return `
                 <tr>
                   <td class="sticky left-0 bg-gray-950 z-10 font-medium text-sm">${_esc(score.noPeserta)}</td>
-                  ${hari.map(d => sesiPerHari[d].map(s => {
-                    const hadir = att[s.id]?.kehadiran ?? false;
+                  ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
+                    // Hadir jika semua segmen sesi mapel ini hadir
+                    const allHadir = sesiList.every(s => att[s.id]?.kehadiran ?? false);
                     return `
                       <td class="text-center p-2">
-                        <input type="checkbox" class="kehadiran-check" data-peserta="${_esc(score.noPeserta)}" data-sesi="${s.id}" ${hadir ? 'checked' : ''} />
+                        <input type="checkbox" class="kehadiran-check"
+                          data-peserta="${_esc(score.noPeserta)}"
+                          data-mapel="${_esc(mapelId)}"
+                          data-hari="${_esc(d)}"
+                          ${allHadir ? 'checked' : ''} />
                       </td>
                     `;
                   }).join('')).join('')}
@@ -88,12 +99,10 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
       <div id="summary-kehadiran" class="mt-6 text-xs text-gray-400 space-y-1"></div>
     `;
 
-    // Bind save button
     container.querySelector('#btn-save-kehadiran')?.addEventListener('click', async () => {
-      await _saveKehadiran(bimtekId, scores, container);
+      await _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel);
     });
 
-    // Bind hitung button
     container.querySelector('#btn-hitung-kehadiran')?.addEventListener('click', async () => {
       await _hitungKehadiran(bimtekId, scores, sesis, container);
     });
@@ -103,52 +112,64 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
   }
 }
 
-// ─── HELPER: Group sesi per hari ───────────────────────────────────
+// ─── HELPER: Group sesi per hari per mapel ─────────────────────────
 
 function _normalizeTanggal(tanggal) {
   if (!tanggal) return null;
   if (typeof tanggal === 'string') return tanggal;
-  // Firestore Timestamp object
   if (tanggal.toDate) return tanggal.toDate().toISOString().split('T')[0];
   if (tanggal.seconds) return new Date(tanggal.seconds * 1000).toISOString().split('T')[0];
   return null;
 }
 
-function _calcDurasi(jamMulai, jamSelesai) {
-  if (!jamMulai || !jamSelesai) return '?';
-  const [hM, mM] = jamMulai.split(':').map(Number);
-  const [hS, mS] = jamSelesai.split(':').map(Number);
-  return (hS * 60 + mS) - (hM * 60 + mM);
-}
-
-function _groupSesiPerHari(sesis) {
+function _groupSesiPerHariPerMapel(sesis) {
   const grouped = {};
+
   sesis.forEach(s => {
     const tglStr = _normalizeTanggal(s.tanggal) || 'tanpa-tanggal';
-    if (!grouped[tglStr]) grouped[tglStr] = [];
-    grouped[tglStr].push(s);
+    const mapelId = s.mapelId || 'unknown';
+    if (!grouped[tglStr]) grouped[tglStr] = {};
+    if (!grouped[tglStr][mapelId]) grouped[tglStr][mapelId] = [];
+    grouped[tglStr][mapelId].push(s);
   });
-  for (const hari of Object.keys(grouped)) {
-    grouped[hari].sort((a, b) => (a.jamMulai || '').localeCompare(b.jamMulai || ''));
+
+  // Sort sesi dalam tiap mapel by jamMulai, lalu sort mapel dalam tiap hari by earliest jamMulai
+  for (const tgl of Object.keys(grouped)) {
+    for (const mapelId of Object.keys(grouped[tgl])) {
+      grouped[tgl][mapelId].sort((a, b) => (a.jamMulai || '').localeCompare(b.jamMulai || ''));
+    }
+    const sortedMapelIds = Object.keys(grouped[tgl]).sort((a, b) => {
+      const aFirst = grouped[tgl][a][0]?.jamMulai || '';
+      const bFirst = grouped[tgl][b][0]?.jamMulai || '';
+      return aFirst.localeCompare(bFirst);
+    });
+    const sortedObj = {};
+    sortedMapelIds.forEach(id => { sortedObj[id] = grouped[tgl][id]; });
+    grouped[tgl] = sortedObj;
   }
+
   return grouped;
 }
 
 // ─── SAVE KEHADIRAN ─────────────────────────────────────────────────
 
-async function _saveKehadiran(bimtekId, scores, container) {
+async function _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel) {
   try {
     const matrixData = {};
 
     scores.forEach(score => {
       matrixData[score.noPeserta] = {};
       container.querySelectorAll(`input.kehadiran-check[data-peserta="${score.noPeserta}"]`).forEach(check => {
-        const sesiId = check.dataset.sesi;
-        matrixData[score.noPeserta][sesiId] = check.checked;
+        const mapelId = check.dataset.mapel;
+        const hari = check.dataset.hari;
+        const sesiList = sesiPerHariPerMapel[hari]?.[mapelId] || [];
+        // Satu checkbox mapel → apply ke semua segmen sesi mapel tersebut
+        sesiList.forEach(s => {
+          matrixData[score.noPeserta][s.id] = check.checked;
+        });
       });
     });
 
-    // Save
     const btn = container.querySelector('#btn-save-kehadiran');
     const origText = btn.textContent;
     btn.disabled = true;
@@ -193,7 +214,6 @@ async function _hitungKehadiran(bimtekId, scores, sesis, container) {
       updates[score.noPeserta] = persentase;
     }
 
-    // Update bimtek_scores.kehadiran dengan persentase
     for (const [noPeserta, pct] of Object.entries(updates)) {
       await updateNilai(bimtekId, noPeserta, { kehadiran: pct });
     }
@@ -218,6 +238,6 @@ function _fmtDate(dateStr) {
 
 function _esc(str) {
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = String(str ?? '');
   return div.innerHTML;
 }
