@@ -303,6 +303,7 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
             <div class="text-sm text-gray-200 font-medium">${_esc(p.nama)}</div>
             <div class="text-xs text-gray-500 mt-0.5">
               ${_esc(p.noPeserta)}
+              ${p.jabatan ? `· ${_esc(p.jabatan)}` : ''}
               ${p.instansi ? `· ${_esc(p.instansi)}` : ''}
               ${alreadyIn ? '· <span class="text-yellow-500">Sudah terdaftar</span>' : ''}
             </div>
