@@ -1,8 +1,8 @@
 # Progress Implementasi Sistem Bimtek BTAM
 
 **Last Updated:** 11 Mei 2026  
-**Status:** M1.1-1.6 ✅ Done | M1.7 ⬜ Next  
-**Total Progress:** 6/10 milestones selesai (Phase 1 core 60% done)
+**Status:** M1.1-1.7 ✅ Done | M1.8-1.10 ⬜ Next  
+**Total Progress:** 7/10 milestones selesai (Phase 1 core 70% done)
 
 ---
 
@@ -107,30 +107,35 @@
 - `exam_sessions`: allow update dari status 'issued' (peserta mulai ujian)
 - `bank_soal`: allow read unauthenticated (exam app baca soal)
 
-### ⬜ M1.7 — Input Nilai & Kelulusan (Next)
-**Target:** ~25-30 jam  
-**Status:** Desain final, siap coding  
-**Scope:**
+### ✅ M1.7 — Input Nilai & Kelulusan (Done)
+**Selesai:** 11 Mei 2026  
+**Durasi:** ~8 jam  
+**Status:** Layer A implementation complete, integration done  
+**Deliverables:**
 - Tab Penilaian (satu tab dengan 4 sub-tab):
-  - Sub-tab Kehadiran (matrix peserta × sesi mapel)
-  - Sub-tab Nilai Manual (pengajar/keaktifan/respek/tugas/presentasi)
-  - Sub-tab Pre/Post (sync + trigger scoring engine)
-  - Sub-tab Kelulusan (list peserta + status + threshold config)
-- Scoring engine:
-  - Fetch `exam_submissions`
-  - Hitung skor per soal (bobot Bloom)
-  - Tulis/overwrite `exam_results`
-- Redistribusi bobot (tugas/presentasi tidak aktif → pengajar)
-- Formula nilai akhir (8 komponen)
+  - Sub-tab Kehadiran: matrix peserta × sesi mapel dengan bulk save + % calculation
+  - Sub-tab Nilai Manual: input pengajar/keaktifan/respek/tugas/presentasi dengan 0-100 validation
+  - Sub-tab Pre/Post: sync exam submissions, trigger scoring engine, display result counts
+  - Sub-tab Kelulusan: list lulus/tidakLulus, KKM config, threshold deskriptif dengan negative word blacklist validation
+- Scoring engine (scorer.js):
+  - hitungSkor: soal per submission dengan bobot Bloom (C1=1 ... C6=6)
+  - scoreAllSubmissions: batch score all submissions untuk satu exam
+  - hitungNilaiAkhir: formula 8 komponen dengan bobot redistribusi (tugas/presentasi inactive → pengajar)
+  - cekKelulusan: nilaiAkhir ≥ KKM check
+- API layer (penilaian-api.js):
+  - Get-or-create pattern untuk bimtek_scores dan attendance
+  - Firestore CRUD dengan nested field updates
+  - listBimtekScores enrichment (nilaiAkhir + lulus computed)
+  - bulkUpdateKehadiran matrix submission handling
 
-**Files to Create:**
-- `tab-penilaian.js` — orchestrator
-- `penilaian-api.js` — CRUD
-- `sub-kehadiran.js` — matrix UI
-- `sub-nilai-manual.js` — input form
-- `sub-prepost.js` — sync + scoring
-- `sub-kelulusan.js` — list + threshold
-- `scorer.js` — scoring logic
+**Schema Used:**
+- `bimtek_scores` collection (noPeserta, pengajar, keaktifan, respek, tugas, presentasi, kehadiran, nilaiAkhir, lulus)
+- `bimtek_attendance` collection (nested sessions per sesiId)
+- `exam_results` collection (examId, noPeserta, tipeSession, perolehan)
+
+**Integration:**
+- detail.js: added Penilaian tab button + renderTabPenilaian router case
+- tab-penilaian.js: orchestrator loads scores + sesis, manages sub-tab switching
 
 ---
 
@@ -141,9 +146,9 @@
 | Core (M1.1-1.3) | Foundation → Bank Soal | 53-73 | ~10 | ✅ |
 | Bimtek (M1.4) | Bimtek CRUD | 18-22 | ~25 | ✅ |
 | Exam (M1.5-1.6) | Exam Editor + Runner | 26-36 | ~30 | ✅ |
-| Penilaian (M1.7) | Input Nilai & Kelulusan | 16-22 | TBD | ⬜ |
+| Penilaian (M1.7) | Input Nilai & Kelulusan | 16-22 | ~8 | ✅ |
 | Report (M1.8-1.10) | Report Peserta + Sertifikat | ~40 | TBD | ⬜ |
-| **Phase 1 Total** | **M1.1-1.10** | **165-220** | **~65+** | **30% done** |
+| **Phase 1 Total** | **M1.1-1.10** | **165-220** | **~73+** | **35% done** |
 
 ---
 
