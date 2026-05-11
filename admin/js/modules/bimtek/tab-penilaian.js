@@ -2,7 +2,7 @@
 // Orchestrator tab "Penilaian" dengan 4 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan
 // Dipakai oleh detail.js
 
-import { listBimtekScores, listBimtekScores } from './penilaian-api.js';
+import { listBimtekScores } from './penilaian-api.js';
 import { listSesi } from './api.js';
 import { renderSubKehadiran } from './sub-kehadiran.js';
 import { renderSubNilaiManual } from './sub-nilai-manual.js';
