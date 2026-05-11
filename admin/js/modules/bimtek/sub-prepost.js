@@ -5,7 +5,8 @@
 import { scoreAllSubmissions, scoreSubmission } from './scorer.js';
 import { listExams } from './exam-api.js';
 import { getExamResult, listExamResults } from './penilaian-api.js';
-import { showToast, confirmDialog } from '../../components/modal.js';
+import { showToast } from '../../components/toast.js';
+import { confirmDialog } from '../../components/modal.js';
 
 export async function renderSubPrePost(container, bimtekId, bimtek, scores) {
   try {

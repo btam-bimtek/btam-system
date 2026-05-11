@@ -4,7 +4,8 @@
 
 import { updateBimtek } from './api.js';
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
-import { showToast, confirmDialog } from '../../components/modal.js';
+import { showToast } from '../../components/toast.js';
+import { confirmDialog } from '../../components/modal.js';
 
 const DEFAULT_THRESHOLDS = {
   kehadiran: [
