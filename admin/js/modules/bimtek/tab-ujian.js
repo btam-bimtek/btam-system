@@ -448,8 +448,8 @@ function _showLinksModal(app, el, S, exam, sessions) {
             <span class="badge ${badge} text-xs">${lbl}</span>
             ${s.status === 'issued' || s.status === 'expired' ? `
               <button class="btn-copy-link text-xs text-blue-400 hover:text-blue-300 underline" data-link="${_esc(link)}" data-token="${s.token}">Copy</button>
-              <button class="btn-reset-session text-xs text-gray-400 hover:text-gray-200" data-id="${s.id}" title="Reset session">↺</button>
             ` : ''}
+            <button class="btn-reset-session text-xs text-gray-400 hover:text-gray-200" data-id="${s.id}" title="Reset session">↺</button>
           </div>
         </td>`;
     }).join('');
