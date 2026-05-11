@@ -35,9 +35,9 @@ export function hitungSkor(submission, exam, soals, answers) {
     const bloomLevel = soal.bloomLevel || 'C1';
     const bobot = _getBloomBobot(bloomLevel);
 
-    const jawabBenar = answers[soalId];
-    const jawabPeserta = jawaban[soalId];
-    const benar = jawabBenar && jawabBenar === jawabPeserta;
+    const jawabBenar = answers[soalId] ?? null;
+    const jawabPeserta = jawaban[soalId] ?? null;
+    const benar = jawabBenar !== null && jawabBenar === jawabPeserta;
 
     const skorSoal = benar ? bobot : 0;
 
@@ -133,10 +133,10 @@ export async function scoreAllSubmissions(bimtekId, examId) {
           tipeSession: submission.tipeSession,
           skor,
           detail,
-          submittedAt: submission.submittedAt,
+          submittedAt: submission.submittedAt ?? null,
           scoredAt: serverTimestamp(),
-          rescoredAt: serverTimestamp() // Mark saat rescoring
-        }, { merge: false }); // Overwrite jika ada
+          rescoredAt: serverTimestamp()
+        }, { merge: false });
 
         // Update bimtek_scores (set+merge agar otomatis buat dokumen jika belum ada)
         const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
@@ -222,18 +222,20 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       tipeSession: submission.tipeSession,
       skor,
       detail,
-      submittedAt: submission.submittedAt,
+      submittedAt: submission.submittedAt ?? null,
       scoredAt: serverTimestamp(),
       rescoredAt: serverTimestamp()
     }, { merge: false });
 
     const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
     const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`);
-    batch.update(scoreRef, {
+    batch.set(scoreRef, {
+      noPeserta,
+      bimtekId,
       [scoreKey]: skor,
       [`${scoreKey}_src`]: 'firebase',
       updatedAt: serverTimestamp()
-    });
+    }, { merge: true });
 
     await batch.commit();
 
