@@ -83,6 +83,15 @@ export async function renderSubPelanggaran(container, bimtekId) {
               const auto = isAutoSubmit(s);
               const warnClass = auto ? 'text-red-400 font-bold' : warn > 0 ? 'text-yellow-400' : 'text-gray-500';
               const reasonLabel = SUBMIT_REASON_LABEL[s.submitReason] || s.submitReason || '—';
+
+              // Build warning reasons list
+              const warningReasons = [];
+              if (warn > 0) {
+                for (let i = 0; i < warn; i++) {
+                  warningReasons.push(reasonLabel);
+                }
+              }
+
               return `
                 <tr class="${auto ? 'bg-red-950 bg-opacity-20' : ''}">
                   <td class="font-medium text-sm whitespace-nowrap">${_esc(s.noPeserta)}</td>
@@ -96,7 +105,13 @@ export async function renderSubPelanggaran(container, bimtekId) {
                       ? '<span class="badge badge-red text-xs">Auto-Submit</span>'
                       : '<span class="badge badge-green text-xs">Manual</span>'}
                   </td>
-                  <td class="text-center text-xs text-gray-400">${_esc(reasonLabel)}</td>
+                  <td class="text-left text-xs text-gray-400">
+                    ${warn === 0 ? '—' : `
+                      <div class="space-y-0.5">
+                        ${warningReasons.map((r, i) => `<div>${i + 1}. ${_esc(r)}</div>`).join('')}
+                      </div>
+                    `}
+                  </td>
                 </tr>
               `;
             }).join('')}
