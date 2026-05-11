@@ -23,7 +23,7 @@ import { logAudit } from '../../../../shared/logger.js';
  * @returns { skor (0-100), detail { soalId: {benar, bobot, skor}, ... } }
  */
 export function hitungSkor(submission, exam, soals, answers) {
-  const jawaban = submission.jawaban || {};
+  const jawaban = submission.answers || submission.jawaban || {}; // exam app saves as 'answers'
   let totalBobot = 0;
   let totalScore = 0;
   const detail = {};
