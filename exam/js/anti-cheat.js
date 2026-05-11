@@ -2,14 +2,14 @@
 // Anti-cheat engine — hanya aktif saat exam runner berjalan.
 // Diinisialisasi oleh exam-runner.js dan di-destroy setelah submit.
 
-let _active        = false;
-let _warnCount     = 0;
-let _maxWarnings   = 3;
-let _onWarn        = null;
-let _onAutoSubmit  = null;
-let _blurTimer     = null;
-let _fsWarnPending = false; // cegah double-warn saat fullscreen
-let _wasHidden     = false; // track visibility state
+let _active           = false;
+let _warnCount        = 0;
+let _maxWarnings      = 3;
+let _onWarn           = null;
+let _onAutoSubmit     = null;
+let _blurTimer        = null;
+let _fsWarnPending    = false; // cegah double-warn saat fullscreen
+let _visibilityWarned = false; // cegah double-warn antara blur dan visibilitychange
 
 // ─── Public API ───────────────────────────────────────────────
 
@@ -90,28 +90,25 @@ function _warn(reason) {
 function _onVisibilityChange() {
   if (!_active) return;
   if (document.hidden) {
-    _wasHidden = true;
+    _visibilityWarned = true;
     _warn('tab_switch');
   } else {
-    _wasHidden = false;
+    _visibilityWarned = false;
   }
 }
 
 function _onFocus() {
-  if (!_active) return;
-  // Jika tab sebelumnya tersembunyi dan sekarang fokus kembali, warn
-  if (_wasHidden) {
-    _wasHidden = false;
-    _warn('tab_switch');
-  }
+  // Reset flag saat user kembali ke halaman
+  _visibilityWarned = false;
 }
 
 function _onBlur() {
   if (!_active) return;
   clearTimeout(_blurTimer);
-  // Tunda 600ms — hindari false positive saat klik elemen UI
+  // Debounce 600ms. Jika visibilitychange sudah handle tab switch, skip.
+  // Jika tidak (alt-tab ke app lain), warn sebagai window_blur.
   _blurTimer = setTimeout(() => {
-    if (_active && document.hidden) _warn('window_blur');
+    if (_active && !_visibilityWarned) _warn('window_blur');
   }, 600);
 }
 
