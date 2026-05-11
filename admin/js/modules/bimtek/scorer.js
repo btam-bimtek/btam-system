@@ -23,7 +23,7 @@ import { logAudit } from '../../../../shared/logger.js';
  * @returns { skor (0-100), detail { soalId: {benar, bobot, skor}, ... } }
  */
 export function hitungSkor(submission, exam, soals, answers) {
-  const jawaban = submission.jawaban || {};
+  const jawaban = submission.answers || submission.jawaban || {}; // exam app saves as 'answers'
   let totalBobot = 0;
   let totalScore = 0;
   const detail = {};
@@ -35,8 +35,8 @@ export function hitungSkor(submission, exam, soals, answers) {
     const bloomLevel = soal.bloomLevel || 'C1';
     const bobot = _getBloomBobot(bloomLevel);
 
-    const jawabBenar = answers[soalId];
-    const jawabPeserta = jawaban[soalId];
+    const jawabBenar = answers[soalId] ?? null;
+    const jawabPeserta = jawaban[soalId] ?? null;
     const benar = jawabBenar && jawabBenar === jawabPeserta;
 
     const skorSoal = benar ? bobot : 0;
@@ -100,7 +100,7 @@ export async function scoreAllSubmissions(bimtekId, examId) {
 
     // 2. Ambil semua soal + kunci jawaban
     const [soalsSnap, answersSnap] = await Promise.all([
-      getDocs(query(collection(db, COL.BANK_SOAL), where('id', 'in', exam.soalIds))),
+      getDocs(query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.soalIds))),
       getDocs(collection(db, COL.BANK_SOAL_ANSWERS))
     ]);
 
@@ -123,8 +123,8 @@ export async function scoreAllSubmissions(bimtekId, examId) {
       try {
         const { skor, detail } = hitungSkor(submission, exam, soals, answersMap);
 
-        // Tulis/overwrite exam_results
-        const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}`);
+        // Tulis/overwrite exam_results — sertakan tipeSession agar pretest & posttest tidak saling overwrite
+        const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}__${submission.tipeSession}`);
         batch.set(resultRef, {
           examId,
           bimtekId,
@@ -137,14 +137,16 @@ export async function scoreAllSubmissions(bimtekId, examId) {
           rescoredAt: serverTimestamp() // Mark saat rescoring
         }, { merge: false }); // Overwrite jika ada
 
-        // Update bimtek_scores
+        // Update bimtek_scores (set+merge agar otomatis buat dokumen jika belum ada)
         const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
         const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${submission.noPeserta}`);
-        batch.update(scoreRef, {
+        batch.set(scoreRef, {
+          noPeserta: submission.noPeserta,
+          bimtekId,
           [scoreKey]: skor,
           [`${scoreKey}_src`]: 'firebase',
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
 
         processed++;
       } catch (err) {
@@ -190,7 +192,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     if (!exam.exists()) throw new Error('Exam tidak ditemukan');
 
     const soalsSnap = await getDocs(
-      query(collection(db, COL.BANK_SOAL), where('id', 'in', exam.data().soalIds))
+      query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.data().soalIds))
     );
     const soals = snapToArray(soalsSnap);
 
@@ -211,7 +213,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     // Tulis exam_results + update bimtek_scores
     const batch = writeBatch(db);
 
-    const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${noPeserta}`);
+    const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${noPeserta}__${submission.tipeSession}`);
     batch.set(resultRef, {
       examId,
       bimtekId,
@@ -226,11 +228,13 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
 
     const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
     const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`);
-    batch.update(scoreRef, {
+    batch.set(scoreRef, {
+      noPeserta,
+      bimtekId,
       [scoreKey]: skor,
       [`${scoreKey}_src`]: 'firebase',
       updatedAt: serverTimestamp()
-    });
+    }, { merge: true });
 
     await batch.commit();
 
