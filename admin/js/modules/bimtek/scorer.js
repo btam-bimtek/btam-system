@@ -99,8 +99,9 @@ export async function scoreAllSubmissions(bimtekId, examId) {
     const exam = { id: examSnap.id, ...examSnap.data() };
 
     // 2. Ambil semua soal + kunci jawaban
+    // Gunakan field 'soalId' bukan 'id' — bank_soal tidak menyimpan field 'id'
     const [soalsSnap, answersSnap] = await Promise.all([
-      getDocs(query(collection(db, COL.BANK_SOAL), where('id', 'in', exam.soalIds))),
+      getDocs(query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.soalIds))),
       getDocs(collection(db, COL.BANK_SOAL_ANSWERS))
     ]);
 
@@ -123,8 +124,8 @@ export async function scoreAllSubmissions(bimtekId, examId) {
       try {
         const { skor, detail } = hitungSkor(submission, exam, soals, answersMap);
 
-        // Tulis/overwrite exam_results
-        const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}`);
+        // Tulis/overwrite exam_results — sertakan tipeSession agar pretest & posttest tidak saling overwrite
+        const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}__${submission.tipeSession}`);
         batch.set(resultRef, {
           examId,
           bimtekId,
@@ -192,7 +193,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     if (!exam.exists()) throw new Error('Exam tidak ditemukan');
 
     const soalsSnap = await getDocs(
-      query(collection(db, COL.BANK_SOAL), where('id', 'in', exam.data().soalIds))
+      query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.data().soalIds))
     );
     const soals = snapToArray(soalsSnap);
 
@@ -213,7 +214,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     // Tulis exam_results + update bimtek_scores
     const batch = writeBatch(db);
 
-    const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${noPeserta}`);
+    const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${noPeserta}__${submission.tipeSession}`);
     batch.set(resultRef, {
       examId,
       bimtekId,
