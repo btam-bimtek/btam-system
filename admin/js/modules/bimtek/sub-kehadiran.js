@@ -49,7 +49,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
             <tr>
               <th class="sticky left-0 bg-gray-900 z-10"></th>
               ${hari.map(d => sesiPerHari[d].map(s =>
-                `<th class="text-center text-xs whitespace-nowrap">${s.durasi}m</th>`
+                `<th class="text-center text-xs whitespace-nowrap">${_calcDurasi(s.jamMulai, s.jamSelesai)}m</th>`
               ).join('')).join('')}
             </tr>
           </thead>
@@ -105,10 +105,26 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 
 // ─── HELPER: Group sesi per hari ───────────────────────────────────
 
+function _normalizeTanggal(tanggal) {
+  if (!tanggal) return null;
+  if (typeof tanggal === 'string') return tanggal;
+  // Firestore Timestamp object
+  if (tanggal.toDate) return tanggal.toDate().toISOString().split('T')[0];
+  if (tanggal.seconds) return new Date(tanggal.seconds * 1000).toISOString().split('T')[0];
+  return null;
+}
+
+function _calcDurasi(jamMulai, jamSelesai) {
+  if (!jamMulai || !jamSelesai) return '?';
+  const [hM, mM] = jamMulai.split(':').map(Number);
+  const [hS, mS] = jamSelesai.split(':').map(Number);
+  return (hS * 60 + mS) - (hM * 60 + mM);
+}
+
 function _groupSesiPerHari(sesis) {
   const grouped = {};
   sesis.forEach(s => {
-    const tglStr = s.tanggal || 'tanpa-tanggal';
+    const tglStr = _normalizeTanggal(s.tanggal) || 'tanpa-tanggal';
     if (!grouped[tglStr]) grouped[tglStr] = [];
     grouped[tglStr].push(s);
   });
