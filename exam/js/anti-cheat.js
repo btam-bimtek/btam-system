@@ -9,6 +9,7 @@ let _onWarn        = null;
 let _onAutoSubmit  = null;
 let _blurTimer     = null;
 let _fsWarnPending = false; // cegah double-warn saat fullscreen
+let _wasHidden     = false; // track visibility state
 
 // ─── Public API ───────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export function initAntiCheat({ maxWarnings = 3, initialWarnCount = 0, onWarn, o
 
   document.addEventListener('visibilitychange',       _onVisibilityChange);
   window.addEventListener('blur',                     _onBlur);
+  window.addEventListener('focus',                    _onFocus);
   document.addEventListener('copy',        _block, true);
   document.addEventListener('cut',         _block, true);
   document.addEventListener('paste',       _block, true);
@@ -43,6 +45,7 @@ export function destroyAntiCheat() {
 
   document.removeEventListener('visibilitychange',      _onVisibilityChange);
   window.removeEventListener('blur',                    _onBlur);
+  window.removeEventListener('focus',                   _onFocus);
   document.removeEventListener('copy',        _block, true);
   document.removeEventListener('cut',         _block, true);
   document.removeEventListener('paste',       _block, true);
@@ -86,7 +89,21 @@ function _warn(reason) {
 
 function _onVisibilityChange() {
   if (!_active) return;
-  if (document.hidden) _warn('tab_switch');
+  if (document.hidden) {
+    _wasHidden = true;
+    _warn('tab_switch');
+  } else {
+    _wasHidden = false;
+  }
+}
+
+function _onFocus() {
+  if (!_active) return;
+  // Jika tab sebelumnya tersembunyi dan sekarang fokus kembali, warn
+  if (_wasHidden) {
+    _wasHidden = false;
+    _warn('tab_switch');
+  }
 }
 
 function _onBlur() {
