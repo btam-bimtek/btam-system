@@ -1,0 +1,108 @@
+// admin/js/modules/bimtek/tab-penilaian.js
+// Orchestrator tab "Penilaian" dengan 4 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan
+// Dipakai oleh detail.js
+
+import { listBimtekScores, listBimtekScores } from './penilaian-api.js';
+import { listSesi } from './api.js';
+import { renderSubKehadiran } from './sub-kehadiran.js';
+import { renderSubNilaiManual } from './sub-nilai-manual.js';
+import { renderSubPrePost } from './sub-prepost.js';
+import { renderSubKelulusan } from './sub-kelulusan.js';
+import { showToast } from '../../components/toast.js';
+
+// ─── STATE ──────────────────────────────────────────────────────────
+
+let S = {
+  bimtekId: null,
+  bimtek: null,
+  scores: [],
+  sesis: [],
+  subTab: 'kehadiran', // kehadiran | nilai | prepost | kelulusan
+};
+
+// ─── ENTRY POINT ────────────────────────────────────────────────────
+
+export async function renderTabPenilaian(container, bimtekId, bimtek) {
+  S.bimtekId = bimtekId;
+  S.bimtek = bimtek;
+  S.subTab = 'kehadiran';
+
+  // Load data
+  try {
+    const [scores, sesis] = await Promise.all([
+      listBimtekScores(bimtekId),
+      listSesi(bimtekId)
+    ]);
+    S.scores = scores;
+    S.sesis = sesis;
+
+    _render(container);
+  } catch (err) {
+    container.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
+    console.error(err);
+  }
+}
+
+// ─── RENDER SHELL ───────────────────────────────────────────────────
+
+function _render(container) {
+  container.innerHTML = `
+    <!-- Sub-tab navigation -->
+    <div class="flex gap-2 mb-6 border-b border-gray-800">
+      <button id="btn-sub-kehadiran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kehadiran' ? 'text-blue-400 border-blue-400' : ''}">
+        Kehadiran
+      </button>
+      <button id="btn-sub-nilai" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'nilai' ? 'text-blue-400 border-blue-400' : ''}">
+        Nilai Manual
+      </button>
+      <button id="btn-sub-prepost" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'prepost' ? 'text-blue-400 border-blue-400' : ''}">
+        Pre/Post Test
+      </button>
+      <button id="btn-sub-kelulusan" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kelulusan' ? 'text-blue-400 border-blue-400' : ''}">
+        Kelulusan
+      </button>
+    </div>
+
+    <!-- Sub-tab content -->
+    <div id="sub-tab-content" class="space-y-4"></div>
+  `;
+
+  const contentDiv = container.querySelector('#sub-tab-content');
+
+  // Render active sub-tab
+  switch (S.subTab) {
+    case 'kehadiran':
+      renderSubKehadiran(contentDiv, S.bimtekId, S.bimtek, S.scores, S.sesis);
+      break;
+    case 'nilai':
+      renderSubNilaiManual(contentDiv, S.bimtekId, S.bimtek, S.scores);
+      break;
+    case 'prepost':
+      renderSubPrePost(contentDiv, S.bimtekId, S.bimtek, S.scores);
+      break;
+    case 'kelulusan':
+      renderSubKelulusan(contentDiv, S.bimtekId, S.bimtek, S.scores);
+      break;
+  }
+
+  // Bind sub-tab buttons
+  container.querySelector('#btn-sub-kehadiran')?.addEventListener('click', () => {
+    S.subTab = 'kehadiran';
+    _render(container);
+  });
+
+  container.querySelector('#btn-sub-nilai')?.addEventListener('click', () => {
+    S.subTab = 'nilai';
+    _render(container);
+  });
+
+  container.querySelector('#btn-sub-prepost')?.addEventListener('click', () => {
+    S.subTab = 'prepost';
+    _render(container);
+  });
+
+  container.querySelector('#btn-sub-kelulusan')?.addEventListener('click', () => {
+    S.subTab = 'kelulusan';
+    _render(container);
+  });
+}
