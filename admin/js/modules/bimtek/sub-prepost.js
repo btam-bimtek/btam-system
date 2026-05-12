@@ -66,9 +66,9 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                     <thead>
                       <tr>
                         <th>Peserta</th>
-                        ${showPre  ? '<th class="text-center">Pre Test</th>' : ''}
-                        ${showPost ? '<th class="text-center">Post Test</th>' : ''}
-                        ${showPre && showPost ? '<th class="text-center">Peningkatan</th>' : ''}
+                        ${showPre  ? '<th class="text-left">Pre Test</th>' : ''}
+                        ${showPost ? '<th class="text-left">Post Test</th>' : ''}
+                        ${showPre && showPost ? '<th class="text-left">Peningkatan</th>' : ''}
                       </tr>
                     </thead>
                     <tbody>
@@ -80,9 +80,9 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                         return `
                           <tr>
                             <td class="font-medium text-sm">${_esc(noPeserta)}</td>
-                            ${showPre  ? `<td class="text-center">${pre  !== null ? pre  : '—'}</td>` : ''}
-                            ${showPost ? `<td class="text-center">${post !== null ? post : '—'}</td>` : ''}
-                            ${showPre && showPost ? `<td class="text-center ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>` : ''}
+                            ${showPre  ? `<td class="text-left">${pre  !== null ? pre  : '—'}</td>` : ''}
+                            ${showPost ? `<td class="text-left">${post !== null ? post : '—'}</td>` : ''}
+                            ${showPre && showPost ? `<td class="text-left ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>` : ''}
                           </tr>
                         `;
                       }).join('')}
