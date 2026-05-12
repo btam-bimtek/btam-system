@@ -174,7 +174,7 @@ function _buildTabMapel() {
           <div class="font-medium text-white text-sm">${_esc(m.nama)}</div>
           <div class="text-xs text-gray-500">${_esc(bidangNama)}</div>
         </td>
-        <td class="text-center">
+        <td class="text-left">
           <span class="badge badge-blue">${m.totalJp} JP</span>
         </td>
         <td>
@@ -202,7 +202,7 @@ function _buildTabMapel() {
           <tr>
             <th class="text-center w-10">#</th>
             <th>Nama Mapel</th>
-            <th class="text-center">JP</th>
+            <th>JP</th>
             <th>Pengajar</th>
             <th>Aksi</th>
           </tr>
