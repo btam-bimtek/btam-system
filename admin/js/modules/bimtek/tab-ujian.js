@@ -137,10 +137,26 @@ function _render(app, el, S, exams, sessions) {
     if (exam) btn.addEventListener('click', () => _generateLinks(app, el, S, exam));
   });
 
-  el.querySelectorAll('.btn-show-links').forEach(btn => {
-    const exam  = exams.find(e => e.id === btn.dataset.id);
-    const sesis = sessionsByExam[btn.dataset.id] || [];
-    if (exam) btn.addEventListener('click', () => _showLinksModal(app, el, S, exam, sesis));
+  // Inline copy link
+  el.querySelectorAll('.btn-copy-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.dataset.link)
+        .then(() => showToast('Link disalin', 'success'))
+        .catch(() => showToast('Gagal menyalin', 'error'));
+    });
+  });
+
+  // Inline reset session
+  el.querySelectorAll('.btn-reset-session').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({ title: 'Reset Session', message: 'Reset session ini? Status kembali ke "Belum Dikerjakan".', danger: true });
+      if (!ok) return;
+      try {
+        await resetSession(btn.dataset.id);
+        await renderTabUjian(app, el, S);
+        showToast('Session direset', 'success');
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
   });
 }
 
@@ -162,9 +178,8 @@ function _buildExamCard(exam, sessions, S, canEdit) {
     </button>
     <button class="btn-delete-exam text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors" data-id="${exam.id}">Hapus</button>` : '';
 
-  const linkActions = `
-    ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Magic Link</button>` : ''}
-    ${sessionCount > 0 ? `<button class="btn-show-links text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors" data-id="${exam.id}">Lihat Link (${sessionCount})</button>` : ''}`;
+  // Inline sessions table
+  const inlineSessions = _buildInlineSessions(exam, sessions);
 
   return `
     <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
@@ -181,7 +196,10 @@ function _buildExamCard(exam, sessions, S, canEdit) {
         <span>📋 ${jumlahSoal} soal dipilih → ${exam.jumlahDitampilkan} ditampilkan</span>
         <span>🔗 ${sessionCount} link${submitted ? ` (${submitted} selesai)` : ''}</span>
       </div>
-      <div class="px-4 pb-3 flex gap-2 flex-wrap">${linkActions}</div>
+      <div class="px-4 pb-3 flex gap-2 flex-wrap">
+        ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Magic Link</button>` : ''}
+      </div>
+      ${inlineSessions}
     </div>`;
 }
 
@@ -417,6 +435,61 @@ async function _generateLinks(app, el, S, exam) {
     await renderTabUjian(app, el, S);
     showToast(`${created} link dibuat, ${skipped} sudah ada (dilewati)`, 'success');
   } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+}
+
+// ─── INLINE SESSIONS TABLE ───────────────────────────────────
+
+function _buildInlineSessions(exam, sessions) {
+  if (sessions.length === 0) return '';
+
+  const byPeserta = {};
+  sessions.forEach(s => {
+    if (!byPeserta[s.noPeserta]) byPeserta[s.noPeserta] = {};
+    byPeserta[s.noPeserta][s.tipeSession] = s;
+  });
+
+  const tipeCols = exam.tipe === 'pretest_posttest'
+    ? ['pretest', 'posttest']
+    : [exam.tipe];
+
+  const thCols = tipeCols.map(t => `<th class="text-left text-xs">${t === 'pretest' ? 'Pre-Test' : 'Post-Test'}</th>`).join('');
+
+  const rows = Object.entries(byPeserta).sort(([a], [b]) => a.localeCompare(b)).map(([noPeserta, sesiMap]) => {
+    const cols = tipeCols.map(tipe => {
+      const s = sesiMap[tipe];
+      if (!s) return `<td class="text-xs text-gray-500">—</td>`;
+      const link  = `${EXAM_HOST}#/session/${s.token}`;
+      const badge = SESSION_STATUS_BADGE[s.status] || 'badge-gray';
+      const lbl   = SESSION_STATUS_LABEL[s.status] || s.status;
+      return `<td>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="badge ${badge} text-xs">${lbl}</span>
+          ${s.status === 'issued' || s.status === 'expired'
+            ? `<button class="btn-copy-link text-xs text-blue-400 hover:text-blue-300 underline" data-link="${_esc(link)}" data-token="${s.token}">Copy Link</button>`
+            : ''}
+          <button class="btn-reset-session text-xs text-gray-500 hover:text-gray-200" data-id="${s.id}" title="Reset session">↺</button>
+        </div>
+      </td>`;
+    }).join('');
+
+    return `<tr>
+      <td class="text-xs text-gray-400 font-mono">${_esc(noPeserta)}</td>
+      ${cols}
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="border-t border-gray-800 px-4 py-3 overflow-x-auto">
+      <table class="btam-table text-xs">
+        <thead>
+          <tr>
+            <th class="text-left">Peserta</th>
+            ${thCols}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // ─── LIHAT MAGIC LINK ────────────────────────────────────────
