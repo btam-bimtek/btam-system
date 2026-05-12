@@ -57,12 +57,12 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
             </tr>
             <tr>
               <th class="sticky left-0 bg-gray-900 z-10"></th>
-              ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
+              ${hari.map(d => Object.entries(sesiPerHariPerMapel[d] || {}).map(([mapelId, sesiList]) => {
                 const mapel = mapelMap[mapelId];
-                const totalJp = sesiList.reduce((sum, s) => sum + (s.jp || 0), 0);
-                const mapelName = mapel?.nama || mapelId || 'Unknown';
+                const totalJp = (sesiList || []).reduce((sum, s) => sum + (s.jp || 0), 0);
+                const mapelName = mapel?.nama || mapelId || 'Mapel';
                 return `<th class="text-left text-xs whitespace-nowrap" style="min-width:6rem">
-                  <div>${_esc(mapelName)}</div>
+                  <div>${_esc(String(mapelName))}</div>
                   ${totalJp > 0 ? `<div class="text-gray-500 font-normal text-left">${totalJp} JP</div>` : ''}
                 </th>`;
               }).join('')).join('')}
@@ -74,9 +74,9 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
               return `
                 <tr>
                   <td class="sticky left-0 bg-gray-950 z-10 font-medium text-sm">${_esc(score.noPeserta)}</td>
-                  ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
-                    // Default: semua checked, admin bisa uncheck jika diperlukan
-                    const allHadir = sesiList.every(s => att[s.id]?.kehadiran ?? false);
+                  ${hari.map(d => Object.entries(sesiPerHariPerMapel[d] || {}).map(([mapelId, sesiList]) => {
+                    sesiList = sesiList || [];
+                    const allHadir = sesiList.every(s => att[s?.id]?.kehadiran ?? false);
                     return `
                       <td class="p-2">
                         <input type="checkbox" class="kehadiran-check"
@@ -124,6 +124,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 // ─── HELPER: Group sesi per hari per mapel ─────────────────────────
 
 function _toLocalDateStr(date) {
+  if (!date || isNaN(date.getTime())) return null;
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -137,8 +138,10 @@ function _normalizeTanggal(tanggal) {
     return tanggal;
   }
   try {
-    if (tanggal.toDate) return _toLocalDateStr(tanggal.toDate());
-    if (tanggal.seconds) return _toLocalDateStr(new Date(tanggal.seconds * 1000));
+    let result = null;
+    if (tanggal.toDate) result = _toLocalDateStr(tanggal.toDate());
+    else if (tanggal.seconds) result = _toLocalDateStr(new Date(tanggal.seconds * 1000));
+    return result || null;
   } catch (err) {
     console.warn('Failed to parse tanggal:', tanggal, err);
   }
