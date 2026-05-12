@@ -61,9 +61,9 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
                 const mapel = mapelMap[mapelId];
                 const totalJp = sesiList.reduce((sum, s) => sum + (s.jp || 0), 0);
                 const mapelName = mapel?.nama || mapelId || 'Unknown';
-                return `<th class="text-center text-xs whitespace-nowrap" style="min-width:6rem">
+                return `<th class="text-left text-xs whitespace-nowrap" style="min-width:6rem">
                   <div>${_esc(mapelName)}</div>
-                  ${totalJp > 0 ? `<div class="text-gray-500 font-normal">${totalJp} JP</div>` : ''}
+                  ${totalJp > 0 ? `<div class="text-gray-500 font-normal text-left">${totalJp} JP</div>` : ''}
                 </th>`;
               }).join('')).join('')}
             </tr>
