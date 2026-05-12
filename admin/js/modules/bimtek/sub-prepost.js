@@ -147,8 +147,15 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, on
     // Re-render sub-tab ini agar tabel hasil muncul
     await renderSubPrePost(container, bimtekId, bimtek, [], onSyncComplete);
 
-    // Trigger refresh kelulusan di parent
-    if (onSyncComplete) await onSyncComplete();
+    // Trigger refresh kelulusan di parent (switch tab dan reload scores)
+    if (onSyncComplete) {
+      try {
+        await onSyncComplete();
+      } catch (err) {
+        showToast(`Error refreshing kelulusan: ${err.message}`, 'error');
+        console.error('onSyncComplete error:', err);
+      }
+    }
   } catch (err) {
     showToast(`Gagal sinkronisasi: ${err.message}`, 'error');
     console.error(err);
