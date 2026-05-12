@@ -26,9 +26,10 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 
     // Group sesi per hari per mapel
     const sesiPerHariPerMapel = _groupSesiPerHariPerMapel(mapelSesis);
-    // Filter valid hari (exclude 'tanpa-tanggal'), sort by date
+    // Filter valid hari >= bimtek start date, sort by date
+    const bimtekStartDate = _normalizeTanggal(bimtek.tanggalMulai);
     const hari = Object.keys(sesiPerHariPerMapel)
-      .filter(d => d !== 'tanpa-tanggal')
+      .filter(d => d !== 'tanpa-tanggal' && (!bimtekStartDate || d >= bimtekStartDate))
       .sort();
     // Add 'tanpa-tanggal' at the end jika ada
     if (sesiPerHariPerMapel['tanpa-tanggal']) {
