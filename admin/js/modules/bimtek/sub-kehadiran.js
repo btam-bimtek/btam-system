@@ -123,6 +123,13 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
 
 // ─── HELPER: Group sesi per hari per mapel ─────────────────────────
 
+function _toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function _normalizeTanggal(tanggal) {
   if (!tanggal) return null;
   if (typeof tanggal === 'string') {
@@ -130,8 +137,8 @@ function _normalizeTanggal(tanggal) {
     return tanggal;
   }
   try {
-    if (tanggal.toDate) return tanggal.toDate().toISOString().split('T')[0];
-    if (tanggal.seconds) return new Date(tanggal.seconds * 1000).toISOString().split('T')[0];
+    if (tanggal.toDate) return _toLocalDateStr(tanggal.toDate());
+    if (tanggal.seconds) return _toLocalDateStr(new Date(tanggal.seconds * 1000));
   } catch (err) {
     console.warn('Failed to parse tanggal:', tanggal, err);
   }
