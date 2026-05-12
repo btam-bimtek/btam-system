@@ -78,7 +78,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
                     // Default: semua checked, admin bisa uncheck jika diperlukan
                     const allHadir = sesiList.every(s => att[s.id]?.kehadiran ?? false);
                     return `
-                      <td class="text-center p-2">
+                      <td class="p-2">
                         <input type="checkbox" class="kehadiran-check"
                           data-peserta="${_esc(score.noPeserta)}"
                           data-mapel="${_esc(mapelId)}"

@@ -100,9 +100,7 @@ export async function renderSubPelanggaran(container, bimtekId) {
                   <td class="text-left text-xs">
                     ${warn === 0
                       ? '<span class="text-green-500">Bersih</span>'
-                      : auto
-                        ? `<span class="text-red-400">${_esc(reasonLabel)}</span>`
-                        : `<span class="text-yellow-400">${warn} violation${warn > 1 ? 's' : ''} terdeteksi</span>`}
+                      : `<span class="${auto ? 'text-red-400' : 'text-yellow-400'}">${_esc(reasonLabel)}</span>`}
                   </td>
                 </tr>
               `;
