@@ -98,7 +98,9 @@ export async function renderSubPelanggaran(container, bimtekId) {
                       : '<span class="badge badge-green text-xs">Manual</span>'}
                   </td>
                   <td class="text-left text-xs text-gray-400">
-                    ${warn === 0 ? (auto ? '—' : _esc(reasonLabel)) : `${warn} violation${warn > 1 ? 's' : ''} terdeteksi`}
+                    ${warn === 0
+                      ? (auto ? '—' : `Submit: ${_esc(reasonLabel)}`)
+                      : `${warn} violation${warn > 1 ? 's' : ''} terdeteksi${auto ? ` (${_esc(reasonLabel)})` : ''}`}
                   </td>
                 </tr>
               `;
@@ -108,8 +110,15 @@ export async function renderSubPelanggaran(container, bimtekId) {
       </div>
 
       <div class="mt-4 bg-gray-900 p-3 rounded text-xs text-gray-500">
-        Pelanggaran dicatat otomatis: pindah tab, keluar window, keluar fullscreen, akses DevTools, atau copy-paste.
-        Peserta dengan ${maxWarn} peringatan akan di-submit otomatis (ditandai <span class="text-red-400">Auto-Submit</span>).
+        <p class="font-medium text-gray-400 mb-2">📋 Tipe-tipe Pelanggaran yang Terdeteksi:</p>
+        <ul class="space-y-1 ml-2">
+          <li>• <strong>Pindah Tab</strong> - Peserta meninggalkan jendela exam</li>
+          <li>• <strong>Keluar Window</strong> - Jendela exam kehilangan fokus</li>
+          <li>• <strong>Keluar Fullscreen</strong> - Peserta keluar dari mode fullscreen</li>
+          <li>• <strong>Akses DevTools</strong> - Mencoba membuka developer tools</li>
+          <li>• <strong>Copy-Paste</strong> - Mencoba copy/paste jawaban</li>
+        </ul>
+        <p class="mt-3 text-gray-600">Setiap pelanggaran akan dihitung. Peserta dengan ${maxWarn}+ pelanggaran akan di-auto-submit.</p>
       </div>
     `;
   } catch (err) {
