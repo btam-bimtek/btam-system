@@ -52,8 +52,8 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
   const _buildRow = (s) => `
     <tr>
       <td class="font-medium text-sm whitespace-nowrap">${_esc(s.noPeserta)}</td>
-      ${komponen.map(k => `<td class="text-center text-sm">${_val(s[k.id])}</td>`).join('')}
-      <td class="text-center font-bold">${s.nilaiAkhir}</td>
+      ${komponen.map(k => `<td class="text-left text-sm">${_val(s[k.id])}</td>`).join('')}
+      <td class="text-left font-bold">${s.nilaiAkhir}</td>
       <td class="text-center">
         ${s.lulus
           ? '<span class="badge badge-green text-xs">LULUS</span>'
