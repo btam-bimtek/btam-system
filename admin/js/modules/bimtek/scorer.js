@@ -14,15 +14,15 @@ import { logAudit } from '../../../../shared/logger.js';
  * Hitung skor submission based on kunci jawaban dan bobot Bloom.
  *
  * @param {object} submission - exam_submissions doc
- *   { examId, noPeserta, jawaban, submittedAt, ... }
+ *   { examId, noPeserta, answers, submittedAt, ... }
  * @param {object} exam - exams doc
  *   { soalIds, jumlahDitampilkan, tipeSession, ... }
  * @param {object[]} soals - bank_soal docs
  *   { id, bloomLevel, ... }
- * @param {object} answers - bank_soal_answers map {soalId: jawaban}
+ * @param {object} kunciMap - bank_soal_answers map {soalId: kunci}
  * @returns { skor (0-100), detail { soalId: {benar, bobot, skor}, ... } }
  */
-export function hitungSkor(submission, exam, soals, answers) {
+export function hitungSkor(submission, exam, soals, kunciMap) {
   const jawaban = submission.answers || submission.jawaban || {}; // exam app saves as 'answers'
   let totalBobot = 0;
   let totalScore = 0;
@@ -35,9 +35,9 @@ export function hitungSkor(submission, exam, soals, answers) {
     const bloomLevel = soal.bloomLevel || 'C1';
     const bobot = _getBloomBobot(bloomLevel);
 
-    const jawabBenar = answers[soalId] ?? null;
+    const jawabBenar = kunciMap[soalId] ?? null;
     const jawabPeserta = jawaban[soalId] ?? null;
-    const benar = jawabBenar && jawabBenar === jawabPeserta;
+    const benar = jawabBenar !== null && jawabBenar === jawabPeserta;
 
     const skorSoal = benar ? bobot : 0;
 
@@ -99,6 +99,7 @@ export async function scoreAllSubmissions(bimtekId, examId) {
     const exam = { id: examSnap.id, ...examSnap.data() };
 
     // 2. Ambil semua soal + kunci jawaban
+    // bank_soal_answers menggunakan soalId sebagai doc ID, field kunci = jawaban benar
     const [soalsSnap, answersSnap] = await Promise.all([
       getDocs(query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.soalIds))),
       getDocs(collection(db, COL.BANK_SOAL_ANSWERS))
@@ -132,10 +133,10 @@ export async function scoreAllSubmissions(bimtekId, examId) {
           tipeSession: submission.tipeSession,
           skor,
           detail,
-          submittedAt: submission.submittedAt,
+          submittedAt: submission.submittedAt ?? null,
           scoredAt: serverTimestamp(),
-          rescoredAt: serverTimestamp() // Mark saat rescoring
-        }, { merge: false }); // Overwrite jika ada
+          rescoredAt: serverTimestamp()
+        }, { merge: false });
 
         // Update bimtek_scores (set+merge agar otomatis buat dokumen jika belum ada)
         const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
@@ -221,7 +222,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       tipeSession: submission.tipeSession,
       skor,
       detail,
-      submittedAt: submission.submittedAt,
+      submittedAt: submission.submittedAt ?? null,
       scoredAt: serverTimestamp(),
       rescoredAt: serverTimestamp()
     }, { merge: false });

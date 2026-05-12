@@ -1,5 +1,5 @@
 // admin/js/modules/bimtek/tab-penilaian.js
-// Orchestrator tab "Penilaian" dengan 4 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan
+// Orchestrator tab "Penilaian" dengan 5 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan, Pelanggaran
 // Dipakai oleh detail.js
 
 import { listBimtekScores } from './penilaian-api.js';
@@ -9,7 +9,6 @@ import { renderSubNilaiManual } from './sub-nilai-manual.js';
 import { renderSubPrePost } from './sub-prepost.js';
 import { renderSubKelulusan } from './sub-kelulusan.js';
 import { renderSubPelanggaran } from './sub-pelanggaran.js';
-import { showToast } from '../../components/toast.js';
 
 // ─── STATE ──────────────────────────────────────────────────────────
 
@@ -49,7 +48,7 @@ export async function renderTabPenilaian(container, bimtekId, bimtek) {
 function _render(container) {
   container.innerHTML = `
     <!-- Sub-tab navigation -->
-    <div class="flex gap-2 mb-6 border-b border-gray-800">
+    <div class="flex gap-2 mb-6 border-b border-gray-800 flex-wrap">
       <button id="btn-sub-kehadiran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kehadiran' ? 'text-blue-400 border-blue-400' : ''}">
         Kehadiran
       </button>
