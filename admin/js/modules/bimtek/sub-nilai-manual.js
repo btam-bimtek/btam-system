@@ -28,10 +28,10 @@ export async function renderSubNilaiManual(container, bimtekId, bimtek, scores) 
           <tr>
             <td class="font-medium">${_esc(score.noPeserta)}</td>
             ${komponen.map(k => `
-              <td class="text-center">
+              <td>
                 <input
                   type="number"
-                  class="nilai-input form-input w-20 text-center"
+                  class="nilai-input form-input w-20 text-left"
                   min="0" max="100"
                   data-peserta="${_esc(score.noPeserta)}"
                   data-komponen="${k.id}"
