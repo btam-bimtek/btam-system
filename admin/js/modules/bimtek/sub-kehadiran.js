@@ -75,7 +75,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
                 <tr>
                   <td class="sticky left-0 bg-gray-950 z-10 font-medium text-sm">${_esc(score.noPeserta)}</td>
                   ${hari.map(d => Object.entries(sesiPerHariPerMapel[d]).map(([mapelId, sesiList]) => {
-                    // Hadir jika semua segmen sesi mapel ini hadir
+                    // Default: semua checked, admin bisa uncheck jika diperlukan
                     const allHadir = sesiList.every(s => att[s.id]?.kehadiran ?? false);
                     return `
                       <td class="text-center p-2">
@@ -83,7 +83,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
                           data-peserta="${_esc(score.noPeserta)}"
                           data-mapel="${_esc(mapelId)}"
                           data-hari="${_esc(d)}"
-                          ${allHadir ? 'checked' : ''} />
+                          checked />
                       </td>
                     `;
                   }).join('')).join('')}
