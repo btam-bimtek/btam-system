@@ -33,6 +33,11 @@ Rekam keputusan di setiap sesi diskusi:
    - Workflow hybrid (PC=Claude Code, HP=claude.ai)
    - M1.7 desain: 4 sub-tab penilaian, scoring engine, redistribusi bobot
 
+5. **`RESUME_IMPLEMENTASI_13MEI2026_GAMBAR_SOAL.md`** (13 May)
+   - Fitur upload gambar soal ke Firebase Storage
+   - Setup infrastruktur: upgrade Blaze, CORS, Storage Rules
+   - Kendala & solusi lengkap (CORS, 403, bucket not found)
+
 ### Resume Implementasi (Coding Progress)
 
 Per-milestone progress, bugs fixed, keputusan teknis:

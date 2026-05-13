@@ -1,6 +1,6 @@
 # Progress Implementasi Sistem Bimtek BTAM
 
-**Last Updated:** 11 Mei 2026  
+**Last Updated:** 13 Mei 2026  
 **Status:** M1.1-1.7 ✅ Done | M1.8-1.10 ⬜ Next  
 **Total Progress:** 7/10 milestones selesai (Phase 1 core 70% done)
 
@@ -136,6 +136,15 @@
 **Integration:**
 - detail.js: added Penilaian tab button + renderTabPenilaian router case
 - tab-penilaian.js: orchestrator loads scores + sesis, manages sub-tab switching
+
+### ✅ Patch — Gambar Soal (Done)
+**Selesai:** 13 Mei 2026  
+**Durasi:** ~1 sesi  
+**Deliverables:**
+- Upload gambar opsional pada pertanyaan soal → Firebase Storage (`bank-soal/{soalId}/pertanyaan.{ext}`)
+- Preview gambar di form tambah/edit soal (validasi maks 2MB)
+- Gambar tampil di exam runner antara teks pertanyaan dan opsi jawaban
+- Setup Firebase Storage (upgrade Spark → Blaze, buat bucket `asia-southeast1`, CORS config, Storage Rules)
 
 ---
 
