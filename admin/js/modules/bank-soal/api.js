@@ -72,10 +72,10 @@ export async function getSoal(soalId) {
 
 // ─── Create ───────────────────────────────────────────────────
 
-export async function createSoal(data) {
+export async function createSoal(data, preGeneratedId = null) {
   _validateSoal(data);
 
-  const soalId = generateId();
+  const soalId = preGeneratedId ?? generateId();
   const bobot  = _hitungBobot(data.bloomLevel);
   const now    = serverTimestamp();
 

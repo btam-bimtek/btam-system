@@ -189,9 +189,17 @@ function _renderQuestion() {
         : ''}
     </div>
 
-    <p class="text-gray-900 font-medium text-base leading-relaxed mb-5">
+    <p class="text-gray-900 font-medium text-base leading-relaxed ${soal.pertanyaanImage ? 'mb-3' : 'mb-5'}">
       ${_esc(soal.pertanyaan)}
     </p>
+
+    ${soal.pertanyaanImage ? `
+    <div class="mb-5">
+      <img src="${soal.pertanyaanImage}" alt="Gambar soal"
+           class="max-w-full rounded-xl border border-gray-200 object-contain mx-auto block"
+           style="max-height:280px;"
+           loading="lazy" />
+    </div>` : ''}
 
     <div class="space-y-2.5" id="options-list">
       ${opsiAcak.map((opsi, idx) => {

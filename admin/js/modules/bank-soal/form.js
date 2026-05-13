@@ -5,14 +5,30 @@ import { openModal } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
 import { createSoal, updateSoal, getSoal } from './api.js';
 import { BIDANG_LIST, BLOOM_LEVELS } from '../../../../shared/constants.js';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+import { storage } from '../../../../shared/firebase-config.js';
+import { generateId } from '../../../../shared/normalize.js';
+
+// State gambar — di-reset setiap kali form dibuka
+let _pendingFile      = null;   // File object baru yang dipilih user
+let _removeImage      = false;  // true jika user klik "Hapus Gambar"
+let _existingImageUrl = null;   // URL gambar saat ini (mode edit)
 
 /**
  * @param {string|null} soalId  - null = mode create, string = mode edit
  * @param {function}    onSaved - callback setelah berhasil simpan
  */
 export async function openSoalForm(soalId = null, onSaved) {
+  // Reset state gambar setiap kali form dibuka
+  _pendingFile      = null;
+  _removeImage      = false;
+  _existingImageUrl = null;
+
   const isEdit   = !!soalId;
   const existing = isEdit ? await getSoal(soalId) : null;
+
+  // Simpan URL gambar existing untuk referensi saat submit
+  _existingImageUrl = existing?.pertanyaanImage ?? null;
 
   // Default 4 opsi
   const defaultOpsi = existing?.opsi ?? [
@@ -64,6 +80,38 @@ export async function openSoalForm(soalId = null, onSaved) {
         </label>
         <textarea name="pertanyaan" class="form-textarea h-28" required
                   placeholder="Tulis pertanyaan di sini…">${_esc(existing?.pertanyaan ?? '')}</textarea>
+      </div>
+
+      <!-- Gambar Soal (opsional) -->
+      <div>
+        <label class="block text-xs font-medium text-gray-400 mb-1.5">
+          Gambar Soal
+          <span class="text-gray-600 font-normal">(opsional)</span>
+        </label>
+        <div id="soal-image-preview" class="${existing?.pertanyaanImage ? '' : 'hidden'} mb-2">
+          <img id="soal-image-thumb"
+               src="${existing?.pertanyaanImage ?? ''}"
+               alt="Gambar soal"
+               class="max-h-48 rounded-lg border border-gray-700 object-contain" />
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="cursor-pointer text-xs bg-gray-800 hover:bg-gray-700 text-gray-300
+                        px-3 py-1.5 rounded-lg border border-gray-700 transition-colors">
+            <input type="file" id="soal-image-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+            Pilih Gambar
+          </label>
+          <span id="soal-image-filename" class="text-xs text-gray-500 truncate max-w-xs">
+            ${existing?.pertanyaanImage ? 'Gambar tersimpan' : 'Belum ada gambar'}
+          </span>
+          <button type="button" id="btn-clear-image"
+                  class="${existing?.pertanyaanImage ? '' : 'hidden'} text-xs text-red-400 hover:text-red-300 transition-colors">
+            Hapus
+          </button>
+        </div>
+        <p class="text-xs text-gray-600 mt-1.5">Format: JPG, PNG, WebP, GIF. Maks 2MB.</p>
+        <div id="soal-image-upload-progress" class="hidden mt-2">
+          <div class="text-xs text-blue-400">Mengupload gambar…</div>
+        </div>
       </div>
 
       <!-- Opsi Jawaban -->
@@ -140,6 +188,7 @@ export async function openSoalForm(soalId = null, onSaved) {
   });
 
   _bindOpsiEvents();
+  _bindImageEvents();
 }
 
 // ─── Opsi row HTML ────────────────────────────────────────────
@@ -209,6 +258,45 @@ function _updateOpsiButtons(count) {
   if (removeBtn) removeBtn.style.opacity = count <= 2 ? '0.3' : '1';
 }
 
+// ─── Image upload events ──────────────────────────────────────
+
+function _bindImageEvents() {
+  const input    = document.getElementById('soal-image-input');
+  const preview  = document.getElementById('soal-image-preview');
+  const thumb    = document.getElementById('soal-image-thumb');
+  const filename = document.getElementById('soal-image-filename');
+  const clearBtn = document.getElementById('btn-clear-image');
+
+  input?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Ukuran gambar maksimal 2MB.', 'error');
+      input.value = '';
+      return;
+    }
+
+    _pendingFile = file;
+    _removeImage = false;
+    filename.textContent = file.name;
+    thumb.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+    clearBtn.classList.remove('hidden');
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    _pendingFile      = null;
+    _removeImage      = true;
+    _existingImageUrl = null;
+    if (input) input.value = '';
+    if (thumb) thumb.src   = '';
+    preview?.classList.add('hidden');
+    clearBtn.classList.add('hidden');
+    if (filename) filename.textContent = 'Belum ada gambar';
+  });
+}
+
 // ─── Submit ───────────────────────────────────────────────────
 
 async function _submit(close, soalId, onSaved) {
@@ -247,17 +335,41 @@ async function _submit(close, soalId, onSaved) {
 
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
 
+  const progressEl = document.getElementById('soal-image-upload-progress');
+
   try {
+    // Tentukan soalId target — pre-generate untuk soal baru agar path Storage konsisten
+    const targetId = soalId ?? generateId();
+
+    // Handle gambar
+    let pertanyaanImage = _removeImage ? null : _existingImageUrl;
+    if (_pendingFile) {
+      if (btn) btn.textContent = 'Upload gambar…';
+      progressEl?.classList.remove('hidden');
+
+      const rawExt = _pendingFile.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const ext    = rawExt || 'jpg';
+      const sRef   = storageRef(storage, `bank-soal/${targetId}/pertanyaan.${ext}`);
+      const snap   = await uploadBytes(sRef, _pendingFile);
+      pertanyaanImage = await getDownloadURL(snap.ref);
+
+      progressEl?.classList.add('hidden');
+      if (btn) btn.textContent = 'Menyimpan…';
+    }
+
+    data.pertanyaanImage = pertanyaanImage;
+
     if (isEdit) {
-      await updateSoal(soalId, data);
+      await updateSoal(targetId, data);
       showToast('Soal diperbarui.', 'success');
     } else {
-      await createSoal(data);
+      await createSoal(data, targetId);
       showToast('Soal ditambahkan.', 'success');
     }
     close();
     onSaved?.();
   } catch (err) {
+    progressEl?.classList.add('hidden');
     errorEl.textContent = err.message;
     errorEl.classList.remove('hidden');
   } finally {
