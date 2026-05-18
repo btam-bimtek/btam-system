@@ -1,8 +1,8 @@
 # Progress Implementasi Sistem Bimtek BTAM
 
-**Last Updated:** 13 Mei 2026  
-**Status:** M1.1-1.7 ✅ Done | M1.8-1.10 ⬜ Next  
-**Total Progress:** 7/10 milestones selesai (Phase 1 core 70% done)
+**Last Updated:** 18 Mei 2026  
+**Status:** M1.1-1.9 ✅ Done | M1.10 ⬜ End-to-end Testing  
+**Total Progress:** 9/10 milestones selesai (Phase 1 core 90% done)
 
 ---
 
@@ -146,6 +146,34 @@
 - Gambar tampil di exam runner antara teks pertanyaan dan opsi jawaban
 - Setup Firebase Storage (upgrade Spark → Blaze, buat bucket `asia-southeast1`, CORS config, Storage Rules)
 
+### ✅ M1.8 — Report Generation (Done)
+**Selesai:** 18 Mei 2026  
+**Durasi:** ~1 sesi  
+**Deliverables:**
+- Tab Report di bimtek detail (sub-tab: Penyelenggara, Peserta)
+- Laporan Penyelenggara: 4 inner-tab (overview, per-peserta, per-EK, per-pengajar) + Chart.js
+- Laporan Peserta: list peserta + preview 4-section (A: kop+identitas, B: nilai, C: kompetensi, D: penutup)
+- report-api.js: aggregasi data (scores enrichment, per-EK comparison, distribusi nilai)
+- report-narrative.js: narasi otomatis Section C (7 edge case handling)
+- Print mode via `window.print()` dengan print CSS
+- Chart.js CDN ditambahkan ke admin/index.html
+
+### ✅ M1.9 — Dashboard Home + Settings (Done)
+**Selesai:** 18 Mei 2026  
+**Durasi:** ~1 sesi  
+**Deliverables:**
+- Dashboard: live stats (bimtek aktif, total bimtek, total peserta, total pengajar), recent bimtek list, quick action buttons
+- Halaman Settings (5 sub-tab):
+  - Info Lembaga: nama, alamat, website, email, telepon
+  - Bobot Bloom: custom bobot C1-C6 (global)
+  - Threshold: KKM default + kehadiran minimum
+  - Logo: upload ke Firebase Storage → tampil di kop surat laporan peserta
+  - Audit Log: viewer dengan filter action + entity type
+
+**Catatan Deployment:**
+- Storage Rules perlu update untuk path `settings/**` agar upload logo bisa jalan
+- Tambahkan rule: `match /settings/{allPaths=**} { allow read, write: if request.auth != null; }`
+
 ---
 
 ## Phase 1 Summary
@@ -156,8 +184,9 @@
 | Bimtek (M1.4) | Bimtek CRUD | 18-22 | ~25 | ✅ |
 | Exam (M1.5-1.6) | Exam Editor + Runner | 26-36 | ~30 | ✅ |
 | Penilaian (M1.7) | Input Nilai & Kelulusan | 16-22 | ~8 | ✅ |
-| Report (M1.8-1.10) | Report Peserta + Sertifikat | ~40 | TBD | ⬜ |
-| **Phase 1 Total** | **M1.1-1.10** | **165-220** | **~73+** | **35% done** |
+| Report (M1.8-1.9) | Report + Dashboard + Settings | ~40 | ~2 sesi | ✅ |
+| Testing (M1.10) | End-to-end testing | 8-12 | TBD | ⬜ |
+| **Phase 1 Total** | **M1.1-1.10** | **165-220** | **~75+** | **90% done** |
 
 ---
 
