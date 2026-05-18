@@ -101,9 +101,30 @@
   padding-right: 2rem;
 }
 
-/* ─── Print styles (override di milsestone 1.8) ───────────── */
+/* ─── Report preview (light bg, white paper) ─────────────── */
+.report-doc {
+  background: white;
+  color: #1a1a1a;
+}
+
+/* ─── Print styles ────────────────────────────────────────── */
 @media print {
+  /* Default: hide chrome, print #app as-is (penyelenggara report) */
   #sidebar, #navbar, #toast-container, .no-print { display: none !important; }
   body { background: white; color: black; }
   #app { padding: 0; overflow: visible; }
+
+  /* Penyelenggara report: keep dark charts readable */
+  .report-penyelenggara-content { color: black; }
+  .report-penyelenggara-content .bg-gray-900 { background: #f9fafb !important; border: 1px solid #e5e7eb !important; }
+  .report-penyelenggara-content .text-white  { color: #111 !important; }
+  .report-penyelenggara-content .text-gray-400 { color: #555 !important; }
+  .report-penyelenggara-content .btam-table th { background: #f3f4f6 !important; color: #374151 !important; }
+  .report-penyelenggara-content .btam-table td { color: #374151 !important; border-color: #e5e7eb !important; }
+
+  /* Peserta report: report-doc tampil bersih tanpa chrome */
+  .report-doc { box-shadow: none !important; border-radius: 0 !important; }
+
+  /* Page setup */
+  @page { margin: 15mm; size: A4 portrait; }
 }

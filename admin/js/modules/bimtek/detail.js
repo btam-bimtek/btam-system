@@ -8,6 +8,7 @@ import {
 } from './api.js';
 import { renderTabUjian } from './tab-ujian.js';
 import { renderTabPenilaian } from './tab-penilaian.js';
+import { renderTabReport } from './tab-report.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
@@ -104,6 +105,7 @@ function _render(app) {
       ${_buildTabBtn('peserta', 'Peserta')}
       ${_buildTabBtn('ujian',   'Ujian')}
       ${_buildTabBtn('penilaian', 'Penilaian')}
+      ${_buildTabBtn('report',  'Report')}
     </div>
 
     <!-- Tab content -->
@@ -144,6 +146,7 @@ function _renderTab(app) {
   if (S.tab === 'peserta')   { el.innerHTML = _buildTabPeserta(); _loadPeserta(app, el); }
   if (S.tab === 'ujian')     { renderTabUjian(app, el, S); }
   if (S.tab === 'penilaian') { renderTabPenilaian(el, S.id, S.bimtek); }
+  if (S.tab === 'report')    { renderTabReport(el, S.id, S.bimtek, S.mapels, S.pengajars); }
 }
 
 // ─── TAB: MATA PELAJARAN ────────────────────────────────────────────────────
