@@ -81,6 +81,9 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
   // Per-EK aggregate (semua peserta, pre vs post)
   const ekDataAll = await _calcEKDataAll(examResults, exams);
 
+  // Per-soal error rate
+  const soalErrorData = await _buildSoalErrorData(examResults, exams);
+
   // Per-pengajar data
   const pengajarData = _buildPengajarData(enriched, mapels, pengajars);
 
@@ -91,6 +94,7 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
     exams,
     sesis,
     ekDataAll,
+    soalErrorData,
     pengajarData,
     stats: {
       total, lulus, tidakLulus: total - lulus,
@@ -330,4 +334,53 @@ function _buildPengajarData(scores, mapels, pengajars) {
     mapels: pengajarMapelMap[pg.id] ?? [],
     avgNilai: avgNilaiPengajar
   }));
+}
+
+async function _buildSoalErrorData(examResults, exams) {
+  if (!examResults.length || !exams.length) return [];
+
+  const allSoalIds = [...new Set(exams.flatMap(e => e.soalIds ?? []))];
+  if (!allSoalIds.length) return [];
+
+  const soalMap = await _fetchSoalMap(allSoalIds);
+
+  // Agregasi per soalId lintas semua hasil
+  const stats = {};
+  examResults.forEach(result => {
+    const tipe   = result.tipeSession;   // 'pretest' | 'posttest'
+    const detail = result.detail ?? {};
+    for (const [soalId, d] of Object.entries(detail)) {
+      if (!stats[soalId]) {
+        stats[soalId] = {
+          soalId,
+          totalAttempts: 0, salahCount: 0,
+          preAttempts: 0,   preSalah: 0,
+          postAttempts: 0,  postSalah: 0
+        };
+      }
+      const s = stats[soalId];
+      s.totalAttempts++;
+      if (!d.benar) s.salahCount++;
+      if (tipe === 'pretest') {
+        s.preAttempts++;
+        if (!d.benar) s.preSalah++;
+      } else {
+        s.postAttempts++;
+        if (!d.benar) s.postSalah++;
+      }
+    }
+  });
+
+  return Object.values(stats).map(s => {
+    const soal = soalMap[s.soalId];
+    return {
+      ...s,
+      pertanyaan:       soal?.pertanyaan       ?? s.soalId,
+      elemenKompetensi: soal?.elemenKompetensi ?? '—',
+      bloomLevel:       soal?.bloomLevel       ?? '—',
+      persenSalah: s.totalAttempts > 0
+        ? Math.round((s.salahCount / s.totalAttempts) * 100)
+        : 0
+    };
+  }).sort((a, b) => b.persenSalah - a.persenSalah);
 }

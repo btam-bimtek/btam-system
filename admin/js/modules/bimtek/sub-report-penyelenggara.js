@@ -39,6 +39,7 @@ function _renderShell(container) {
         ${_innerTabBtn('overview',    'Overview')}
         ${_innerTabBtn('per-peserta', 'Per Peserta')}
         ${_innerTabBtn('per-ek',      'Per EK')}
+        ${_innerTabBtn('per-soal',    'Per Soal')}
         ${_innerTabBtn('per-pengajar','Per Pengajar')}
       </div>
       <button id="btn-print-penyelenggara"
@@ -86,6 +87,7 @@ function _renderInnerTab(el) {
   if (S.innerTab === 'overview')     _renderOverview(el);
   if (S.innerTab === 'per-peserta')  _renderPerPeserta(el);
   if (S.innerTab === 'per-ek')       _renderPerEK(el);
+  if (S.innerTab === 'per-soal')     _renderPerSoal(el);
   if (S.innerTab === 'per-pengajar') _renderPerPengajar(el);
 }
 
@@ -284,6 +286,88 @@ function _renderPerEK(el) {
   requestAnimationFrame(() => _initEKChart(ekDataAll));
 }
 
+// ─── PER SOAL ─────────────────────────────────────────────────────────────────
+
+function _renderPerSoal(el) {
+  const { soalErrorData } = S.data;
+
+  if (!soalErrorData || soalErrorData.length === 0) {
+    el.innerHTML = `
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center">
+        <p class="text-gray-400 text-sm">Data per soal belum tersedia.</p>
+        <p class="text-gray-600 text-xs mt-2">Sinkronisasi nilai pre/post test terlebih dahulu di tab Penilaian.</p>
+      </div>`;
+    return;
+  }
+
+  // Top 10 untuk chart
+  const top10 = soalErrorData.slice(0, 10);
+  const chartH = Math.max(200, top10.length * 40);
+
+  const rows = soalErrorData.map((s, i) => {
+    const pct = s.persenSalah;
+    const barColor = pct >= 70 ? 'bg-red-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-green-500';
+    return `
+      <tr>
+        <td class="text-center text-gray-500 text-xs">${i + 1}</td>
+        <td class="text-sm text-gray-200 max-w-xs">
+          <div class="line-clamp-2">${_esc(s.pertanyaan)}</div>
+          <div class="flex gap-1 mt-1">
+            <span class="badge badge-blue text-xs">${_esc(s.elemenKompetensi)}</span>
+            <span class="badge badge-gray text-xs">${_esc(s.bloomLevel)}</span>
+          </div>
+        </td>
+        <td class="text-center text-sm text-gray-400">${s.totalAttempts}</td>
+        <td class="text-center text-sm text-red-400">${s.salahCount}</td>
+        <td class="text-center">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 bg-gray-700 rounded-full h-2">
+              <div class="${barColor} h-2 rounded-full" style="width:${pct}%"></div>
+            </div>
+            <span class="text-sm font-medium ${pct >= 70 ? 'text-red-400' : pct >= 40 ? 'text-yellow-400' : 'text-green-400'} w-10 text-right">${pct}%</span>
+          </div>
+        </td>
+        <td class="text-center text-xs text-gray-500">
+          ${s.preAttempts > 0 ? `Pre: ${s.preSalah}/${s.preAttempts}` : ''}
+          ${s.preAttempts > 0 && s.postAttempts > 0 ? '<br>' : ''}
+          ${s.postAttempts > 0 ? `Post: ${s.postSalah}/${s.postAttempts}` : ''}
+        </td>
+      </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="text-xs text-gray-400 mb-4">
+      ${soalErrorData.length} soal · Diurutkan dari yang paling sering salah
+    </div>
+
+    <!-- Chart top 10 -->
+    <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
+      <h3 class="text-sm font-semibold text-white mb-4">Top ${top10.length} Soal dengan Error Rate Tertinggi</h3>
+      <div class="relative" style="height:${chartH}px">
+        <canvas id="chart-soal-error"></canvas>
+      </div>
+    </div>
+
+    <!-- Tabel lengkap -->
+    <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-x-auto">
+      <table class="btam-table">
+        <thead>
+          <tr>
+            <th class="text-center w-8">#</th>
+            <th>Pertanyaan</th>
+            <th class="text-center">Attempt</th>
+            <th class="text-center">Salah</th>
+            <th class="text-center w-40">% Salah</th>
+            <th class="text-center">Pre / Post</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  requestAnimationFrame(() => _initSoalErrorChart(top10));
+}
+
 // ─── PER PENGAJAR ─────────────────────────────────────────────────────────────
 
 function _renderPerPengajar(el) {
@@ -448,6 +532,61 @@ function _initEKChart(ekDataAll) {
           ticks: { color: '#9ca3af', callback: v => v + '%' }
         },
         y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function _initSoalErrorChart(top10) {
+  const canvas = document.getElementById('chart-soal-error');
+  if (!canvas || !window.Chart || !top10.length) return;
+
+  _destroyChart('soal-error');
+  // Label disingkat: nomor urut + EK agar tidak terlalu panjang
+  const labels = top10.map((s, i) => `#${i + 1} ${s.elemenKompetensi !== '—' ? s.elemenKompetensi : ''}`);
+  const colors = top10.map(s =>
+    s.persenSalah >= 70 ? '#ef4444' : s.persenSalah >= 40 ? '#f59e0b' : '#22c55e'
+  );
+
+  _charts['soal-error'] = new window.Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% Salah',
+        data: top10.map(s => s.persenSalah),
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 1,
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw}% salah`,
+            afterLabel: ctx => {
+              const s = top10[ctx.dataIndex];
+              const short = s.pertanyaan.length > 80
+                ? s.pertanyaan.slice(0, 80) + '…'
+                : s.pertanyaan;
+              return short;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          grid: { color: '#374151' },
+          ticks: { color: '#9ca3af', callback: v => v + '%' }
+        },
+        y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } }
       }
     }
   });
