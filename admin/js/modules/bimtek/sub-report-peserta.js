@@ -5,14 +5,16 @@ import { getPesertaReportData } from './report-api.js';
 import { mapToLabel, generateNarasi } from './report-narrative.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
+import { getAppSetting } from '../settings/api.js';
 
-// Chart instances untuk Section C peserta (pre/post bar)
+// Chart instances untuk Section C peserta
 const _charts = {};
 
 let S = {
-  bimtekId: null,
-  bimtek:   null,
-  pesertaList: [],  // [{noPeserta, nama}]
+  bimtekId:       null,
+  bimtek:         null,
+  pesertaList:    [],  // [{noPeserta, nama}]
+  lembagaSettings: null,
 };
 
 // ─── ENTRY POINT ──────────────────────────────────────────────────────────────
@@ -21,9 +23,14 @@ export async function renderSubReportPeserta(container, bimtekId, bimtek) {
   S.bimtekId = bimtekId;
   S.bimtek   = bimtek;
 
-  // Batch-fetch nama peserta dari peserta_master
+  // Load settings lembaga + batch-fetch nama peserta secara parallel
   const ids = bimtek.pesertaIds ?? [];
-  const snaps = await Promise.all(ids.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))));
+  const [snaps, lembaga] = await Promise.all([
+    Promise.all(ids.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id)))),
+    getAppSetting('lembaga').catch(() => null)
+  ]);
+
+  S.lembagaSettings = lembaga;
   S.pesertaList = snaps.map((snap, i) => ({
     noPeserta: ids[i],
     nama: snap.exists() ? (snap.data().nama ?? ids[i]) : ids[i]
@@ -160,12 +167,13 @@ function _showPreview(container, panel, data, autoPrint) {
     if (listSection) listSection.classList.remove('no-print');
   });
 
-  // Init Section C chart setelah DOM ready
+  // Init Section C charts setelah DOM ready
   requestAnimationFrame(() => {
     _initSectionCChart(data);
+    _initSectionCEKChart(data);
     if (autoPrint) {
-      // Tunggu sebentar agar chart sempat render
-      setTimeout(() => _doPrint(), 400);
+      // Tunggu lebih lama karena ada 2 chart yang perlu render
+      setTimeout(() => _doPrint(), 700);
     }
   });
 }
@@ -214,16 +222,27 @@ function _buildSectionA(peserta, b) {
        </div>`
     : '';
 
+  const ls = S.lembagaSettings;
+  const namaLembaga = ls?.nama    || 'BTAM TERPADU';
+  const websiteTeks = ls?.website || 'www.btam.go.id';
+  const alamatTeks  = ls?.alamat  ? ls.alamat.split('\n')[0].trim() : 'Badan Teknis Air Minum';
+
+  const logoEl = ls?.logoUrl
+    ? `<img src="${_esc(ls.logoUrl)}" alt="Logo"
+           style="width:64px; height:64px; object-fit:contain; border-radius:8px; flex-shrink:0;" />`
+    : `<div style="width:64px; height:64px; background:#1e40af; border-radius:8px;
+                  display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+         <span style="color:white; font-weight:bold; font-size:18px; font-family:sans-serif;">B</span>
+       </div>`;
+
   return `
     <!-- Kop Surat -->
     <div style="display:flex; align-items:flex-start; gap:20px; margin-bottom:20px;">
-      <div style="width:64px; height:64px; background:#1e40af; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-        <span style="color:white; font-weight:bold; font-size:18px; font-family:sans-serif;">B</span>
-      </div>
+      ${logoEl}
       <div>
-        <div style="font-size:16px; font-weight:bold; font-family:sans-serif; color:#1a1a1a;">BTAM TERPADU</div>
-        <div style="font-size:12px; color:#444; font-family:sans-serif; margin-top:2px;">Badan Teknis Air Minum</div>
-        <div style="font-size:11px; color:#666; font-family:sans-serif; margin-top:2px;">www.btam.go.id</div>
+        <div style="font-size:16px; font-weight:bold; font-family:sans-serif; color:#1a1a1a;">${_esc(namaLembaga)}</div>
+        <div style="font-size:12px; color:#444; font-family:sans-serif; margin-top:2px;">${_esc(alamatTeks)}</div>
+        <div style="font-size:11px; color:#666; font-family:sans-serif; margin-top:2px;">${_esc(websiteTeks)}</div>
       </div>
     </div>
 
@@ -393,8 +412,21 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       <canvas id="report-chart-prepost" width="400" height="180"></canvas>
     </div>` : '';
 
-  // C.2 + C.3 — Per EK (tabel + bar visual)
-  let ekSection = '';
+  // C.2 — Grouped bar chart per-EK
+  let ekChartSection = '';
+  if (ekComparison && ekComparison.length > 0) {
+    const chartH = Math.max(160, ekComparison.length * 36);
+    ekChartSection = `
+      <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:10px; font-family:sans-serif;">
+        C.2 Penguasaan per Elemen Kompetensi
+      </div>
+      <div style="position:relative; margin-bottom:20px; height:${chartH}px;">
+        <canvas id="report-chart-ek" height="${chartH}"></canvas>
+      </div>`;
+  }
+
+  // C.3 — Tabel per EK
+  let ekTableSection = '';
   if (ekComparison && ekComparison.length > 0) {
     const ekRows = ekComparison.map(ek => {
       const deltaStr = ek.delta != null
@@ -409,9 +441,9 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
         </tr>`;
     }).join('');
 
-    ekSection = `
-      <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; margin-top:${chartSection ? '0' : '0'}; font-family:sans-serif;">
-        C.2 Rincian per Elemen Kompetensi
+    ekTableSection = `
+      <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
+        C.3 Rincian per Elemen Kompetensi
       </div>
       <table style="width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin-bottom:20px;">
         <thead>
@@ -430,7 +462,7 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
   const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama);
   const narasiSection = `
     <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
-      C.3 Analisis Kompetensi
+      C.4 Analisis Kompetensi
     </div>
     <div style="background:#f0f7ff; border-left:4px solid #2563eb; padding:12px 16px; border-radius:0 8px 8px 0; font-size:13px; color:#1e3a5f; line-height:1.7;">
       ${narasi}
@@ -441,7 +473,8 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       C. Perubahan Kompetensi
     </div>
     ${chartSection}
-    ${ekSection}
+    ${ekChartSection}
+    ${ekTableSection}
     ${narasiSection}`;
 }
 
@@ -507,6 +540,63 @@ function _initSectionCChart(data) {
           ticks: { color: '#374151', stepSize: 20 },
           beginAtZero: true,
           max: 100
+        }
+      }
+    }
+  });
+}
+
+function _initSectionCEKChart(data) {
+  const canvas = document.getElementById('report-chart-ek');
+  if (!canvas || !window.Chart) return;
+
+  const ek = data.ekComparison;
+  if (!ek || ek.length === 0) return;
+
+  const chartH = Math.max(160, ek.length * 36);
+  canvas.height = chartH;
+
+  _destroyChart('ek-peserta');
+  _charts['ek-peserta'] = new window.Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: ek.map(e => e.ekNama),
+      datasets: [
+        {
+          label: 'Pre Test',
+          data: ek.map(e => e.prePct),
+          backgroundColor: '#9ca3af80',
+          borderColor: '#9ca3af',
+          borderWidth: 1,
+          borderRadius: 3
+        },
+        {
+          label: 'Post Test',
+          data: ek.map(e => e.postPct),
+          backgroundColor: '#3b82f680',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          borderRadius: 3
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#374151', font: { size: 11 }, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '—'}%` } }
+      },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          grid: { color: '#e5e7eb' },
+          ticks: { color: '#374151', callback: v => v + '%' }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#374151', font: { size: 11 } }
         }
       }
     }
