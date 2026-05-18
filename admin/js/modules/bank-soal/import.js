@@ -239,7 +239,7 @@ async function _doImport(bodyEl, onDone) {
 
 function _mapRowToSoal(row) {
   const bidangId   = BIDANG_ALIAS[(row.bidang ?? '').toLowerCase()] ?? row.bidang;
-  const bloomLevel = BLOOM_ALIAS[(row.bloomLevel ?? '').toLowerCase()] ?? row.bloomLevel?.toUpperCase();
+  const bloomLevel = BLOOM_ALIAS[(row.bloomLevel ?? '').toLowerCase()] ?? (row.bloomLevel?.toUpperCase() ?? '');
   const kunci      = (row.kunci ?? '').toLowerCase().trim().replace(/^opsi\s*/i, '');
 
   const opsi = [];

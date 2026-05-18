@@ -247,7 +247,6 @@ function _validateSoal(data) {
   const errors = [];
   if (!data.pertanyaan?.trim())           errors.push('Pertanyaan wajib diisi.');
   if (!data.bidangId)                     errors.push('Bidang wajib dipilih.');
-  if (!data.bloomLevel)                   errors.push('Tingkat Bloom wajib dipilih.');
   if (!data.kunci)                        errors.push('Kunci jawaban wajib dipilih.');
   if (!data.opsi || data.opsi.length < 2) errors.push('Minimal 2 opsi jawaban.');
 

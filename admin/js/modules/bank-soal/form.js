@@ -56,9 +56,9 @@ export async function openSoalForm(soalId = null, onSaved) {
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-400 mb-1.5">
-            Bloom Level <span class="text-red-400">*</span>
+            Bloom Level
           </label>
-          <select name="bloomLevel" class="form-select" required>
+          <select name="bloomLevel" class="form-select">
             <option value="">— Pilih —</option>
             ${BLOOM_LEVELS.map(b =>
               `<option value="${b.level}" ${existing?.bloomLevel === b.level ? 'selected' : ''}>
