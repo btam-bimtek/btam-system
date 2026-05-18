@@ -206,6 +206,11 @@ function _buildExamCard(exam, sessions, S, canEdit) {
 // ─── EXAM MODAL (Create / Edit) ───────────────────────────────
 
 async function _showExamModal(app, el, S, exam) {
+  if (exam?.published) {
+    showToast('Ujian sudah dipublish. Unpublish dulu sebelum mengedit.', 'info');
+    return;
+  }
+
   // Load soal langsung via Firestore — hanya filter active=true
   // filter bidang dan deleted dilakukan di client untuk hindari composite index issue
   let soalPool = [];

@@ -20,9 +20,10 @@ import { logAudit } from '../../../../shared/logger.js';
  * @param {object[]} soals - bank_soal docs
  *   { id, bloomLevel, ... }
  * @param {object} kunciMap - bank_soal_answers map {soalId: kunci}
+ * @param {object} [bloomBobot] - custom bobot map {C1:1,...} dari app_settings/bloom_bobot
  * @returns { skor (0-100), detail { soalId: {benar, bobot, skor}, ... } }
  */
-export function hitungSkor(submission, exam, soals, kunciMap) {
+export function hitungSkor(submission, exam, soals, kunciMap, bloomBobot) {
   const jawaban = submission.answers || submission.jawaban || {}; // exam app saves as 'answers'
   let totalBobot = 0;
   let totalScore = 0;
@@ -33,7 +34,7 @@ export function hitungSkor(submission, exam, soals, kunciMap) {
     if (!soal) continue;
 
     const bloomLevel = soal.bloomLevel || 'C1';
-    const bobot = _getBloomBobot(bloomLevel);
+    const bobot = _getBloomBobot(bloomLevel, bloomBobot);
 
     const jawabBenar = kunciMap[soalId] ?? null;
     const jawabPeserta = jawaban[soalId] ?? null;
@@ -65,13 +66,12 @@ export function hitungSkor(submission, exam, soals, kunciMap) {
 
 /**
  * Get bobot Bloom dari tingkat C1-C6.
+ * Prioritaskan custom bloomBobot dari app_settings jika ada.
  */
-function _getBloomBobot(level) {
-  const bobot = {
-    'C1': 1, 'C2': 2, 'C3': 3,
-    'C4': 4, 'C5': 5, 'C6': 6
-  };
-  return bobot[level] || 1;
+function _getBloomBobot(level, bloomBobot) {
+  if (bloomBobot && bloomBobot[level] != null) return Number(bloomBobot[level]);
+  const defaults = { 'C1': 1, 'C2': 2, 'C3': 3, 'C4': 4, 'C5': 5, 'C6': 6 };
+  return defaults[level] || 1;
 }
 
 /**
@@ -98,12 +98,13 @@ export async function scoreAllSubmissions(bimtekId, examId) {
     if (!examSnap.exists()) throw new Error('Exam tidak ditemukan');
     const exam = { id: examSnap.id, ...examSnap.data() };
 
-    // 2. Ambil semua soal + kunci jawaban
-    // bank_soal_answers menggunakan soalId sebagai doc ID, field kunci = jawaban benar
-    const [soalsSnap, answersSnap] = await Promise.all([
+    // 2. Ambil semua soal + kunci jawaban + custom bloom bobot
+    const [soalsSnap, answersSnap, bloomSnap] = await Promise.all([
       getDocs(query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.soalIds))),
-      getDocs(collection(db, COL.BANK_SOAL_ANSWERS))
+      getDocs(collection(db, COL.BANK_SOAL_ANSWERS)),
+      getDoc(doc(db, COL.APP_SETTINGS, 'bloom_bobot'))
     ]);
+    const bloomBobot = bloomSnap.exists() ? bloomSnap.data() : null;
 
     const soals = snapToArray(soalsSnap);
     const kunciMap = {};
@@ -122,7 +123,7 @@ export async function scoreAllSubmissions(bimtekId, examId) {
 
     for (const submission of submissions) {
       try {
-        const { skor, detail } = hitungSkor(submission, exam, soals, kunciMap);
+        const { skor, detail } = hitungSkor(submission, exam, soals, kunciMap, bloomBobot);
 
         // Tulis/overwrite exam_results — sertakan tipeSession agar pretest & posttest tidak saling overwrite
         const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}__${submission.tipeSession}`);
@@ -188,27 +189,30 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
     if (!submissionSnap.exists()) throw new Error('Submission tidak ditemukan');
     const submission = { id: submissionSnap.id, ...submissionSnap.data() };
 
-    // Ambil exam, soal, answers
-    const exam = await getDoc(doc(db, COL.EXAMS, examId));
-    if (!exam.exists()) throw new Error('Exam tidak ditemukan');
+    // Ambil exam, soal, answers, dan custom bloom bobot
+    const examSnap = await getDoc(doc(db, COL.EXAMS, examId));
+    if (!examSnap.exists()) throw new Error('Exam tidak ditemukan');
 
-    const soalsSnap = await getDocs(
-      query(collection(db, COL.BANK_SOAL), where('soalId', 'in', exam.data().soalIds))
-    );
+    const [soalsSnap, answersSnap, bloomSnap] = await Promise.all([
+      getDocs(query(collection(db, COL.BANK_SOAL), where('soalId', 'in', examSnap.data().soalIds))),
+      getDocs(collection(db, COL.BANK_SOAL_ANSWERS)),
+      getDoc(doc(db, COL.APP_SETTINGS, 'bloom_bobot'))
+    ]);
     const soals = snapToArray(soalsSnap);
+    const bloomBobot = bloomSnap.exists() ? bloomSnap.data() : null;
 
-    const answersSnap = await getDocs(collection(db, COL.BANK_SOAL_ANSWERS));
     const kunciMap = {};
     answersSnap.docs.forEach(d => {
-      kunciMap[d.id] = d.data().kunci; // field 'kunci' berisi jawaban benar
+      kunciMap[d.id] = d.data().kunci;
     });
 
     // Hitung skor
     const { skor, detail } = hitungSkor(
       submission,
-      exam.data(),
+      examSnap.data(),
       soals,
-      kunciMap
+      kunciMap,
+      bloomBobot
     );
 
     // Tulis exam_results + update bimtek_scores

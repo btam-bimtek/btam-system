@@ -206,8 +206,8 @@
 - [x] Bug: Label opsi teracak (render pakai opsi.id)
 - [x] Bug: Warning reset saat refresh (warningCount hanya memory)
 - [x] Bug: Overlay auto-submit saat confirm dialog (anti-cheat trigger false positive)
-- [ ] Todo: Hapus Eruda debug dari exam/index.html setelah testing
-- [ ] Todo: Validasi exam published sebelum soal picker (M1.9)
+- [x] Todo: Hapus Eruda debug dari exam/index.html setelah testing
+- [x] Todo: Validasi exam published sebelum soal picker (M1.9)
 
 ### Future Risks
 - M1.7: Scoring engine floating point math → test ketat
