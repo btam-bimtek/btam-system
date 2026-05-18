@@ -1,5 +1,5 @@
 // admin/js/modules/bimtek/list.js
-import { listBimtek, updateStatus } from './api.js';
+import { listBimtek, updateStatus, deleteBimtek } from './api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
@@ -131,7 +131,7 @@ function _bindTableEvents(app) {
     btn.addEventListener('click', async () => {
       const ok = await confirmDialog({
         title: 'Batalkan Bimtek',
-        message: 'Batalkan Bimtek ini? Tindakan ini tidak bisa diurungkan.',
+        message: 'Batalkan Bimtek ini? Status berubah menjadi "Dibatalkan" tapi data tetap tersimpan.',
         confirmLabel: 'Batalkan',
         danger: true,
       });
@@ -139,6 +139,23 @@ function _bindTableEvents(app) {
       try {
         await updateStatus(btn.dataset.id, 'cancelled');
         showToast('Bimtek dibatalkan', 'success');
+        await _load(app);
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+
+  app.querySelectorAll('.btn-hapus').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Hapus Bimtek',
+        message: `Hapus Bimtek "${btn.dataset.nama}"? Data akan dihapus permanen dan tidak bisa dipulihkan.`,
+        confirmLabel: 'Hapus Permanen',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await deleteBimtek(btn.dataset.id);
+        showToast('Bimtek dihapus', 'success');
         await _load(app);
       } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
     });
@@ -175,6 +192,7 @@ function _buildTable(items) {
             <button class="btn-edit"   data-id="${b.id}" style="${_btn('#374151')}">Edit</button>
             ${b.status === 'draft' ? `<button class="btn-publish" data-id="${b.id}" style="${_btn('#1d4ed8')}">Publikasi</button>` : ''}
             ${['draft','planned'].includes(b.status) ? `<button class="btn-cancel" data-id="${b.id}" style="${_btn('#7f1d1d')}">Batalkan</button>` : ''}
+            ${['draft','cancelled'].includes(b.status) ? `<button class="btn-hapus" data-id="${b.id}" data-nama="${_esc(b.nama)}" style="${_btn('#450a0a')}">Hapus</button>` : ''}
           </div>
         </td>
       </tr>`;
