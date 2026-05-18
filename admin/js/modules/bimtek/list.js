@@ -192,7 +192,7 @@ function _buildTable(items) {
             <button class="btn-edit"   data-id="${b.id}" style="${_btn('#374151')}">Edit</button>
             ${b.status === 'draft' ? `<button class="btn-publish" data-id="${b.id}" style="${_btn('#1d4ed8')}">Publikasi</button>` : ''}
             ${['draft','planned'].includes(b.status) ? `<button class="btn-cancel" data-id="${b.id}" style="${_btn('#7f1d1d')}">Batalkan</button>` : ''}
-            ${['draft','cancelled'].includes(b.status) ? `<button class="btn-hapus" data-id="${b.id}" data-nama="${_esc(b.nama)}" style="${_btn('#450a0a')}">Hapus</button>` : ''}
+            <button class="btn-hapus" data-id="${b.id}" data-nama="${_esc(b.nama)}" style="${_btn('#450a0a')}">Hapus</button>
           </div>
         </td>
       </tr>`;
