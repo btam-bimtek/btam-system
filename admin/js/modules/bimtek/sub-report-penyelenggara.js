@@ -42,13 +42,22 @@ function _renderShell(container) {
         ${_innerTabBtn('per-soal',    'Per Soal')}
         ${_innerTabBtn('per-pengajar','Per Pengajar')}
       </div>
-      <button id="btn-print-penyelenggara"
-        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-        </svg>
-        Print
-      </button>
+      <div class="flex gap-2">
+        <button id="btn-export-excel"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-green-800 hover:bg-green-700 text-white transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Export Excel
+        </button>
+        <button id="btn-print-penyelenggara"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          Print
+        </button>
+      </div>
     </div>
 
     <div id="penyelenggara-content" class="report-penyelenggara-content"></div>
@@ -64,6 +73,7 @@ function _renderShell(container) {
     });
   });
 
+  container.querySelector('#btn-export-excel').addEventListener('click', () => _exportExcel());
   container.querySelector('#btn-print-penyelenggara').addEventListener('click', () => window.print());
 
   _renderInnerTab(container.querySelector('#penyelenggara-content'));
@@ -635,4 +645,62 @@ function _fmtDate(ts) {
   if (!ts) return '-';
   const d = ts?.toDate?.() ?? new Date(ts);
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ─── EXPORT EXCEL ─────────────────────────────────────────────────────────────
+
+async function _exportExcel() {
+  const btn = document.getElementById('btn-export-excel');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Memuat…';
+
+  try {
+    await _loadSheetJS();
+
+    const b      = S.bimtek;
+    const scores = S.data?.scoresSorted ?? [];
+
+    const rows = scores.map((s, i) => ({
+      'No':             i + 1,
+      'No Peserta':     s.noPeserta,
+      'Nama':           s.peserta?.nama      ?? '-',
+      'Jabatan':        s.peserta?.jabatan   ?? '-',
+      'Instansi':       s.peserta?.instansi  ?? '-',
+      'Pre-Test':       s.pretest   ?? '',
+      'Post-Test':      s.posttest  ?? '',
+      'Kehadiran (%)':  s.kehadiran ?? '',
+      'Pengajar':       s.pengajar  ?? '',
+      'Keaktifan':      s.keaktifan ?? '',
+      'Sikap & Respek': s.respek    ?? '',
+      ...(b.hasTugas      ? { 'Tugas':      s.tugas      ?? '' } : {}),
+      ...(b.hasPresentasi ? { 'Presentasi': s.presentasi ?? '' } : {}),
+      'Nilai Akhir':    s.nilaiAkhir ?? '',
+      'Status':         s.lulus ? 'LULUS' : 'BELUM MEMENUHI',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Nilai');
+
+    const tgl      = new Date().toISOString().slice(0, 10);
+    const kode     = b.kodeBimtek || b.nama.replace(/\s+/g, '-').slice(0, 20);
+    XLSX.writeFile(wb, `rekap-nilai-${kode}-${tgl}.xlsx`);
+  } catch (err) {
+    alert('Gagal export: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function _loadSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Gagal memuat SheetJS'));
+    document.head.appendChild(s);
+  });
 }

@@ -6,6 +6,7 @@ import { mapToLabel, generateNarasi } from './report-narrative.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
+import { listBimtekScores } from './penilaian-api.js';
 
 // Chart instances untuk Section C peserta
 const _charts = {};
@@ -23,17 +24,22 @@ export async function renderSubReportPeserta(container, bimtekId, bimtek) {
   S.bimtekId = bimtekId;
   S.bimtek   = bimtek;
 
-  // Load settings lembaga + batch-fetch nama peserta secara parallel
+  // Load settings lembaga + peserta names + lulus status secara parallel
   const ids = bimtek.pesertaIds ?? [];
-  const [snaps, lembaga] = await Promise.all([
+  const [snaps, lembaga, scores] = await Promise.all([
     Promise.all(ids.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id)))),
-    getAppSetting('lembaga').catch(() => null)
+    getAppSetting('lembaga').catch(() => null),
+    listBimtekScores(bimtekId).catch(() => [])
   ]);
+
+  const lulusMap = {};
+  scores.forEach(s => { lulusMap[s.noPeserta] = s.lulus; });
 
   S.lembagaSettings = lembaga;
   S.pesertaList = snaps.map((snap, i) => ({
     noPeserta: ids[i],
-    nama: snap.exists() ? (snap.data().nama ?? ids[i]) : ids[i]
+    nama:  snap.exists() ? (snap.data().nama  ?? ids[i]) : ids[i],
+    lulus: lulusMap[ids[i]] ?? false
   }));
 
   _renderList(container);
@@ -58,13 +64,18 @@ function _renderList(container) {
         <div class="text-xs text-gray-500">${_esc(p.noPeserta)}</div>
       </td>
       <td class="text-right">
-        <button class="btn-preview-peserta text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors mr-2"
+        <button class="btn-preview-peserta text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors mr-1"
           data-nopeserta="${_esc(p.noPeserta)}">
           Preview
         </button>
-        <button class="btn-print-peserta text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+        <button class="btn-print-peserta text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors mr-1"
           data-nopeserta="${_esc(p.noPeserta)}">
           Print
+        </button>
+        <button class="btn-cert-peserta text-xs px-3 py-1.5 rounded-lg transition-colors
+          ${p.lulus ? 'bg-yellow-700 hover:bg-yellow-600 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}"
+          data-nopeserta="${_esc(p.noPeserta)}" ${!p.lulus ? 'disabled' : ''}>
+          Sertifikat
         </button>
       </td>
     </tr>`).join('');
@@ -104,6 +115,11 @@ function _renderList(container) {
       const noPeserta = btn.dataset.nopeserta;
       _loadAndShowPreview(container, noPeserta, true);
     });
+  });
+
+  // Bind sertifikat buttons
+  container.querySelectorAll('.btn-cert-peserta:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', () => _loadAndShowCert(container, btn.dataset.nopeserta));
   });
 }
 
@@ -636,4 +652,164 @@ function _fmtDate(ts) {
   if (!ts) return '-';
   const d = ts?.toDate?.() ?? new Date(ts);
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+// ─── SERTIFIKAT ───────────────────────────────────────────────────────────────
+
+async function _loadAndShowCert(container, noPeserta) {
+  const panel = container.querySelector('#report-preview-panel');
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="flex items-center gap-3 py-8 justify-center">
+      <div class="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-gray-400 text-sm">Menyiapkan sertifikat…</span>
+    </div>`;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
+    _showCert(container, panel, data);
+  } catch (err) {
+    panel.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat data: ${err.message}</div>`;
+  }
+}
+
+function _showCert(container, panel, data) {
+  const listSection = container.querySelector('#peserta-list-section');
+  const html = _buildCertHTML(data);
+
+  panel.innerHTML = `
+    <div class="flex items-center justify-between mb-4 no-print">
+      <h3 class="font-semibold text-white">Sertifikat — ${_esc(data.peserta?.nama ?? '')}</h3>
+      <div class="flex gap-2">
+        <button id="btn-print-cert" class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          Cetak Sertifikat
+        </button>
+        <button id="btn-close-cert" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
+      </div>
+    </div>
+    <div id="cert-doc" class="cert-doc">${html}</div>
+  `;
+
+  if (listSection) listSection.classList.add('no-print');
+
+  panel.querySelector('#btn-print-cert').addEventListener('click', () => _printCert());
+  panel.querySelector('#btn-close-cert').addEventListener('click', () => {
+    panel.innerHTML = '';
+    panel.classList.add('hidden');
+    if (listSection) listSection.classList.remove('no-print');
+  });
+}
+
+function _buildCertHTML(data) {
+  const { peserta, scores } = data;
+  const b        = S.bimtek;
+  const lembaga  = S.lembagaSettings ?? {};
+  const nilaiAkhir = scores?.nilaiAkhir ?? '-';
+
+  const periodeStr = (() => {
+    const fmt = ts => {
+      if (!ts) return '';
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    const m = fmt(b.periode?.mulai);
+    const s = fmt(b.periode?.selesai);
+    return m && s ? `${m} s.d. ${s}` : (m || s || '-');
+  })();
+
+  const tglCetak = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  const namaLembaga = lembaga.nama || 'BTAM Terpadu';
+  const logoUrl     = lembaga.logoUrl || '';
+
+  return `
+    <div style="
+      width:267mm; min-height:190mm;
+      padding:14mm 16mm;
+      font-family:'Times New Roman',Georgia,serif;
+      color:#1a1a1a;
+      background:#fff;
+      box-sizing:border-box;
+      border:6px double #8a7a50;
+      position:relative;
+    ">
+      <!-- Ornamen sudut -->
+      <div style="position:absolute;top:10px;left:10px;width:40px;height:40px;border-top:3px solid #8a7a50;border-left:3px solid #8a7a50;"></div>
+      <div style="position:absolute;top:10px;right:10px;width:40px;height:40px;border-top:3px solid #8a7a50;border-right:3px solid #8a7a50;"></div>
+      <div style="position:absolute;bottom:10px;left:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-left:3px solid #8a7a50;"></div>
+      <div style="position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-right:3px solid #8a7a50;"></div>
+
+      <!-- Header: Logo + Nama Lembaga -->
+      <div style="display:flex;align-items:center;gap:16px;border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;">
+        ${logoUrl ? `<img src="${logoUrl}" style="height:64px;width:auto;object-fit:contain;flex-shrink:0;">` : ''}
+        <div>
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#666;font-family:sans-serif;">Lembaga Penyelenggara</div>
+          <div style="font-size:17px;font-weight:bold;letter-spacing:1px;">${_esc(namaLembaga)}</div>
+          ${lembaga.alamat ? `<div style="font-size:10px;color:#555;">${_esc(lembaga.alamat)}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- Judul -->
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#8a7a50;font-family:sans-serif;margin-bottom:4px;">SERTIFIKAT</div>
+        <div style="font-size:28px;font-weight:bold;letter-spacing:6px;text-transform:uppercase;line-height:1.1;">KELULUSAN</div>
+        <div style="width:80px;height:2px;background:#8a7a50;margin:10px auto;"></div>
+      </div>
+
+      <!-- Diberikan kepada -->
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:11px;color:#555;font-family:sans-serif;margin-bottom:6px;">Diberikan kepada</div>
+        <div style="font-size:26px;font-weight:bold;font-style:italic;border-bottom:1.5px solid #1a1a1a;padding-bottom:4px;display:inline-block;min-width:260px;">
+          ${_esc(peserta?.nama ?? '-')}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#444;font-family:sans-serif;">
+          ${peserta?.jabatan ? `${_esc(peserta.jabatan)}` : ''}
+          ${peserta?.jabatan && peserta?.instansi ? ' · ' : ''}
+          ${peserta?.instansi ? `${_esc(peserta.instansi)}` : ''}
+        </div>
+        ${peserta?.noPeserta || peserta?.id ? `<div style="font-size:10px;color:#888;font-family:sans-serif;">No. Peserta: ${_esc(peserta.noPeserta ?? peserta.id)}</div>` : ''}
+      </div>
+
+      <!-- Nama bimtek -->
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:11px;color:#555;font-family:sans-serif;">Telah dinyatakan <strong>LULUS</strong> dalam kegiatan</div>
+        <div style="font-size:17px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:6px 0;">${_esc(b.nama)}</div>
+        <div style="font-size:10px;color:#666;font-family:sans-serif;">${_esc(periodeStr)}</div>
+        <div style="margin-top:6px;display:inline-block;background:#f5f0e8;border:1px solid #8a7a50;border-radius:4px;padding:3px 14px;font-size:12px;font-family:sans-serif;">
+          Nilai Akhir: <strong>${nilaiAkhir}</strong>
+        </div>
+      </div>
+
+      <!-- TTD -->
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <div style="text-align:center;min-width:180px;">
+          <div style="font-size:10px;font-family:sans-serif;">${_esc(lembaga.kota || lembaga.lokasi || '')}, ${tglCetak}</div>
+          <div style="height:56px;"></div>
+          <div style="border-top:1.5px solid #1a1a1a;padding-top:4px;">
+            <div style="font-size:11px;font-weight:bold;font-family:sans-serif;">${_esc(lembaga.nama || namaLembaga)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _printCert() {
+  const style = document.createElement('style');
+  style.id    = 'cert-print-style';
+  style.textContent = '@page { size: A4 landscape; margin: 0; }';
+  document.head.appendChild(style);
+  document.body.classList.add('printing-cert');
+
+  window.print();
+
+  // Cleanup setelah dialog print tutup
+  setTimeout(() => {
+    const s = document.getElementById('cert-print-style');
+    if (s) s.remove();
+    document.body.classList.remove('printing-cert');
+  }, 1000);
 }

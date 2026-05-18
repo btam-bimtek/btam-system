@@ -125,6 +125,16 @@
   /* Peserta report: report-doc tampil bersih tanpa chrome */
   .report-doc { box-shadow: none !important; border-radius: 0 !important; }
 
-  /* Page setup */
+  /* Page setup default (laporan) */
   @page { margin: 15mm; size: A4 portrait; }
+
+  /* Sertifikat: landscape, hide semua kecuali cert-doc */
+  body.printing-cert #sidebar,
+  body.printing-cert #navbar,
+  body.printing-cert .no-print,
+  body.printing-cert #peserta-list-section,
+  body.printing-cert #report-preview-panel > *:not(#cert-doc) { display: none !important; }
+
+  body.printing-cert #report-preview-panel { display: block !important; }
+  body.printing-cert .cert-doc { display: block !important; }
 }
