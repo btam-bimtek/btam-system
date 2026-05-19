@@ -182,7 +182,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
       isi += `Di sisi lain, ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%, ${ek.delta} poin)`).join('; ')} menunjukkan penurunan nilai dari pre test ke post test. `;
       isi += menurun.length === 1
         ? `Kondisi ini perlu mendapat perhatian khusus dan pendalaman mandiri agar penguasaan elemen kompetensi tersebut dapat ditingkatkan kembali.`
-        : `Kondisi ini perlu mendapat perhatian lebih lanjut. Pendalaman mandiri maupun keikutsertaan dalam kegiatan peningkatan kompetensi sejenis pada periode berikutnya sangat dianjurkan.`;
+        : `Kondisi ini perlu mendapat perhatian lebih lanjut melalui pendalaman mandiri yang lebih intensif.`;
     }
     if (isi) paragraphs.push(p(isi));
   }
@@ -282,13 +282,12 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
     }
 
     // ¶3 — Langkah konkret
-    let p3 = `Untuk mempersiapkan diri mengikuti kegiatan bimbingan teknis pada periode berikutnya, berikut adalah langkah-langkah konkret yang disarankan: `;
+    let p3 = `Berikut adalah langkah-langkah konkret yang disarankan untuk meningkatkan penguasaan kompetensi: `;
     p3 += `<ol style="margin:8px 0 0 0; padding-left:20px;">`;
     p3 += li(`<strong>Pendalaman mandiri:</strong> Pelajari kembali seluruh modul dan materi bimbingan teknis yang telah diberikan, dengan memberikan penekanan khusus pada elemen-elemen kompetensi yang nilainya masih di bawah standar.`);
     p3 += li(`<strong>Konsultasi dan diskusi:</strong> Manfaatkan kesempatan untuk berdiskusi dengan rekan kerja, atasan, atau tenaga ahli yang berpengalaman di bidang yang relevan guna mendapatkan pemahaman yang lebih mendalam dan praktis.`);
     p3 += li(`<strong>Praktik di lapangan:</strong> Coba terapkan konsep dan materi yang telah dipelajari dalam pekerjaan sehari-hari. Pengalaman praktis langsung akan sangat membantu memperkuat pemahaman yang diperoleh secara teoretis.`);
     p3 += li(`<strong>Referensi tambahan:</strong> Pelajari regulasi, standar nasional (SNI), dan pedoman teknis terkait bidang air minum yang berlaku sebagai referensi tambahan untuk memperluas wawasan dan penguasaan teknis.`);
-    p3 += li(`<strong>Keikutsertaan kembali:</strong> Daftarkan diri untuk mengikuti kegiatan bimbingan teknis pada periode penyelenggaraan berikutnya. Informasi mengenai jadwal dan pendaftaran dapat diperoleh dari penyelenggara.`);
     p3 += `</ol>`;
     paragraphs.push(p(p3));
 

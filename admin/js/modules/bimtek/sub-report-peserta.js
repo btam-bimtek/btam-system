@@ -345,8 +345,6 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
   const tidakLulusMsg = !lulus && na != null ? `
     <div style="background:#fef3c7; border-left:4px solid #f59e0b; border-radius:0 4px 4px 0; padding:12px 16px; margin-top:16px; font-size:12px; color:#78350f; line-height:1.6;">
       Nilai akhir yang diperoleh (${na}) belum mencapai nilai minimum kelulusan yang ditetapkan (${kkm}).
-      Peserta dapat mengikuti kegiatan bimtek pada periode berikutnya untuk memperdalam penguasaan materi.
-      Informasi jadwal dan pendaftaran dapat diperoleh dari penyelenggara.
     </div>` : '';
 
   return `
