@@ -29,7 +29,7 @@ export function mapToLabel(value, thresholds) {
  * @returns {string} narasi HTML (paragraf <p> dengan <strong>)
  */
 export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, lulus, nilaiAkhir) {
-  const subjek = 'Peserta';
+  const subjek = pesertaNama ? `Peserta ${_esc(pesertaNama)}` : 'Peserta';
   const p = s => `<p style="margin:0 0 10px 0; text-align:justify;">${s}</p>`;
 
   // ── Edge case: tidak ada data EK ───────────────────────────────────────────
