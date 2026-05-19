@@ -152,15 +152,15 @@ export function generateNarasiDeskriptif(komponen, label, nilaiRaw, fakta) {
   if (komponen === 'respek') {
     let elaborasi;
     if (v >= 85) {
-      elaborasi = 'Peserta senantiasa memperlihatkan etika komunikasi yang baik, menghargai pendapat fasilitator maupun sesama peserta, serta menjaga ketertiban dan kekondusifan suasana pembelajaran sepanjang kegiatan berlangsung.';
+      elaborasi = 'Peserta senantiasa memperlihatkan etika komunikasi yang baik, menghargai pendapat pengajar dan panitia maupun sesama peserta, serta menjaga ketertiban dan kekondusifan suasana pembelajaran sepanjang kegiatan berlangsung.';
     } else if (v >= 70) {
-      elaborasi = 'Peserta memperlihatkan sikap yang baik dalam berinteraksi dengan fasilitator dan sesama peserta, serta menjaga kekondusifan suasana selama kegiatan bimbingan teknis berlangsung.';
+      elaborasi = 'Peserta memperlihatkan sikap yang baik dalam berinteraksi dengan pengajar dan panitia dan sesama peserta, serta menjaga kekondusifan suasana selama kegiatan bimbingan teknis berlangsung.';
     } else if (v >= 55) {
       elaborasi = 'Peserta cukup menjaga etika dan sikap selama kegiatan. Peningkatan dalam hal menghargai sesi dan menjaga ketertiban diharapkan dapat mendukung suasana pembelajaran yang lebih kondusif bagi seluruh peserta.';
     } else {
       elaborasi = 'Terdapat beberapa aspek terkait sikap dan respek yang perlu mendapatkan perhatian lebih lanjut guna menciptakan suasana pembelajaran yang kondusif dan produktif bagi seluruh peserta kegiatan.';
     }
-    return `Selama kegiatan bimbingan teknis berlangsung, peserta menunjukkan sikap dan respek yang tergolong <strong>${_esc(label)}</strong> terhadap fasilitator maupun sesama peserta. ${elaborasi}`;
+    return `Selama kegiatan bimbingan teknis berlangsung, peserta menunjukkan sikap dan respek yang tergolong <strong>${_esc(label)}</strong> terhadap pengajar dan panitia maupun sesama peserta. ${elaborasi}`;
   }
 
   return `Komponen ini tergolong <strong>${_esc(label)}</strong>.`;
