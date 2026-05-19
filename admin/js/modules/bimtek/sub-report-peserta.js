@@ -946,7 +946,7 @@ function _buildCertHTML(data) {
           <div style="font-size:10px;font-family:sans-serif;">${_esc(lembaga.kota || lembaga.lokasi || '')}, ${tglCetak}</div>
           <div style="height:56px;"></div>
           <div style="border-top:1.5px solid #1a1a1a;padding-top:4px;">
-            <div style="font-size:11px;font-weight:bold;font-family:sans-serif;">${_esc(lembaga.nama || namaLembaga)}</div>
+            <div style="font-size:11px;font-weight:bold;font-family:sans-serif;">${_esc(lembaga.nama || 'Balai Teknik Air Minum')}</div>
           </div>
         </div>
       </div>
