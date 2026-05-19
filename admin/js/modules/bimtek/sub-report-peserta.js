@@ -463,7 +463,7 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
   }
 
   // C.4 — Narasi
-  const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama);
+  const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null);
   const narasiSection = `
     <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
       C.4 Analisis Kompetensi
