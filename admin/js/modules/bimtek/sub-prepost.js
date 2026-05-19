@@ -11,10 +11,10 @@ import { confirmDialog } from '../../components/modal.js';
 export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSyncComplete) {
   try {
     const exams = await listExams(bimtekId);
-    const prePostExams = exams.filter(e => ['pretest', 'posttest', 'pretest_posttest'].includes(e.tipe));
+    const prePostExams = exams.filter(e => ['pretest', 'posttest', 'pretest_posttest', 'seleksi_tertulis'].includes(e.tipe));
 
     if (prePostExams.length === 0) {
-      container.innerHTML = '<div class="text-gray-400 text-sm">Belum ada exam pre/post test yang terkait.</div>';
+      container.innerHTML = '<div class="text-gray-400 text-sm">Belum ada exam pre/post test atau seleksi tertulis yang terkait.</div>';
       return;
     }
 
@@ -34,10 +34,12 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
           });
 
           const tipe = exam.tipe;
-          const showPre  = tipe === 'pretest' || tipe === 'pretest_posttest';
-          const showPost = tipe === 'posttest' || tipe === 'pretest_posttest';
-          const preCount  = examResults.filter(r => r.tipeSession === 'pretest').length;
-          const postCount = examResults.filter(r => r.tipeSession === 'posttest').length;
+          const isSeleksi = tipe === 'seleksi_tertulis';
+          const showPre   = !isSeleksi && (tipe === 'pretest'  || tipe === 'pretest_posttest');
+          const showPost  = !isSeleksi && (tipe === 'posttest' || tipe === 'pretest_posttest');
+          const preCount     = examResults.filter(r => r.tipeSession === 'pretest').length;
+          const postCount    = examResults.filter(r => r.tipeSession === 'posttest').length;
+          const seleksiCount = examResults.filter(r => r.tipeSession === 'seleksi_tertulis').length;
 
           const hasSkor = Object.keys(byPeserta).length > 0;
 
@@ -47,11 +49,13 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                 <div>
                   <h3 class="font-medium text-white">${_esc(exam.judul)}</h3>
                   <div class="text-xs text-gray-400 mt-1">
-                    Tipe: ${tipe === 'pretest_posttest' ? 'Pre & Post' : tipe === 'pretest' ? 'Pre-Test' : 'Post-Test'}
+                    Tipe: ${tipe === 'pretest_posttest' ? 'Pre & Post' : tipe === 'pretest' ? 'Pre-Test' : tipe === 'posttest' ? 'Post-Test' : 'Seleksi Tertulis'}
                     · ${exam.published ? 'Dipublikasikan' : 'Draft'}
                   </div>
                   <div class="text-xs text-blue-400 mt-1">
-                    Pre: ${preCount} · Post: ${postCount} submission terscore
+                    ${isSeleksi
+                      ? `${seleksiCount} submission terscore`
+                      : `Pre: ${preCount} · Post: ${postCount} submission terscore`}
                   </div>
                 </div>
                 <button class="btn-sync-exam shrink-0 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors"
@@ -66,6 +70,7 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                     <thead>
                       <tr>
                         <th>Peserta</th>
+                        ${isSeleksi ? '<th class="text-left">Nilai</th>' : ''}
                         ${showPre  ? '<th class="text-left">Pre Test</th>' : ''}
                         ${showPost ? '<th class="text-left">Post Test</th>' : ''}
                         ${showPre && showPost ? '<th class="text-left">Peningkatan</th>' : ''}
@@ -77,9 +82,11 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                         const post = skor.posttest ?? null;
                         const delta = (pre !== null && post !== null) ? post - pre : null;
                         const deltaClass = delta === null ? '' : delta >= 0 ? 'text-green-400' : 'text-red-400';
+                        const seleksiNilai = skor['seleksi_tertulis'] ?? null;
                         return `
                           <tr>
                             <td class="font-medium text-sm">${_esc(noPeserta)}</td>
+                            ${isSeleksi ? `<td class="text-left">${seleksiNilai !== null ? seleksiNilai : '—'}</td>` : ''}
                             ${showPre  ? `<td class="text-left">${pre  !== null ? pre  : '—'}</td>` : ''}
                             ${showPost ? `<td class="text-left">${post !== null ? post : '—'}</td>` : ''}
                             ${showPre && showPost ? `<td class="text-left ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>` : ''}

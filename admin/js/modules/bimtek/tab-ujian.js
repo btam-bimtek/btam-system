@@ -26,9 +26,10 @@ const EXAM_HOST = (() => {
 })();
 
 const TIPE_LABEL = {
-  pretest:           'Pre-Test',
-  posttest:          'Post-Test',
-  pretest_posttest:  'Pre-Test & Post-Test',
+  pretest:            'Pre-Test',
+  posttest:           'Post-Test',
+  pretest_posttest:   'Pre-Test & Post-Test',
+  seleksi_tertulis:   'Seleksi Tertulis',
 };
 
 const SESSION_STATUS_LABEL = {
@@ -259,9 +260,10 @@ async function _showExamModal(app, el, S, exam) {
             <div>
               <label class="block text-xs text-gray-400 mb-1">Tipe</label>
               <select id="exam-tipe" class="form-select w-full">
-                <option value="pretest"          ${exam?.tipe === 'pretest'          ? 'selected' : ''}>Pre-Test</option>
-                <option value="posttest"         ${exam?.tipe === 'posttest'         ? 'selected' : ''}>Post-Test</option>
-                <option value="pretest_posttest" ${exam?.tipe === 'pretest_posttest' ? 'selected' : ''}>Pre-Test & Post-Test (soal sama)</option>
+                <option value="pretest"           ${exam?.tipe === 'pretest'           ? 'selected' : ''}>Pre-Test</option>
+                <option value="posttest"          ${exam?.tipe === 'posttest'          ? 'selected' : ''}>Post-Test</option>
+                <option value="pretest_posttest"  ${exam?.tipe === 'pretest_posttest'  ? 'selected' : ''}>Pre-Test & Post-Test (soal sama)</option>
+                <option value="seleksi_tertulis"  ${exam?.tipe === 'seleksi_tertulis'  ? 'selected' : ''}>Seleksi Tertulis</option>
               </select>
             </div>
             <div>
@@ -457,7 +459,7 @@ function _buildInlineSessions(exam, sessions) {
     ? ['pretest', 'posttest']
     : [exam.tipe];
 
-  const thCols = tipeCols.map(t => `<th class="text-left text-xs">${t === 'pretest' ? 'Pre-Test' : 'Post-Test'}</th>`).join('');
+  const thCols = tipeCols.map(t => `<th class="text-left text-xs">${TIPE_LABEL[t] || t}</th>`).join('');
 
   const rows = Object.entries(byPeserta).sort(([a], [b]) => a.localeCompare(b)).map(([noPeserta, sesiMap]) => {
     const cols = tipeCols.map(tipe => {

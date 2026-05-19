@@ -139,16 +139,18 @@ export async function scoreAllSubmissions(bimtekId, examId) {
           rescoredAt: serverTimestamp()
         }, { merge: false });
 
-        // Update bimtek_scores (set+merge agar otomatis buat dokumen jika belum ada)
-        const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
-        const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${submission.noPeserta}`);
-        batch.set(scoreRef, {
-          noPeserta: submission.noPeserta,
-          bimtekId,
-          [scoreKey]: skor,
-          [`${scoreKey}_src`]: 'firebase',
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+        // Update bimtek_scores — skip untuk seleksi_tertulis (bukan komponen penilaian bimtek)
+        if (submission.tipeSession !== 'seleksi_tertulis') {
+          const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
+          const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${submission.noPeserta}`);
+          batch.set(scoreRef, {
+            noPeserta: submission.noPeserta,
+            bimtekId,
+            [scoreKey]: skor,
+            [`${scoreKey}_src`]: 'firebase',
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
 
         processed++;
       } catch (err) {
@@ -231,15 +233,18 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       rescoredAt: serverTimestamp()
     }, { merge: false });
 
-    const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
-    const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`);
-    batch.set(scoreRef, {
-      noPeserta,
-      bimtekId,
-      [scoreKey]: skor,
-      [`${scoreKey}_src`]: 'firebase',
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    // Skip bimtek_scores untuk seleksi_tertulis
+    if (submission.tipeSession !== 'seleksi_tertulis') {
+      const scoreKey = submission.tipeSession === 'pretest' ? 'pretest' : 'posttest';
+      const scoreRef = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`);
+      batch.set(scoreRef, {
+        noPeserta,
+        bimtekId,
+        [scoreKey]: skor,
+        [`${scoreKey}_src`]: 'firebase',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
 
     await batch.commit();
 
