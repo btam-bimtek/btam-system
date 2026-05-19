@@ -32,7 +32,7 @@ export async function listBimtekScores(bimtekId) {
 
   return scores.map(s => {
     const nilaiAkhir = hitungNilaiAkhir(s, bimtek.data());
-    const lulus = cekKelulusan(nilaiAkhir, bimtek.data().kkm);
+    const lulus = cekKelulusan(nilaiAkhir, bimtek.data().kkm, s.kehadiran ?? null);
     return {
       ...s,
       nilaiAkhir,

@@ -83,7 +83,7 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
                           data-peserta="${_esc(score.noPeserta)}"
                           data-mapel="${_esc(mapelId)}"
                           data-hari="${_esc(d)}"
-                          checked />
+                          ${allHadir ? 'checked' : ''} />
                       </td>
                     `;
                   }).join('')).join('')}

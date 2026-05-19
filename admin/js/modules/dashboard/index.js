@@ -234,7 +234,7 @@ async function _loadKelulusanChart(allBimtek) {
       let lulus = 0;
       scores.forEach(s => {
         const na = hitungNilaiAkhir(s, b);
-        if (cekKelulusan(na, b.kkm)) lulus++;
+        if (cekKelulusan(na, b.kkm, s.kehadiran ?? null)) lulus++;
       });
       return { nama: b.nama, total: scores.length, lulus, tidakLulus: scores.length - lulus };
     }));

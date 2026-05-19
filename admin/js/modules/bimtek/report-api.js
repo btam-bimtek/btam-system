@@ -125,7 +125,7 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
 
   // Hitung nilai akhir
   const nilaiAkhir = rawScores ? hitungNilaiAkhir(rawScores, bimtek) : 0;
-  const lulus      = cekKelulusan(nilaiAkhir, bimtek.kkm);
+  const lulus      = cekKelulusan(nilaiAkhir, bimtek.kkm, rawScores?.kehadiran ?? null);
   const scores     = rawScores ? { ...rawScores, nilaiAkhir, lulus } : null;
 
   // Hitung detail kehadiran (hadir/total sesi)

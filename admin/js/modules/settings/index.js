@@ -124,6 +124,28 @@ function _renderLembaga(container) {
         </div>
       </div>
 
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+        <h2 class="text-sm font-semibold text-white mb-2">Penanda Tangan Sertifikat</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Kota Penandatanganan</label>
+            <input name="kota" class="form-input" placeholder="Jakarta"
+                   value="${_esc(d.kota ?? '')}" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama Penanda Tangan</label>
+            <input name="penandaTangan" class="form-input" placeholder="Nama lengkap"
+                   value="${_esc(d.penandaTangan ?? '')}" />
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Jabatan Penanda Tangan</label>
+            <input name="jabatanPenandaTangan" class="form-input"
+                   placeholder="Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan"
+                   value="${_esc(d.jabatanPenandaTangan ?? '')}" />
+          </div>
+        </div>
+      </div>
+
       <div class="flex justify-end">
         <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
           Simpan
@@ -140,11 +162,14 @@ function _renderLembaga(container) {
     btn.textContent = 'Menyimpan…';
     try {
       await saveAppSetting('lembaga', {
-        nama:    data.nama.trim(),
-        alamat:  data.alamat.trim(),
-        website: data.website.trim(),
-        email:   data.email.trim(),
-        phone:   data.phone.trim()
+        nama:                  data.nama.trim(),
+        alamat:                data.alamat.trim(),
+        website:               data.website.trim(),
+        email:                 data.email.trim(),
+        phone:                 data.phone.trim(),
+        kota:                  data.kota.trim(),
+        penandaTangan:         data.penandaTangan.trim(),
+        jabatanPenandaTangan:  data.jabatanPenandaTangan.trim()
       });
       S.settings.lembaga = { ...(S.settings.lembaga ?? {}), ...data };
       showToast('Info lembaga disimpan', 'success');

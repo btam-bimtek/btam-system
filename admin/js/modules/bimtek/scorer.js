@@ -291,8 +291,10 @@ export function hitungNilaiAkhir(scores, bimtek) {
 }
 
 /**
- * Cek kelulusan berdasarkan nilai akhir dan KKM.
+ * Cek kelulusan berdasarkan nilai akhir, KKM, dan syarat kehadiran minimum 90%.
+ * Jika kehadiranPct tersedia dan < 90, peserta otomatis belum lulus.
  */
-export function cekKelulusan(nilaiAkhir, kkm) {
+export function cekKelulusan(nilaiAkhir, kkm, kehadiranPct = null) {
+  if (kehadiranPct !== null && kehadiranPct < 90) return false;
   return nilaiAkhir >= (kkm || 60);
 }

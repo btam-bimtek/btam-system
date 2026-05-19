@@ -109,6 +109,34 @@ export function openPesertaForm(existing = null, onSaved) {
           <input name="kabKota" type="text" class="form-input"
             value="${_esc(existing?.kabKota ?? '')}" placeholder="Kab./Kota" />
         </div>
+
+        <!-- NIK -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">NIK</label>
+          <input name="nik" type="text" maxlength="16" class="form-input"
+            value="${_esc(existing?.nik ?? '')}" placeholder="16 digit NIK" />
+        </div>
+
+        <!-- Kualifikasi -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Kualifikasi</label>
+          <input name="kualifikasi" type="text" class="form-input"
+            value="${_esc(existing?.kualifikasi ?? '')}" placeholder="Kualifikasi / golongan" />
+        </div>
+
+        <!-- Tempat Lahir -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Tempat Lahir</label>
+          <input name="tempatLahir" type="text" class="form-input"
+            value="${_esc(existing?.tempatLahir ?? '')}" placeholder="Kota tempat lahir" />
+        </div>
+
+        <!-- Tanggal Lahir -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Tanggal Lahir</label>
+          <input name="tanggalLahir" type="date" class="form-input"
+            value="${_esc(existing?.tanggalLahir ?? '')}" />
+        </div>
       </div>
 
       <!-- Error -->

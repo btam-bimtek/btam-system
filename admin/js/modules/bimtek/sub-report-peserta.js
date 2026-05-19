@@ -869,85 +869,133 @@ function _printSuratKeterangan() {
 
 function _buildCertHTML(data) {
   const { peserta, scores } = data;
-  const b        = S.bimtek;
-  const lembaga  = S.lembagaSettings ?? {};
-  const nilaiAkhir = scores?.nilaiAkhir ?? '-';
+  const b       = S.bimtek;
+  const lembaga = S.lembagaSettings ?? {};
 
-  const periodeStr = (() => {
-    const fmt = ts => {
-      if (!ts) return '';
-      const d = ts.toDate ? ts.toDate() : new Date(ts);
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-    };
-    const m = fmt(b.periode?.mulai);
-    const s = fmt(b.periode?.selesai);
-    return m && s ? `${m} s.d. ${s}` : (m || s || '-');
+  const _fmtTs = ts => {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const mulai   = _fmtTs(b.periode?.mulai);
+  const selesai = _fmtTs(b.periode?.selesai);
+  const periodeStr = mulai && selesai
+    ? `${mulai} sampai dengan ${selesai}`
+    : (mulai || selesai || '—');
+  const tglTTD = selesai || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Tempat, Tanggal Lahir
+  const ttl = (() => {
+    const bagian = [];
+    if (peserta?.tempatLahir) bagian.push(_esc(peserta.tempatLahir));
+    if (peserta?.tanggalLahir) {
+      const d = new Date(peserta.tanggalLahir);
+      bagian.push(isNaN(d.getTime())
+        ? _esc(peserta.tanggalLahir)
+        : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }));
+    }
+    return bagian.join(', ') || '—';
   })();
 
-  const tglCetak = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-  const kopUrl = lembaga.logoUrl || '../shared/assets/kop_btam.png';
+  const namaLemb         = lembaga.nama                || 'Balai Teknik Air Minum';
+  const kota             = lembaga.kota                || 'Jakarta';
+  const penanda          = lembaga.penandaTangan        || '';
+  const jabatanPenanda   = lembaga.jabatanPenandaTangan || 'Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan';
+  const logoUrl          = lembaga.logoUrl              ?? null;
+  const noCert           = `${peserta?.noPeserta ?? ''}/${new Date().getFullYear()}`;
+
+  const certRow = (label, val) => `
+    <tr>
+      <td style="padding:0.7mm 0;white-space:nowrap;color:#374151;vertical-align:top;">${label}</td>
+      <td style="padding:0.7mm 3mm;color:#374151;vertical-align:top;">:</td>
+      <td style="padding:0.7mm 0;color:#111827;font-weight:600;vertical-align:top;">${val || '—'}</td>
+    </tr>`;
 
   return `
     <div style="
-      width:267mm; min-height:190mm;
-      padding:14mm 16mm;
-      font-family:'Times New Roman',Georgia,serif;
-      color:#1a1a1a;
-      background:#fff;
+      width:297mm; height:210mm;
+      position:relative; overflow:hidden;
+      background:#ffffff;
+      font-family:Arial,Helvetica,sans-serif;
       box-sizing:border-box;
-      border:6px double #8a7a50;
-      position:relative;
     ">
-      <!-- Ornamen sudut -->
-      <div style="position:absolute;top:10px;left:10px;width:40px;height:40px;border-top:3px solid #8a7a50;border-left:3px solid #8a7a50;"></div>
-      <div style="position:absolute;top:10px;right:10px;width:40px;height:40px;border-top:3px solid #8a7a50;border-right:3px solid #8a7a50;"></div>
-      <div style="position:absolute;bottom:10px;left:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-left:3px solid #8a7a50;"></div>
-      <div style="position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-right:3px solid #8a7a50;"></div>
+      <!-- BG: Blue top bar -->
+      <div style="position:absolute;top:0;left:0;right:0;height:5mm;background:#1a3a8f;z-index:1;"></div>
 
-      <!-- Header: Kop Surat -->
-      <div style="border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;">
-        <img src="${_esc(kopUrl)}" alt="Kop Surat" style="width:100%;height:auto;display:block;">
-      </div>
+      <!-- BG: Orange right diagonal panel -->
+      <div style="position:absolute;top:0;right:0;width:105mm;height:100%;z-index:1;
+        background:linear-gradient(160deg,#f59e0b 0%,#e07820 45%,#c05510 100%);
+        clip-path:polygon(30% 0,100% 0,100% 100%,0 100%);"></div>
 
-      <!-- Judul -->
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#8a7a50;font-family:sans-serif;margin-bottom:4px;">SERTIFIKAT</div>
-        <div style="font-size:28px;font-weight:bold;letter-spacing:6px;text-transform:uppercase;line-height:1.1;">KELULUSAN</div>
-        <div style="width:80px;height:2px;background:#8a7a50;margin:10px auto;"></div>
-      </div>
+      <!-- BG: Blue bottom bar -->
+      <div style="position:absolute;bottom:0;left:0;right:0;height:5mm;background:#1a3a8f;z-index:2;"></div>
 
-      <!-- Diberikan kepada -->
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:11px;color:#555;font-family:sans-serif;margin-bottom:6px;">Diberikan kepada</div>
-        <div style="font-size:26px;font-weight:bold;font-style:italic;border-bottom:1.5px solid #1a1a1a;padding-bottom:4px;display:inline-block;min-width:260px;">
-          ${_esc(peserta?.nama ?? '-')}
-        </div>
-        <div style="margin-top:8px;font-size:11px;color:#444;font-family:sans-serif;">
-          ${peserta?.jabatan ? `${_esc(peserta.jabatan)}` : ''}
-          ${peserta?.jabatan && peserta?.instansi ? ' · ' : ''}
-          ${peserta?.instansi ? `${_esc(peserta.instansi)}` : ''}
-        </div>
-        ${peserta?.noPeserta || peserta?.id ? `<div style="font-size:10px;color:#888;font-family:sans-serif;">No. Peserta: ${_esc(peserta.noPeserta ?? peserta.id)}</div>` : ''}
-      </div>
-
-      <!-- Nama bimtek -->
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:11px;color:#555;font-family:sans-serif;">Telah dinyatakan <strong>LULUS</strong> dalam kegiatan</div>
-        <div style="font-size:17px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:6px 0;">${_esc(b.nama)}</div>
-        <div style="font-size:10px;color:#666;font-family:sans-serif;">${_esc(periodeStr)}</div>
-        <div style="margin-top:6px;display:inline-block;background:#f5f0e8;border:1px solid #8a7a50;border-radius:4px;padding:3px 14px;font-size:12px;font-family:sans-serif;">
-          Nilai Akhir: <strong>${nilaiAkhir}</strong>
-        </div>
-      </div>
-
-      <!-- TTD -->
-      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <div style="text-align:center;min-width:180px;">
-          <div style="font-size:10px;font-family:sans-serif;">${_esc(lembaga.kota || lembaga.lokasi || '')}, ${tglCetak}</div>
-          <div style="height:56px;"></div>
-          <div style="border-top:1.5px solid #1a1a1a;padding-top:4px;">
-            <div style="font-size:11px;font-weight:bold;font-family:sans-serif;">${_esc(lembaga.nama || 'Balai Teknik Air Minum')}</div>
+      <!-- MAIN CONTENT (white area) -->
+      <div style="
+        position:absolute; top:5mm; left:0; right:105mm; bottom:5mm; z-index:10;
+        padding:6mm 8mm 7mm 10mm;
+        display:flex; flex-direction:column;
+        box-sizing:border-box;
+      ">
+        <!-- Logo + header kementerian -->
+        <div style="text-align:center;margin-bottom:2mm;line-height:1.4;">
+          ${logoUrl
+            ? `<img src="${_esc(logoUrl)}" style="height:11mm;width:auto;display:block;margin:0 auto 1.5mm;" alt="Logo">`
+            : ''}
+          <div style="font-size:7pt;font-weight:700;color:#1a3a8f;letter-spacing:0.2px;line-height:1.4;">
+            KEMENTERIAN PEKERJAAN UMUM<br>DIREKTORAT JENDERAL CIPTA KARYA
           </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top:1.5px solid #1a3a8f;margin:1mm 0 2mm;"></div>
+
+        <!-- SERTIFIKAT -->
+        <div style="text-align:center;margin-bottom:0.5mm;">
+          <span style="font-size:20pt;font-weight:900;letter-spacing:5px;color:#e07820;">SERTIFIKAT</span>
+        </div>
+
+        <!-- Nomor -->
+        <div style="text-align:center;font-size:7pt;color:#4b5563;margin-bottom:3mm;">
+          Nomor : ${_esc(noCert)}
+        </div>
+
+        <!-- Diberikan Kepada -->
+        <div style="font-size:7.5pt;font-weight:700;color:#111827;margin-bottom:1.5mm;">
+          Diberikan Kepada :
+        </div>
+
+        <!-- Fields table -->
+        <div style="flex:1;font-size:7.5pt;overflow:hidden;">
+          <table style="border-collapse:collapse;width:100%;">
+            <colgroup><col style="width:42mm;"><col style="width:5mm;"><col></colgroup>
+            ${certRow('Nama', _esc(peserta?.nama))}
+            ${certRow('NIK', _esc(peserta?.nik))}
+            ${certRow('Tempat, Tanggal Lahir', ttl)}
+            ${certRow('Jabatan', _esc(peserta?.jabatan))}
+            ${certRow('Instansi', _esc(peserta?.instansi))}
+            ${certRow('Kualifikasi', _esc(peserta?.kualifikasi))}
+          </table>
+        </div>
+
+        <!-- Bimtek description -->
+        <div style="font-size:7pt;line-height:1.65;color:#374151;text-align:justify;">
+          Pada Bimbingan Teknis <strong style="color:#111827;">${_esc(b.nama)}</strong>
+          yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
+        </div>
+      </div>
+
+      <!-- TTD (on orange background, white text) -->
+      <div style="
+        position:absolute; right:5mm; bottom:12mm; width:88mm; z-index:20;
+        text-align:center; color:#fff;
+      ">
+        <div style="font-size:7.5pt;">${_esc(kota)}, ${_esc(tglTTD)}</div>
+        <div style="font-size:7.5pt;line-height:1.4;margin:1.5mm 0;">${_esc(jabatanPenanda)}</div>
+        <div style="height:16mm;"></div>
+        <div style="font-size:8.5pt;font-weight:700;border-top:1px solid rgba(255,255,255,0.55);padding-top:1.5mm;display:inline-block;min-width:55mm;">
+          ${_esc(penanda)}
         </div>
       </div>
     </div>
