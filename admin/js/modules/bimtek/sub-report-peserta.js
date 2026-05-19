@@ -2,7 +2,7 @@
 // Laporan peserta: list + preview 4-section + print.
 
 import { getPesertaReportData } from './report-api.js';
-import { mapToLabel, generateNarasi } from './report-narrative.js';
+import { mapToLabel, generateNarasi, generateNarasiDeskriptif } from './report-narrative.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
@@ -320,15 +320,18 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
   const keaktifanLabel = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
   const respekLabel    = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
 
-  const deskriptifItem = (icon, komponen, label, fakta) => {
+  const deskriptifItem = (icon, komponenLabel, komponenKey, label, nilaiRaw, fakta) => {
     if (!label) return '';
+    const narasi = generateNarasiDeskriptif(komponenKey, label, nilaiRaw, fakta);
     return `
-      <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;">
-        <span style="font-size:18px;">${icon}</span>
-        <div>
-          <span style="font-size:13px; font-weight:600;">${komponen}:</span>
-          <span style="font-size:13px; font-weight:600; margin-left:4px;">${_esc(label)}</span>
-          ${fakta ? `<span style="font-size:12px; color:#666; margin-left:6px;">— ${_esc(fakta)}</span>` : ''}
+      <div style="padding:14px 0; border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:16px;">${icon}</span>
+          <span style="font-size:13px; font-weight:700; color:#1a1a1a;">${komponenLabel}</span>
+          <span style="background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600;">${_esc(label)}</span>
+        </div>
+        <div style="font-size:12.5px; color:#374151; line-height:1.75; padding-left:24px;">
+          ${narasi}
         </div>
       </div>`;
   };
@@ -370,9 +373,9 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
       B.2 Komponen Deskriptif
     </div>
     <div style="background:#f8f9fa; border-radius:8px; padding:12px 16px;">
-      ${deskriptifItem('📅', 'Kehadiran', kehadiran_label, kehadiranFakta)}
-      ${deskriptifItem('💬', 'Keaktifan', keaktifanLabel, null)}
-      ${deskriptifItem('🤝', 'Sikap & Respek', respekLabel, null)}
+      ${deskriptifItem('📅', 'Kehadiran',     'kehadiran', kehadiran_label, scores?.kehadiran ?? null, kehadiranFakta)}
+      ${deskriptifItem('💬', 'Keaktifan',     'keaktifan', keaktifanLabel,  scores?.keaktifan ?? null, null)}
+      ${deskriptifItem('🤝', 'Sikap & Respek','respek',    respekLabel,     scores?.respek    ?? null, null)}
       ${!kehadiran_label && !keaktifanLabel && !respekLabel
         ? '<div style="color:#999; font-size:12px; text-align:center; padding:8px;">Data komponen deskriptif belum tersedia.</div>'
         : ''}

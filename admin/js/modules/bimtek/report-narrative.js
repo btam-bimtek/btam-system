@@ -108,6 +108,64 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama) {
   return narasi;
 }
 
+/**
+ * Bangun narasi deskriptif untuk komponen B.2 (Kehadiran, Keaktifan, Sikap & Respek).
+ *
+ * @param {'kehadiran'|'keaktifan'|'respek'} komponen
+ * @param {string} label   - label kualitatif dari mapToLabel (misal "Sangat Baik")
+ * @param {number|null} nilaiRaw - nilai numerik (0-100) untuk menentukan sentimen narasi
+ * @param {string|null} fakta   - fakta tambahan (khusus kehadiran: "8 dari 10 sesi (80%)")
+ * @returns {string} narasi (bisa mengandung <strong> tag)
+ */
+export function generateNarasiDeskriptif(komponen, label, nilaiRaw, fakta) {
+  const v = nilaiRaw ?? 0;
+
+  if (komponen === 'kehadiran') {
+    const faktaStr = fakta ? `sebanyak ${fakta}` : `dengan tingkat kehadiran yang tercatat`;
+    let elaborasi;
+    if (v >= 90) {
+      elaborasi = 'Konsistensi kehadiran yang sangat tinggi ini mencerminkan komitmen penuh peserta terhadap kegiatan bimbingan teknis dan mendukung penyerapan materi secara optimal.';
+    } else if (v >= 75) {
+      elaborasi = 'Kehadiran yang baik ini berkontribusi positif terhadap penyerapan materi dan pencapaian kompetensi selama kegiatan berlangsung.';
+    } else if (v >= 60) {
+      elaborasi = 'Meskipun beberapa sesi tidak dapat diikuti, peserta telah memenuhi persyaratan kehadiran minimum yang ditetapkan. Peningkatan kehadiran pada kegiatan berikutnya sangat dianjurkan.';
+    } else {
+      elaborasi = 'Tingkat kehadiran yang masih perlu ditingkatkan ini dapat mempengaruhi penyerapan materi secara keseluruhan. Diharapkan pada kegiatan bimbingan teknis berikutnya peserta dapat lebih konsisten mengikuti seluruh rangkaian kegiatan.';
+    }
+    return `Peserta mengikuti kegiatan bimbingan teknis ${faktaStr}. Tingkat kehadiran ini tergolong <strong>${_esc(label)}</strong>. ${elaborasi}`;
+  }
+
+  if (komponen === 'keaktifan') {
+    let elaborasi;
+    if (v >= 85) {
+      elaborasi = 'Peserta secara aktif berpartisipasi dalam sesi diskusi, tanya jawab, dan kegiatan kelompok yang diselenggarakan. Keaktifan yang tinggi ini berkontribusi positif terhadap dinamika pembelajaran di kelas dan mencerminkan antusiasme yang kuat terhadap materi yang disampaikan.';
+    } else if (v >= 70) {
+      elaborasi = 'Peserta menunjukkan partisipasi yang baik dalam kegiatan diskusi dan tanya jawab, serta berkontribusi dalam kegiatan kelompok yang dilaksanakan selama bimbingan teknis berlangsung.';
+    } else if (v >= 55) {
+      elaborasi = 'Peserta cukup terlibat dalam kegiatan pembelajaran. Peningkatan partisipasi aktif dalam sesi diskusi dan tanya jawab diharapkan dapat memperdalam pemahaman dan penguasaan materi pada kegiatan mendatang.';
+    } else {
+      elaborasi = 'Partisipasi aktif peserta dalam kegiatan diskusi dan tanya jawab masih perlu ditingkatkan guna memaksimalkan manfaat yang dapat diperoleh dari kegiatan bimbingan teknis.';
+    }
+    return `Selama mengikuti kegiatan bimbingan teknis, peserta menunjukkan tingkat keaktifan yang tergolong <strong>${_esc(label)}</strong>. ${elaborasi}`;
+  }
+
+  if (komponen === 'respek') {
+    let elaborasi;
+    if (v >= 85) {
+      elaborasi = 'Peserta senantiasa memperlihatkan etika komunikasi yang baik, menghargai pendapat fasilitator maupun sesama peserta, serta menjaga ketertiban dan kekondusifan suasana pembelajaran sepanjang kegiatan berlangsung.';
+    } else if (v >= 70) {
+      elaborasi = 'Peserta memperlihatkan sikap yang baik dalam berinteraksi dengan fasilitator dan sesama peserta, serta menjaga kekondusifan suasana selama kegiatan bimbingan teknis berlangsung.';
+    } else if (v >= 55) {
+      elaborasi = 'Peserta cukup menjaga etika dan sikap selama kegiatan. Peningkatan dalam hal menghargai sesi dan menjaga ketertiban diharapkan dapat mendukung suasana pembelajaran yang lebih kondusif bagi seluruh peserta.';
+    } else {
+      elaborasi = 'Terdapat beberapa aspek terkait sikap dan respek yang perlu mendapatkan perhatian lebih lanjut guna menciptakan suasana pembelajaran yang kondusif dan produktif bagi seluruh peserta kegiatan.';
+    }
+    return `Selama kegiatan bimbingan teknis berlangsung, peserta menunjukkan sikap dan respek yang tergolong <strong>${_esc(label)}</strong> terhadap fasilitator maupun sesama peserta. ${elaborasi}`;
+  }
+
+  return `Komponen ini tergolong <strong>${_esc(label)}</strong>.`;
+}
+
 function _esc(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
