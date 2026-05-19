@@ -239,27 +239,12 @@ function _buildSectionA(peserta, b) {
     : '';
 
   const ls = S.lembagaSettings;
-  const namaLembaga = ls?.nama    || 'BTAM TERPADU';
-  const websiteTeks = ls?.website || 'www.btam.go.id';
-  const alamatTeks  = ls?.alamat  ? ls.alamat.split('\n')[0].trim() : 'Badan Teknis Air Minum';
-
-  const logoEl = ls?.logoUrl
-    ? `<img src="${_esc(ls.logoUrl)}" alt="Logo"
-           style="width:64px; height:64px; object-fit:contain; border-radius:8px; flex-shrink:0;" />`
-    : `<div style="width:64px; height:64px; background:#1e40af; border-radius:8px;
-                  display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-         <span style="color:white; font-weight:bold; font-size:18px; font-family:sans-serif;">B</span>
-       </div>`;
+  const kopUrl = ls?.logoUrl || '../shared/assets/kop_btam.png';
 
   return `
     <!-- Kop Surat -->
-    <div style="display:flex; align-items:flex-start; gap:20px; margin-bottom:20px;">
-      ${logoEl}
-      <div>
-        <div style="font-size:16px; font-weight:bold; font-family:sans-serif; color:#1a1a1a;">${_esc(namaLembaga)}</div>
-        <div style="font-size:12px; color:#444; font-family:sans-serif; margin-top:2px;">${_esc(alamatTeks)}</div>
-        <div style="font-size:11px; color:#666; font-family:sans-serif; margin-top:2px;">${_esc(websiteTeks)}</div>
-      </div>
+    <div style="margin-bottom:20px;">
+      <img src="${_esc(kopUrl)}" alt="Kop Surat" style="width:100%; height:auto; display:block;" />
     </div>
 
     <div style="text-align:center; margin-bottom:20px;">
@@ -722,8 +707,7 @@ function _buildCertHTML(data) {
   })();
 
   const tglCetak = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-  const namaLembaga = lembaga.nama || 'BTAM Terpadu';
-  const logoUrl     = lembaga.logoUrl || '';
+  const kopUrl = lembaga.logoUrl || '../shared/assets/kop_btam.png';
 
   return `
     <div style="
@@ -742,14 +726,9 @@ function _buildCertHTML(data) {
       <div style="position:absolute;bottom:10px;left:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-left:3px solid #8a7a50;"></div>
       <div style="position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-bottom:3px solid #8a7a50;border-right:3px solid #8a7a50;"></div>
 
-      <!-- Header: Logo + Nama Lembaga -->
-      <div style="display:flex;align-items:center;gap:16px;border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;">
-        ${logoUrl ? `<img src="${logoUrl}" style="height:64px;width:auto;object-fit:contain;flex-shrink:0;">` : ''}
-        <div>
-          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#666;font-family:sans-serif;">Lembaga Penyelenggara</div>
-          <div style="font-size:17px;font-weight:bold;letter-spacing:1px;">${_esc(namaLembaga)}</div>
-          ${lembaga.alamat ? `<div style="font-size:10px;color:#555;">${_esc(lembaga.alamat)}</div>` : ''}
-        </div>
+      <!-- Header: Kop Surat -->
+      <div style="border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:20px;">
+        <img src="${_esc(kopUrl)}" alt="Kop Surat" style="width:100%;height:auto;display:block;">
       </div>
 
       <!-- Judul -->
