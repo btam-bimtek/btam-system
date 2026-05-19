@@ -180,30 +180,110 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
     if (isi) paragraphs.push(p(isi));
   }
 
-  // ── ¶5 Rekomendasi ────────────────────────────────────────────────────────
-  {
-    const ekPerlu   = [...stabil, ...menurun].sort((a, b) => (a.postPct ?? 0) - (b.postPct ?? 0));
-    const ekTerbaik = [...meningkat].sort((a, b) => (b.postPct ?? 0) - (a.postPct ?? 0)).slice(0, 2);
-    let isi = '';
+  return paragraphs.join('');
+}
 
-    if (lulus === false) {
-      isi = `Berdasarkan hasil evaluasi kompetensi di atas, ${subjek} disarankan untuk memperdalam materi bimbingan teknis secara mandiri`;
-      if (ekPerlu.length > 0) {
-        isi += `, dengan memprioritaskan penguatan pada ${ekPerlu.slice(0, 3).map(ek => `<strong>${_esc(ek.ekNama)}</strong>`).join(', ')}`;
-      }
-      isi += `. Keikutsertaan kembali dalam kegiatan bimbingan teknis pada periode berikutnya sangat dianjurkan guna mencapai standar kompetensi yang ditetapkan dan memperoleh sertifikat kelulusan.`;
-    } else {
-      isi = `Berdasarkan hasil evaluasi kompetensi di atas, ${subjek} diharapkan dapat mengaplikasikan penguasaan kompetensi yang telah dicapai`;
-      if (ekTerbaik.length > 0) {
-        isi += `—terutama pada ${ekTerbaik.map(ek => `<strong>${_esc(ek.ekNama)}</strong>`).join(' dan ')}—`;
-      }
-      isi += `dalam pelaksanaan tugas dan pekerjaan sehari-hari di instansi masing-masing. `;
-      if (ekPerlu.length > 0) {
-        isi += `Pendalaman lebih lanjut pada ${ekPerlu.slice(0, 2).map(ek => `<strong>${_esc(ek.ekNama)}</strong>`).join(' dan ')} tetap disarankan untuk memperkuat penguasaan kompetensi secara menyeluruh. `;
-      }
-      isi += `Semangat belajar dan komitmen terhadap peningkatan kompetensi yang ditunjukkan selama kegiatan ini diharapkan dapat terus dijaga sebagai bagian dari pengembangan profesionalisme di bidang air minum.`;
+/**
+ * Bangun narasi rekomendasi tindak lanjut Section C.5 — elaboratif, 4 paragraf.
+ *
+ * @param {Array<{ekKey, ekNama, prePct, postPct, delta}>} ekComparison
+ * @param {boolean|null} lulus
+ * @param {number|null}  nilaiAkhir
+ * @param {string}       pesertaNama
+ * @returns {string} HTML paragraf
+ */
+export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama) {
+  const subjek = pesertaNama ? `Peserta ${_esc(pesertaNama)}` : 'Peserta';
+  const p  = s => `<p style="margin:0 0 10px 0; text-align:justify;">${s}</p>`;
+  const li = s => `<li style="margin-bottom:6px;">${s}</li>`;
+
+  const withDelta = (ekComparison || []).filter(ek => ek.delta != null);
+  const meningkat = withDelta.filter(ek => ek.delta > 0).sort((a, b) => b.postPct - a.postPct);
+  const stabil    = withDelta.filter(ek => ek.delta === 0);
+  const menurun   = withDelta.filter(ek => ek.delta < 0).sort((a, b) => a.postPct - b.postPct);
+  const ekPerlu   = [...menurun, ...stabil].sort((a, b) => (a.postPct ?? 0) - (b.postPct ?? 0));
+  const ekTerbaik = meningkat.slice(0, 2);
+  const paragraphs = [];
+
+  // ── LULUS ─────────────────────────────────────────────────────────────────
+  if (lulus !== false) {
+    // ¶1 — Apresiasi & capaian
+    let p1 = `${subjek} telah berhasil menyelesaikan kegiatan bimbingan teknis`;
+    p1 += nilaiAkhir != null ? ` dengan nilai akhir <strong>${nilaiAkhir}</strong> dan dinyatakan <strong>LULUS</strong>.` : ` dan dinyatakan lulus.`;
+    p1 += ` Pencapaian ini merupakan bukti nyata dari kesungguhan, komitmen, dan kerja keras yang ditunjukkan selama mengikuti seluruh rangkaian kegiatan. Penyelenggara mengucapkan apresiasi yang setinggi-tingginya atas dedikasi yang telah diperlihatkan.`;
+    paragraphs.push(p(p1));
+
+    // ¶2 — Penerapan kompetensi di tempat kerja
+    let p2 = `Kompetensi yang telah dikuasai melalui kegiatan ini diharapkan dapat segera diimplementasikan secara nyata dalam pelaksanaan tugas dan tanggung jawab sehari-hari di instansi masing-masing.`;
+    if (ekTerbaik.length > 0) {
+      p2 += ` Khususnya pada ${ekTerbaik.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct}%)`).join(' dan ')}, penguasaan yang telah dicapai perlu dikonsolidasikan melalui penerapan langsung di lapangan.`;
     }
-    paragraphs.push(p(isi));
+    p2 += ` Penerapan langsung merupakan cara paling efektif untuk mengukuhkan pemahaman teoretis yang telah diperoleh selama kegiatan bimbingan teknis menjadi keterampilan teknis yang melekat dan dapat diandalkan.`;
+    paragraphs.push(p(p2));
+
+    // ¶3 — Pendalaman lanjutan (jika ada EK yang perlu perhatian)
+    if (ekPerlu.length > 0) {
+      const ekList = ekPerlu.slice(0, 3).map(ek =>
+        `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct ?? '-'}%${ek.delta < 0 ? ', mengalami penurunan' : ', stabil'})`
+      ).join('; ');
+      let p3 = `Meskipun telah dinyatakan lulus, terdapat beberapa elemen kompetensi yang masih memerlukan perhatian dan pendalaman lebih lanjut, yaitu ${ekList}. `;
+      p3 += `Beberapa langkah yang dapat dilakukan untuk memperkuat penguasaan pada elemen-elemen tersebut antara lain: `;
+      p3 += `<ol style="margin:8px 0 0 0; padding-left:20px;">`;
+      p3 += li(`Mempelajari kembali materi dan modul bimbingan teknis yang berkaitan dengan elemen kompetensi tersebut secara mandiri.`);
+      p3 += li(`Berdiskusi dan berkonsultasi dengan rekan kerja atau atasan yang memiliki pengalaman dan keahlian di bidang terkait.`);
+      p3 += li(`Mengidentifikasi kasus atau permasalahan nyata di tempat kerja yang berkaitan dengan elemen kompetensi tersebut, dan berupaya menyelesaikannya dengan mengacu pada materi yang telah dipelajari.`);
+      p3 += li(`Mengikuti kegiatan peningkatan kompetensi lanjutan, seminar teknis, atau forum diskusi yang relevan.`);
+      p3 += `</ol>`;
+      paragraphs.push(p(p3));
+    }
+
+    // ¶4 — Pengembangan profesional berkelanjutan
+    let p4 = `Sebagai bagian dari upaya pengembangan profesionalisme yang berkelanjutan, ${subjek} didorong untuk senantiasa memperbarui pengetahuan dan keterampilan teknis di bidang air minum, `;
+    p4 += `seiring dengan perkembangan regulasi, standar teknis, teknologi, dan praktik terbaik yang terus berkembang. `;
+    p4 += `Komitmen terhadap pembelajaran sepanjang hayat merupakan fondasi penting bagi setiap insan teknis yang ingin memberikan kontribusi terbaik bagi pelayanan air minum yang berkualitas di Indonesia.`;
+    paragraphs.push(p(p4));
+
+  // ── BELUM LULUS ───────────────────────────────────────────────────────────
+  } else {
+    // ¶1 — Kondisi & non-judgmental
+    let p1 = `Berdasarkan hasil evaluasi, ${subjek} memperoleh nilai akhir`;
+    p1 += nilaiAkhir != null ? ` <strong>${nilaiAkhir}</strong>` : '';
+    p1 += ` dan dinyatakan belum memenuhi standar kelulusan yang ditetapkan. `;
+    p1 += `Kondisi ini bukan merupakan hambatan yang bersifat final, melainkan merupakan petunjuk yang sangat berharga mengenai area-area kompetensi yang masih dapat dan perlu ditingkatkan. `;
+    p1 += `Penyelenggara meyakini bahwa dengan upaya pendalaman yang lebih intensif dan terstruktur, ${subjek} memiliki potensi yang sangat baik untuk mencapai standar kompetensi yang ditetapkan.`;
+    paragraphs.push(p(p1));
+
+    // ¶2 — Prioritas penguatan
+    if (ekPerlu.length > 0) {
+      const sorted = ekPerlu.slice(0, 4);
+      let p2 = `Berdasarkan profil hasil evaluasi, fokus pendalaman utama yang perlu mendapatkan perhatian adalah: `;
+      p2 += `<ul style="margin:8px 0 0 0; padding-left:20px;">`;
+      p2 += sorted.map(ek => {
+        const kondisi = ek.delta < 0
+          ? `mengalami penurunan dari ${ek.prePct}% menjadi ${ek.postPct}%`
+          : `relatif stabil di angka ${ek.postPct}%`;
+        return li(`<strong>${_esc(ek.ekNama)}</strong> — ${kondisi}. Penguasaan pada elemen ini perlu diperkuat secara lebih mendalam sebelum mengikuti kegiatan berikutnya.`);
+      }).join('');
+      p2 += `</ul>`;
+      paragraphs.push(p(p2));
+    }
+
+    // ¶3 — Langkah konkret
+    let p3 = `Untuk mempersiapkan diri mengikuti kegiatan bimbingan teknis pada periode berikutnya, berikut adalah langkah-langkah konkret yang disarankan: `;
+    p3 += `<ol style="margin:8px 0 0 0; padding-left:20px;">`;
+    p3 += li(`<strong>Pendalaman mandiri:</strong> Pelajari kembali seluruh modul dan materi bimbingan teknis yang telah diberikan, dengan memberikan penekanan khusus pada elemen-elemen kompetensi yang nilainya masih di bawah standar.`);
+    p3 += li(`<strong>Konsultasi dan diskusi:</strong> Manfaatkan kesempatan untuk berdiskusi dengan rekan kerja, atasan, atau tenaga ahli yang berpengalaman di bidang yang relevan guna mendapatkan pemahaman yang lebih mendalam dan praktis.`);
+    p3 += li(`<strong>Praktik di lapangan:</strong> Coba terapkan konsep dan materi yang telah dipelajari dalam pekerjaan sehari-hari. Pengalaman praktis langsung akan sangat membantu memperkuat pemahaman yang diperoleh secara teoretis.`);
+    p3 += li(`<strong>Referensi tambahan:</strong> Pelajari regulasi, standar nasional (SNI), dan pedoman teknis terkait bidang air minum yang berlaku sebagai referensi tambahan untuk memperluas wawasan dan penguasaan teknis.`);
+    p3 += li(`<strong>Keikutsertaan kembali:</strong> Daftarkan diri untuk mengikuti kegiatan bimbingan teknis pada periode penyelenggaraan berikutnya. Informasi mengenai jadwal dan pendaftaran dapat diperoleh dari penyelenggara.`);
+    p3 += `</ol>`;
+    paragraphs.push(p(p3));
+
+    // ¶4 — Motivasi & harapan
+    let p4 = `Penyelenggara sangat mengapresiasi kesediaan dan semangat ${subjek} dalam mengikuti kegiatan bimbingan teknis ini. `;
+    p4 += `Setiap proses pembelajaran memiliki dinamikanya masing-masing, dan kegigihan untuk terus berkembang merupakan kualitas yang paling menentukan dalam perjalanan peningkatan kompetensi. `;
+    p4 += `Penyelenggara berharap ${subjek} tidak berkecil hati, dan menyambut keikutsertaan kembali pada kesempatan berikutnya dengan persiapan yang lebih matang demi mencapai standar kompetensi yang ditetapkan.`;
+    paragraphs.push(p(p4));
   }
 
   return paragraphs.join('');

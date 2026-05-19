@@ -2,7 +2,7 @@
 // Laporan peserta: list + preview 4-section + print.
 
 import { getPesertaReportData } from './report-api.js';
-import { mapToLabel, generateNarasi, generateNarasiDeskriptif } from './report-narrative.js';
+import { mapToLabel, generateNarasi, generateNarasiDeskriptif, generateRekomendasi } from './report-narrative.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
@@ -462,14 +462,24 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       </table>`;
   }
 
-  // C.4 — Narasi
+  // C.4 — Analisis Kompetensi
   const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null);
   const narasiSection = `
     <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
       C.4 Analisis Kompetensi
     </div>
-    <div style="background:#f0f7ff; border-left:4px solid #2563eb; padding:12px 16px; border-radius:0 8px 8px 0; font-size:13px; color:#1e3a5f; line-height:1.7;">
+    <div style="background:#f0f7ff; border-left:4px solid #2563eb; padding:14px 16px; border-radius:0 8px 8px 0; font-size:13px; color:#1e3a5f; line-height:1.7; margin-bottom:20px;">
       ${narasi}
+    </div>`;
+
+  // C.5 — Rekomendasi Tindak Lanjut
+  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, peserta?.nama);
+  const rekomendasiSection = `
+    <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
+      C.5 Rekomendasi Tindak Lanjut
+    </div>
+    <div style="background:#fffbeb; border-left:4px solid #d97706; padding:14px 16px; border-radius:0 8px 8px 0; font-size:13px; color:#78350f; line-height:1.7;">
+      ${rekomendasi}
     </div>`;
 
   return `
@@ -479,7 +489,8 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
     ${chartSection}
     ${ekChartSection}
     ${ekTableSection}
-    ${narasiSection}`;
+    ${narasiSection}
+    ${rekomendasiSection}`;
 }
 
 // ── Section D ─────────────────────────────────────────────────────────────────
