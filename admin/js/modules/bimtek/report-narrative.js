@@ -165,14 +165,21 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
   // ── ¶4 Area Perhatian ─────────────────────────────────────────────────────
   if (stabil.length > 0 || menurun.length > 0) {
+    const stabilTinggi = stabil.filter(ek => (ek.postPct ?? 0) >= 70);
+    const stabilRendah = stabil.filter(ek => (ek.postPct ?? 0) < 70);
     let isi = '';
-    if (stabil.length > 0) {
-      isi += `${stabil.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(', ')} menunjukkan nilai yang relatif konsisten antara pre test dan post test. `;
-      isi += `Stabilitas ini dapat dimaknai sebagai penguasaan yang sudah terbentuk sebelumnya, namun tetap memerlukan pendalaman lebih lanjut agar dapat berkembang secara optimal.`;
+
+    if (stabilTinggi.length > 0) {
+      isi += `${stabilTinggi.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')} menunjukkan nilai yang konsisten dan sudah berada pada level yang baik. `;
+      isi += `Penguasaan yang telah dicapai pada elemen ini perlu terus dipertahankan melalui penerapan langsung di lapangan.`;
+    }
+    if (stabilRendah.length > 0) {
+      if (isi) isi += ` `;
+      isi += `${stabilRendah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(', ')} menunjukkan nilai yang belum berkembang dan masih memerlukan pendalaman lebih lanjut.`;
     }
     if (menurun.length > 0) {
       if (isi) isi += ` `;
-      isi += `Di sisi lain, ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%, ${ek.delta} poin)`).join('; ')} menunjukkan adanya penurunan nilai dari pre test ke post test. `;
+      isi += `Di sisi lain, ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%, ${ek.delta} poin)`).join('; ')} menunjukkan penurunan nilai dari pre test ke post test. `;
       isi += menurun.length === 1
         ? `Kondisi ini perlu mendapat perhatian khusus dan pendalaman mandiri agar penguasaan elemen kompetensi tersebut dapat ditingkatkan kembali.`
         : `Kondisi ini perlu mendapat perhatian lebih lanjut. Pendalaman mandiri maupun keikutsertaan dalam kegiatan peningkatan kompetensi sejenis pada periode berikutnya sangat dianjurkan.`;
@@ -201,7 +208,9 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
   const meningkat = withDelta.filter(ek => ek.delta > 0).sort((a, b) => b.postPct - a.postPct);
   const stabil    = withDelta.filter(ek => ek.delta === 0);
   const menurun   = withDelta.filter(ek => ek.delta < 0).sort((a, b) => a.postPct - b.postPct);
-  const ekPerlu   = [...menurun, ...stabil].sort((a, b) => (a.postPct ?? 0) - (b.postPct ?? 0));
+  // Hanya EK yang menurun, atau stabil tapi skornya masih rendah (<70%)
+  const ekPerlu   = [...menurun, ...stabil.filter(ek => (ek.postPct ?? 0) < 70)]
+                      .sort((a, b) => (a.postPct ?? 0) - (b.postPct ?? 0));
   const ekTerbaik = meningkat.slice(0, 2);
   const paragraphs = [];
 
@@ -256,15 +265,19 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
     // ¶2 — Prioritas penguatan
     if (ekPerlu.length > 0) {
       const sorted = ekPerlu.slice(0, 4);
-      let p2 = `Berdasarkan profil hasil evaluasi, fokus pendalaman utama yang perlu mendapatkan perhatian adalah: `;
+      let p2 = `Berdasarkan profil hasil evaluasi, elemen kompetensi yang perlu mendapatkan perhatian lebih lanjut adalah: `;
       p2 += `<ul style="margin:8px 0 0 0; padding-left:20px;">`;
       p2 += sorted.map(ek => {
         const kondisi = ek.delta < 0
           ? `mengalami penurunan dari ${ek.prePct}% menjadi ${ek.postPct}%`
-          : `relatif stabil di angka ${ek.postPct}%`;
-        return li(`<strong>${_esc(ek.ekNama)}</strong> — ${kondisi}. Penguasaan pada elemen ini perlu diperkuat secara lebih mendalam sebelum mengikuti kegiatan berikutnya.`);
+          : `masih berada di angka ${ek.postPct}% dan memerlukan penguatan`;
+        return li(`<strong>${_esc(ek.ekNama)}</strong> — ${kondisi}.`);
       }).join('');
       p2 += `</ul>`;
+      paragraphs.push(p(p2));
+    } else if (withDelta.length > 0) {
+      // Semua EK nilainya sudah baik — kegagalan dari komponen penilaian lain
+      const p2 = `Penguasaan elemen kompetensi ${subjek} secara keseluruhan sudah menunjukkan hasil yang baik. Peningkatan nilai akhir pada kegiatan berikutnya dapat difokuskan pada komponen penilaian lainnya seperti kehadiran, keaktifan, tugas, dan presentasi selama kegiatan berlangsung.`;
       paragraphs.push(p(p2));
     }
 
