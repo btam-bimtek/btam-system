@@ -72,11 +72,12 @@ function _renderList(container) {
           data-nopeserta="${_esc(p.noPeserta)}">
           Print
         </button>
-        <button class="btn-cert-peserta text-xs px-3 py-1.5 rounded-lg transition-colors
-          ${p.lulus ? 'bg-yellow-700 hover:bg-yellow-600 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}"
-          data-nopeserta="${_esc(p.noPeserta)}" ${!p.lulus ? 'disabled' : ''}>
-          Sertifikat
-        </button>
+        ${p.lulus
+          ? `<button class="btn-cert-peserta text-xs px-3 py-1.5 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white transition-colors"
+               data-nopeserta="${_esc(p.noPeserta)}">Sertifikat</button>`
+          : `<button class="btn-surat-ket-peserta text-xs px-3 py-1.5 rounded-lg bg-teal-800 hover:bg-teal-700 text-white transition-colors"
+               data-nopeserta="${_esc(p.noPeserta)}">Surat Keterangan</button>`
+        }
       </td>
     </tr>`).join('');
 
@@ -118,8 +119,13 @@ function _renderList(container) {
   });
 
   // Bind sertifikat buttons
-  container.querySelectorAll('.btn-cert-peserta:not([disabled])').forEach(btn => {
+  container.querySelectorAll('.btn-cert-peserta').forEach(btn => {
     btn.addEventListener('click', () => _loadAndShowCert(container, btn.dataset.nopeserta));
+  });
+
+  // Bind surat keterangan buttons
+  container.querySelectorAll('.btn-surat-ket-peserta').forEach(btn => {
+    btn.addEventListener('click', () => _loadAndShowSuratKeterangan(container, btn.dataset.nopeserta));
   });
 }
 
@@ -701,6 +707,166 @@ function _showCert(container, panel, data) {
     panel.classList.add('hidden');
     if (listSection) listSection.classList.remove('no-print');
   });
+}
+
+// ─── SURAT KETERANGAN ────────────────────────────────────────────────────────
+
+async function _loadAndShowSuratKeterangan(container, noPeserta) {
+  const panel = container.querySelector('#report-preview-panel');
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="flex items-center gap-3 py-8 justify-center">
+      <div class="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-gray-400 text-sm">Memuat surat keterangan…</span>
+    </div>`;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
+    const html = _buildSuratKeteranganHTML(data);
+    const listSection = container.querySelector('#peserta-list-section');
+
+    panel.innerHTML = `
+      <div class="flex items-center justify-between mb-4 no-print">
+        <h3 class="font-semibold text-white">Surat Keterangan — ${_esc(data.peserta?.nama ?? '')}</h3>
+        <div class="flex gap-2">
+          <button id="btn-print-surat-ket" class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-teal-700 hover:bg-teal-600 text-white transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Cetak Surat Keterangan
+          </button>
+          <button id="btn-close-surat-ket" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
+        </div>
+      </div>
+      <div id="surat-ket-doc">${html}</div>
+    `;
+
+    if (listSection) listSection.classList.add('no-print');
+
+    panel.querySelector('#btn-print-surat-ket').addEventListener('click', () => _printSuratKeterangan());
+    panel.querySelector('#btn-close-surat-ket').addEventListener('click', () => {
+      panel.innerHTML = '';
+      panel.classList.add('hidden');
+      if (listSection) listSection.classList.remove('no-print');
+    });
+  } catch (err) {
+    panel.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
+  }
+}
+
+function _buildSuratKeteranganHTML(data) {
+  const { peserta } = data;
+  const b       = S.bimtek;
+  const lembaga = S.lembagaSettings ?? {};
+  const kopUrl  = lembaga.logoUrl || '../shared/assets/kop_btam.png';
+
+  const periodeStr = (() => {
+    const fmt = ts => {
+      if (!ts) return '';
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    const m = fmt(b.periode?.mulai);
+    const s = fmt(b.periode?.selesai);
+    return m && s ? `${m} s.d. ${s}` : (m || s || '-');
+  })();
+
+  const tglCetak  = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  const kota      = lembaga.kota || lembaga.lokasi || 'Bekasi';
+  const namaLemb  = lembaga.nama || 'Balai Teknik Air Minum';
+  const lokasi    = b.lokasi || '-';
+
+  const fieldRow = (label, value) => value ? `
+    <tr>
+      <td style="padding:3px 0; font-size:13px; width:160px; vertical-align:top;">${label}</td>
+      <td style="padding:3px 0; font-size:13px; width:12px;">:</td>
+      <td style="padding:3px 0; font-size:13px;">${_esc(value)}</td>
+    </tr>` : '';
+
+  return `
+    <div style="
+      width:210mm; min-height:297mm;
+      padding:0 20mm 20mm 20mm;
+      font-family:'Times New Roman',Georgia,serif;
+      color:#1a1a1a;
+      background:#fff;
+      box-sizing:border-box;
+    ">
+      <!-- Kop Surat -->
+      <div style="margin-bottom:0;">
+        <img src="${_esc(kopUrl)}" alt="Kop Surat" style="width:100%;height:auto;display:block;">
+      </div>
+      <div style="border-top:3px solid #1a1a1a; border-bottom:1px solid #1a1a1a; margin-bottom:24px;"></div>
+
+      <!-- Judul -->
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-size:16px; font-weight:bold; letter-spacing:3px; text-decoration:underline; text-transform:uppercase;">
+          SURAT KETERANGAN
+        </div>
+      </div>
+
+      <!-- Pembuka -->
+      <div style="font-size:13px; line-height:1.8; margin-bottom:16px;">
+        Yang bertanda tangan di bawah ini, Kepala ${_esc(namaLemb)}, dengan ini menerangkan bahwa:
+      </div>
+
+      <!-- Identitas Peserta -->
+      <div style="margin: 0 0 20px 24px;">
+        <table style="border-collapse:collapse;">
+          ${fieldRow('Nama', peserta?.nama)}
+          ${fieldRow('Jabatan', peserta?.jabatan)}
+          ${fieldRow('Instansi/Unit Kerja', peserta?.instansi)}
+          ${fieldRow('No. Peserta', peserta?.noPeserta ?? peserta?.id)}
+        </table>
+      </div>
+
+      <!-- Isi keterangan -->
+      <div style="font-size:13px; line-height:1.8; margin-bottom:16px;">
+        adalah benar telah mengikuti kegiatan:
+      </div>
+
+      <!-- Detail kegiatan -->
+      <div style="margin: 0 0 24px 24px;">
+        <table style="border-collapse:collapse;">
+          ${fieldRow('Nama Kegiatan', b.nama)}
+          ${fieldRow('Tanggal Pelaksanaan', periodeStr)}
+          ${fieldRow('Tempat Pelaksanaan', lokasi)}
+        </table>
+      </div>
+
+      <!-- Penutup -->
+      <div style="font-size:13px; line-height:1.8; margin-bottom:40px;">
+        Demikian surat keterangan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.
+      </div>
+
+      <!-- TTD -->
+      <div style="display:flex; justify-content:flex-end;">
+        <div style="text-align:center; min-width:200px;">
+          <div style="font-size:13px;">${_esc(kota)}, ${tglCetak}</div>
+          <div style="font-size:13px; margin-bottom:64px;">Kepala ${_esc(namaLemb)},</div>
+          <div style="border-top:1.5px solid #1a1a1a; padding-top:4px;">
+            <div style="font-size:13px; font-weight:bold;">(..............................)</div>
+            <div style="font-size:12px; margin-top:2px;">NIP. ................................</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _printSuratKeterangan() {
+  const style = document.createElement('style');
+  style.id    = 'surat-ket-print-style';
+  style.textContent = '@page { size: A4 portrait; margin: 0; }';
+  document.head.appendChild(style);
+  document.body.classList.add('printing-surat-ket');
+
+  window.print();
+
+  setTimeout(() => {
+    document.getElementById('surat-ket-print-style')?.remove();
+    document.body.classList.remove('printing-surat-ket');
+  }, 1000);
 }
 
 function _buildCertHTML(data) {
