@@ -943,20 +943,27 @@ function _buildCertHTML(data) {
         </div>
 
         <!-- Diberikan Kepada -->
-        <div style="position:absolute;top:72mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
+        <div style="position:absolute;top:65mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
           Diberikan Kepada :
         </div>
 
         <!-- Fields table -->
-        <div style="position:absolute;top:80mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;">
-          <table style="border-collapse:collapse;width:100%;${F}">
+        <div style="position:absolute;top:73mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;line-height:1.3;">
+          <table style="border-collapse:collapse;width:100%;${F}line-height:1.3;">
             <colgroup><col style="width:44mm;"><col style="width:5mm;"><col></colgroup>
-            ${certRow('Nama', _esc(peserta?.nama))}
-            ${certRow('NIK', _esc(peserta?.nik))}
-            ${certRow('Tempat, Tanggal Lahir', ttl)}
-            ${certRow('Jabatan', _esc(peserta?.jabatan))}
-            ${certRow('Instansi', _esc(peserta?.instansi))}
-            ${certRow('Kualifikasi', _esc(peserta?.kualifikasi))}
+            ${[
+              ['Nama',                  _esc(peserta?.nama)],
+              ['NIK',                   _esc(peserta?.nik)],
+              ['Tempat, Tanggal Lahir', ttl],
+              ['Jabatan',               _esc(peserta?.jabatan)],
+              ['Instansi',              _esc(peserta?.instansi)],
+              ['Kualifikasi',           _esc(peserta?.kualifikasi)],
+            ].map(([lbl, val]) => `
+              <tr>
+                <td style="padding:0;white-space:nowrap;color:#374151;vertical-align:top;">${lbl}</td>
+                <td style="padding:0 3mm 0 0;color:#374151;vertical-align:top;">:</td>
+                <td style="padding:0;color:#111827;font-weight:600;vertical-align:top;">${val || '—'}</td>
+              </tr>`).join('')}
           </table>
         </div>
 
