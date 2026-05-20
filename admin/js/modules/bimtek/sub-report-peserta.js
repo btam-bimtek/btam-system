@@ -915,38 +915,36 @@ function _buildCertHTML(data) {
 
   // ── Mode: background image dari Canva ──
   if (certBgUrl) {
+    // Load Open Sans dari Google Fonts (sekali saja)
+    if (!document.getElementById('cert-font-opensans')) {
+      const link = document.createElement('link');
+      link.id = 'cert-font-opensans';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap';
+      document.head.appendChild(link);
+    }
+
+    const F = "font-family:'Open Sans',sans-serif;font-size:20px;";
+
     return `
-      <div style="width:297mm;height:210mm;position:relative;overflow:hidden;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;">
+      <div style="width:297mm;height:210mm;position:relative;overflow:hidden;${F}box-sizing:border-box;">
 
         <!-- Background image (Canva export) -->
         <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
 
-        <!-- Logo -->
-        ${logoUrl ? `<img src="${_esc(logoUrl)}" alt="Logo" style="position:absolute;top:7mm;left:50%;transform:translateX(-50%);height:12mm;width:auto;z-index:10;">` : ''}
-
-        <!-- Header kementerian -->
-        <div style="position:absolute;top:21mm;left:0;right:0;text-align:center;font-size:7pt;font-weight:700;color:#1a3a8f;line-height:1.4;z-index:10;">
-          KEMENTERIAN PEKERJAAN UMUM<br>DIREKTORAT JENDERAL CIPTA KARYA
-        </div>
-
-        <!-- SERTIFIKAT -->
-        <div style="position:absolute;top:31mm;left:0;right:0;text-align:center;z-index:10;">
-          <span style="font-size:22pt;font-weight:900;letter-spacing:6px;color:#e07820;">SERTIFIKAT</span>
-        </div>
-
         <!-- Nomor -->
-        <div style="position:absolute;top:53mm;left:0;right:0;text-align:center;font-size:8pt;color:#374151;z-index:10;">
+        <div style="position:absolute;top:61mm;left:0;right:0;text-align:center;${F}color:#374151;z-index:10;">
           Nomor : ${_esc(noCert)}
         </div>
 
         <!-- Diberikan Kepada -->
-        <div style="position:absolute;top:64mm;left:130mm;font-size:8pt;font-weight:700;color:#111827;z-index:10;">
+        <div style="position:absolute;top:72mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
           Diberikan Kepada :
         </div>
 
         <!-- Fields table -->
-        <div style="position:absolute;top:72mm;left:104mm;width:155mm;font-size:8pt;color:#111827;z-index:10;">
-          <table style="border-collapse:collapse;width:100%;">
+        <div style="position:absolute;top:80mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;">
+          <table style="border-collapse:collapse;width:100%;${F}">
             <colgroup><col style="width:44mm;"><col style="width:5mm;"><col></colgroup>
             ${certRow('Nama', _esc(peserta?.nama))}
             ${certRow('NIK', _esc(peserta?.nik))}
@@ -958,19 +956,19 @@ function _buildCertHTML(data) {
         </div>
 
         <!-- Bimtek text -->
-        <div style="position:absolute;top:120mm;left:32mm;right:32mm;font-size:7.5pt;line-height:1.65;color:#1a1a1a;text-align:center;z-index:10;">
+        <div style="position:absolute;top:130mm;left:32mm;right:32mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
           Pada Bimbingan Teknis <strong>${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
         </div>
 
         <!-- TTD -->
-        <div style="position:absolute;top:140mm;left:193mm;width:95mm;text-align:center;font-size:7.5pt;color:#1a1a1a;z-index:10;">
+        <div style="position:absolute;top:148mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;z-index:10;">
           ${_esc(kota)}, ${_esc(tglTTD)}
         </div>
-        <div style="position:absolute;top:148mm;left:193mm;width:95mm;text-align:center;font-size:7.5pt;color:#1a1a1a;line-height:1.4;z-index:10;">
+        <div style="position:absolute;top:157mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;line-height:1.4;z-index:10;">
           ${_esc(jabatanPenanda)}
         </div>
-        <div style="position:absolute;top:178mm;left:193mm;width:95mm;text-align:center;font-size:8.5pt;font-weight:700;color:#1a1a1a;border-top:1px solid #555;padding-top:1.5mm;z-index:10;">
+        <div style="position:absolute;top:183mm;left:193mm;width:95mm;text-align:center;${F}font-weight:700;color:#1a1a1a;border-top:1px solid #555;padding-top:2mm;z-index:10;">
           ${_esc(penanda)}
         </div>
       </div>
