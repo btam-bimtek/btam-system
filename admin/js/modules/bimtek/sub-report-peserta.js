@@ -924,7 +924,7 @@ function _buildCertHTML(data) {
       document.head.appendChild(link);
     }
 
-    const F = "font-family:'Open Sans',sans-serif;font-size:20px;";
+    const F = "font-family:'Open Sans',sans-serif;font-size:19.4px;";
 
     return `
       <div style="width:297mm;height:210mm;position:relative;overflow:hidden;${F}box-sizing:border-box;">
@@ -932,9 +932,14 @@ function _buildCertHTML(data) {
         <!-- Background image (Canva export) -->
         <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
 
-        <!-- Nomor -->
-        <div style="position:absolute;top:61mm;left:0;right:0;text-align:center;${F}color:#374151;z-index:10;">
-          Nomor : ${_esc(noCert)}
+        <!-- Foto placeholder (kiri) -->
+        <div style="position:absolute;top:68mm;left:15mm;width:50mm;height:65mm;z-index:10;
+          border:1.5px dashed #888;background:rgba(240,240,240,0.5);
+          display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+          <span style="font-size:11px;color:#aaa;font-family:'Open Sans',sans-serif;">FOTO</span>
         </div>
 
         <!-- Diberikan Kepada -->
@@ -968,7 +973,7 @@ function _buildCertHTML(data) {
         <div style="position:absolute;top:157mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;line-height:1.4;z-index:10;">
           ${_esc(jabatanPenanda)}
         </div>
-        <div style="position:absolute;top:183mm;left:193mm;width:95mm;text-align:center;${F}font-weight:700;color:#1a1a1a;border-top:1px solid #555;padding-top:2mm;z-index:10;">
+        <div style="position:absolute;top:183mm;left:193mm;width:95mm;text-align:center;${F}font-weight:700;color:#1a1a1a;z-index:10;">
           ${_esc(penanda)}
         </div>
       </div>
