@@ -903,6 +903,7 @@ function _buildCertHTML(data) {
   const penanda          = lembaga.penandaTangan        || '';
   const jabatanPenanda   = lembaga.jabatanPenandaTangan || 'Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan';
   const logoUrl          = lembaga.logoUrl              ?? null;
+  const certBgUrl        = lembaga.certBgUrl            ?? null;
   const noCert           = `${peserta?.noPeserta ?? ''}/${new Date().getFullYear()}`;
 
   const certRow = (label, val) => `
@@ -912,6 +913,71 @@ function _buildCertHTML(data) {
       <td style="padding:0.7mm 0;color:#111827;font-weight:600;vertical-align:top;">${val || '—'}</td>
     </tr>`;
 
+  // ── Mode: background image dari Canva ──
+  if (certBgUrl) {
+    return `
+      <div style="width:297mm;height:210mm;position:relative;overflow:hidden;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;">
+
+        <!-- Background image (Canva export) -->
+        <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
+
+        <!-- Logo -->
+        ${logoUrl ? `<img src="${_esc(logoUrl)}" alt="Logo" style="position:absolute;top:7mm;left:50%;transform:translateX(-50%);height:12mm;width:auto;z-index:10;">` : ''}
+
+        <!-- Header kementerian -->
+        <div style="position:absolute;top:21mm;left:0;right:0;text-align:center;font-size:7pt;font-weight:700;color:#1a3a8f;line-height:1.4;z-index:10;">
+          KEMENTERIAN PEKERJAAN UMUM<br>DIREKTORAT JENDERAL CIPTA KARYA
+        </div>
+
+        <!-- SERTIFIKAT -->
+        <div style="position:absolute;top:31mm;left:0;right:0;text-align:center;z-index:10;">
+          <span style="font-size:22pt;font-weight:900;letter-spacing:6px;color:#e07820;">SERTIFIKAT</span>
+        </div>
+
+        <!-- Nomor -->
+        <div style="position:absolute;top:53mm;left:0;right:0;text-align:center;font-size:8pt;color:#374151;z-index:10;">
+          Nomor : ${_esc(noCert)}
+        </div>
+
+        <!-- Diberikan Kepada -->
+        <div style="position:absolute;top:64mm;left:130mm;font-size:8pt;font-weight:700;color:#111827;z-index:10;">
+          Diberikan Kepada :
+        </div>
+
+        <!-- Fields table -->
+        <div style="position:absolute;top:72mm;left:104mm;width:155mm;font-size:8pt;color:#111827;z-index:10;">
+          <table style="border-collapse:collapse;width:100%;">
+            <colgroup><col style="width:44mm;"><col style="width:5mm;"><col></colgroup>
+            ${certRow('Nama', _esc(peserta?.nama))}
+            ${certRow('NIK', _esc(peserta?.nik))}
+            ${certRow('Tempat, Tanggal Lahir', ttl)}
+            ${certRow('Jabatan', _esc(peserta?.jabatan))}
+            ${certRow('Instansi', _esc(peserta?.instansi))}
+            ${certRow('Kualifikasi', _esc(peserta?.kualifikasi))}
+          </table>
+        </div>
+
+        <!-- Bimtek text -->
+        <div style="position:absolute;top:120mm;left:32mm;right:32mm;font-size:7.5pt;line-height:1.65;color:#1a1a1a;text-align:center;z-index:10;">
+          Pada Bimbingan Teknis <strong>${_esc(b.nama)}</strong>
+          yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
+        </div>
+
+        <!-- TTD -->
+        <div style="position:absolute;top:140mm;left:193mm;width:95mm;text-align:center;font-size:7.5pt;color:#1a1a1a;z-index:10;">
+          ${_esc(kota)}, ${_esc(tglTTD)}
+        </div>
+        <div style="position:absolute;top:148mm;left:193mm;width:95mm;text-align:center;font-size:7.5pt;color:#1a1a1a;line-height:1.4;z-index:10;">
+          ${_esc(jabatanPenanda)}
+        </div>
+        <div style="position:absolute;top:178mm;left:193mm;width:95mm;text-align:center;font-size:8.5pt;font-weight:700;color:#1a1a1a;border-top:1px solid #555;padding-top:1.5mm;z-index:10;">
+          ${_esc(penanda)}
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Mode: CSS fallback (belum ada background image) ──
   return `
     <div style="
       width:297mm; height:210mm;
@@ -979,7 +1045,7 @@ function _buildCertHTML(data) {
           </table>
         </div>
 
-        <!-- Bimtek description -->
+        <!-- Bimtek text -->
         <div style="font-size:7pt;line-height:1.65;color:#374151;text-align:justify;">
           Pada Bimbingan Teknis <strong style="color:#111827;">${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}

@@ -3,7 +3,7 @@
 
 import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
-import { loadAllSettings, saveAppSetting, uploadLogo, listAuditLog } from './api.js';
+import { loadAllSettings, saveAppSetting, uploadLogo, uploadCertBg, listAuditLog } from './api.js';
 import { BLOOM_LEVELS } from '../../../../shared/constants.js';
 
 const DEFAULT_BLOOM = { C1: 1, C2: 2, C3: 3, C4: 4, C5: 5, C6: 6 };
@@ -326,7 +326,8 @@ function _renderThreshold(container) {
 // ─── TAB: LOGO ────────────────────────────────────────────────────────────────
 
 function _renderLogo(container) {
-  const currentUrl = S.settings.lembaga?.logoUrl ?? null;
+  const currentUrl    = S.settings.lembaga?.logoUrl    ?? null;
+  const currentBgUrl  = S.settings.lembaga?.certBgUrl  ?? null;
 
   container.innerHTML = `
     <div class="space-y-5">
@@ -366,6 +367,48 @@ function _renderLogo(container) {
 
         <div class="mt-4">
           <button id="btn-upload-logo" disabled
+            class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            Upload & Simpan
+          </button>
+        </div>
+      </div>
+
+      <!-- Background Sertifikat -->
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <h2 class="text-sm font-semibold text-white mb-1">Background Sertifikat</h2>
+        <p class="text-xs text-gray-500 mb-5">
+          Gambar latar sertifikat (PNG, landscape A4). Ekspor dari Canva tanpa teks agar teks dinamis bisa di-overlay.
+          Format: PNG/JPG. Maks 5 MB.
+        </p>
+
+        <div id="cert-bg-preview" class="mb-5">
+          ${currentBgUrl
+            ? `<div class="flex items-center gap-4">
+                 <img src="${_esc(currentBgUrl)}" alt="Background" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+                 <span class="text-xs text-green-400">Background aktif</span>
+               </div>`
+            : `<div class="text-xs text-gray-500 italic">Belum ada background. Sertifikat menggunakan desain CSS bawaan.</div>`
+          }
+        </div>
+
+        <label class="block">
+          <span class="text-xs font-medium text-gray-400 mb-1.5 block">Upload Background Baru</span>
+          <input id="cert-bg-file" type="file" accept="image/png,image/jpeg"
+                 class="block text-sm text-gray-400
+                        file:mr-4 file:py-1.5 file:px-3
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-gray-700 file:text-white
+                        hover:file:bg-gray-600 cursor-pointer" />
+        </label>
+
+        <div id="cert-bg-upload-preview" class="hidden mt-4">
+          <img id="cert-bg-new-preview" src="" alt="Preview" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+          <p class="text-xs text-gray-500 mt-1">Preview — klik Simpan untuk mengupload</p>
+        </div>
+
+        <div class="mt-4">
+          <button id="btn-upload-cert-bg" disabled
             class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Upload & Simpan
           </button>
@@ -415,6 +458,51 @@ function _renderLogo(container) {
     } finally {
       uploadBtn.disabled = true;
       uploadBtn.textContent = 'Upload & Simpan';
+    }
+  });
+
+  // ── Background Sertifikat ──
+  const bgFileInput = container.querySelector('#cert-bg-file');
+  const bgUploadBtn = container.querySelector('#btn-upload-cert-bg');
+  const bgPreviewDiv = container.querySelector('#cert-bg-upload-preview');
+  const bgPreviewImg = container.querySelector('#cert-bg-new-preview');
+
+  bgFileInput.addEventListener('change', () => {
+    const file = bgFileInput.files[0];
+    if (!file) { bgUploadBtn.disabled = true; bgPreviewDiv.classList.add('hidden'); return; }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File terlalu besar. Maks 5 MB.', 'error');
+      bgFileInput.value = '';
+      bgUploadBtn.disabled = true;
+      bgPreviewDiv.classList.add('hidden');
+      return;
+    }
+    bgPreviewImg.src = URL.createObjectURL(file);
+    bgPreviewDiv.classList.remove('hidden');
+    bgUploadBtn.disabled = false;
+  });
+
+  bgUploadBtn.addEventListener('click', async () => {
+    const file = bgFileInput.files[0];
+    if (!file) return;
+    bgUploadBtn.disabled = true;
+    bgUploadBtn.textContent = 'Mengupload…';
+    try {
+      const url = await uploadCertBg(file);
+      S.settings.lembaga = { ...(S.settings.lembaga ?? {}), certBgUrl: url };
+      showToast('Background sertifikat berhasil diupload', 'success');
+      container.querySelector('#cert-bg-preview').innerHTML = `
+        <div class="flex items-center gap-4">
+          <img src="${_esc(url)}" alt="Background" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+          <span class="text-xs text-green-400">Background aktif</span>
+        </div>`;
+      bgPreviewDiv.classList.add('hidden');
+      bgFileInput.value = '';
+    } catch (err) {
+      showToast('Gagal upload: ' + err.message, 'error');
+    } finally {
+      bgUploadBtn.disabled = true;
+      bgUploadBtn.textContent = 'Upload & Simpan';
     }
   });
 }

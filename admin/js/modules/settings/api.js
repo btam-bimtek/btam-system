@@ -80,6 +80,36 @@ export async function uploadLogo(file) {
   return url;
 }
 
+// ─── CERT BACKGROUND UPLOAD ──────────────────────────────────────────────────
+
+/**
+ * Upload background sertifikat ke Firebase Storage, simpan URL ke app_settings/lembaga.
+ * @param {File} file
+ * @returns {string} downloadURL
+ */
+export async function uploadCertBg(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `settings/cert_bg.${ext}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file);
+  const url = await getDownloadURL(ref);
+
+  await setDoc(
+    doc(db, COL.APP_SETTINGS, 'lembaga'),
+    { certBgUrl: url, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+
+  await logAudit({
+    action: 'upload_cert_bg',
+    entityType: 'app_settings',
+    entityId: 'lembaga',
+    metadata: { ext }
+  });
+
+  return url;
+}
+
 // ─── AUDIT LOG ───────────────────────────────────────────────────────────────
 
 /**
