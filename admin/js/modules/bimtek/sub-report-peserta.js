@@ -924,7 +924,7 @@ function _buildCertHTML(data) {
       document.head.appendChild(link);
     }
 
-    const F = "font-family:'Open Sans',sans-serif;font-size:19.4px;";
+    const F = "font-family:'Open Sans',sans-serif;font-size:19px;";
 
     return `
       <div style="width:297mm;height:210mm;position:relative;overflow:hidden;${F}box-sizing:border-box;">
