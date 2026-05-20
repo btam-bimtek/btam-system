@@ -933,7 +933,7 @@ function _buildCertHTML(data) {
         <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
 
         <!-- Foto placeholder (kiri) -->
-        <div style="position:absolute;top:80mm;left:30mm;width:50mm;height:65mm;z-index:10;
+        <div style="position:absolute;top:80mm;left:30mm;width:30mm;height:40mm;z-index:10;
           border:1.5px dashed #888;background:rgba(240,240,240,0.5);
           display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
