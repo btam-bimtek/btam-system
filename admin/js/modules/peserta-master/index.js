@@ -6,6 +6,7 @@ import { renderDataTable } from '../../components/data-table.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { requireWrite } from '../../auth-guard.js';
+import { navigate } from '../../router.js';
 import { listPeserta, countPeserta, deletePeserta, exportAllPeserta } from './api.js';
 import { openPesertaForm } from './form.js';
 import { openImportPeserta } from './import.js';
@@ -32,7 +33,7 @@ export async function renderPesertaList({ query = {} } = {}) {
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-lg font-bold text-white">Peserta Master</h1>
-          <p class="text-xs text-gray-500 mt-0.5">Data peserta Bimtek BTAM</p>
+          <p class="text-xs text-gray-500 mt-0.5">Data peserta Bimtek</p>
         </div>
         <div class="flex items-center gap-2">
           <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400
@@ -126,8 +127,12 @@ function _renderTable() {
       ? `Tidak ditemukan peserta dengan kata kunci "${_state.search}".`
       : 'Belum ada peserta. Klik "Tambah Peserta" untuk mulai.',
     columns: [
-      { key: 'noPeserta',   label: 'No. Peserta', width: '130px' },
-      { key: 'nama',        label: 'Nama' },
+      { key: 'noPeserta',   label: 'No. Peserta', width: '130px',
+        render: (v, row) => `<a href="#/peserta/${encodeURIComponent(row.noPeserta)}"
+          class="font-mono text-blue-400 hover:text-blue-300 hover:underline transition-colors">${_esc(v)}</a>` },
+      { key: 'nama',        label: 'Nama',
+        render: (v, row) => `<a href="#/peserta/${encodeURIComponent(row.noPeserta)}"
+          class="font-medium text-white hover:text-blue-400 transition-colors">${_esc(v)}</a>` },
       { key: 'jenisKelamin',label: 'JK',   width: '50px',
         render: v => v ? `<span class="badge ${v==='L'?'badge-blue':'badge-purple'}">${JENIS_KELAMIN[v]??v}</span>` : '—' },
       { key: 'pendidikan',  label: 'Pendidikan', width: '90px',
@@ -137,6 +142,7 @@ function _renderTable() {
         render: v => v ?? '—' },
     ],
     rowActions: [
+      { label: 'Detail', onClick: row => navigate(`/peserta/${encodeURIComponent(row.noPeserta)}`) },
       { label: 'Edit',   onClick: row => openPesertaForm(row, () => _reload()) },
       {
         label: 'Hapus',

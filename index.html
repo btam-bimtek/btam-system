@@ -3,56 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Bimtek BTAM</title>
+    <title>SI-SABAT</title>
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 100px auto;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            min-height: 100vh;
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 20px 60px;
+        }
+
+        /* ── Hero ─────────────────────────────────── */
+        .hero {
             text-align: center;
-            background: #f5f5f5;
+            max-width: 640px;
+            margin-bottom: 44px;
         }
-        h1 { color: #333; }
-        .card {
-            border: 1px solid #ddd;
-            padding: 30px;
-            margin: 20px 0;
-            border-radius: 8px;
-            background: white;
+
+        .hero-icon {
+            width: 56px;
+            height: 56px;
+            background: #1d4ed8;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
         }
-        a {
+
+        .hero-icon svg { color: #fff; }
+
+        .hero-title {
+            font-size: clamp(1.35rem, 4vw, 1.75rem);
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.45;
+            letter-spacing: -0.01em;
+        }
+
+        /* Huruf pembentuk SI-SABAT */
+        .hero-title .ak {
+            color: #1d4ed8;
+            font-weight: 800;
+        }
+
+        .hero-badge {
             display: inline-block;
-            padding: 12px 28px;
-            background: #0066cc;
+            margin-top: 14px;
+            padding: 4px 14px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            border-radius: 999px;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* ── Cards ────────────────────────────────── */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .card a {
+            display: inline-block;
+            padding: 9px 22px;
+            background: #1d4ed8;
             color: white;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 15px;
-            margin-top: 10px;
+            border-radius: 8px;
+            font-size: 0.83rem;
+            font-weight: 500;
+            transition: background .15s;
         }
-        a:hover { background: #0052a3; }
+
+        .card a:hover { background: #1e40af; }
+
+        .footer {
+            margin-top: 48px;
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
     </style>
 </head>
 <body>
-    <h1>Sistem Bimtek BTAM</h1>
-    <p>Pilih lokasi yang ingin diakses:</p>
 
-    <div class="card">
-        <h2>Admin</h2>
-        <p>Kelola Bimtek, peserta, pengajar, nilai</p>
-        <a href="/btam-system/admin/">Buka Admin</a>
+    <div class="hero">
+        <div class="hero-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+            </svg>
+        </div>
+
+        <h1 class="hero-title">
+            <span class="ak">S</span>istem
+            <span class="ak">I</span>nformasi
+            <span class="ak">S</span>eleksi &amp;
+            <span class="ak">A</span>sesmen
+            <span class="ak">B</span>imtek
+            <span class="ak">A</span>ir Minum
+            <span class="ak">T</span>erpadu
+        </h1>
+
+        <span class="hero-badge">SI-SABAT</span>
     </div>
 
-    <div class="card">
-        <h2>Peserta — Ujian</h2>
-        <p>Akses pre-test dan post-test</p>
-        <a href="/btam-system/exam/">Buka Ujian</a>
+    <div class="cards">
+        <div class="card">
+            <h2>Admin</h2>
+            <p>Kelola Bimtek, peserta, pengajar, dan nilai</p>
+            <a href="admin/">Buka Admin</a>
+        </div>
+
+        <div class="card">
+            <h2>Ujian</h2>
+            <p>Akses pre-test dan post-test peserta</p>
+            <a href="exam/">Buka Ujian</a>
+        </div>
+
+        <div class="card">
+            <h2>Pendaftar</h2>
+            <p>Daftar Bimtek Air Minum</p>
+            <a href="pendaftar/">Daftar Sekarang</a>
+        </div>
     </div>
 
-    <div class="card">
-        <h2>Pendaftar</h2>
-        <p>Daftar Bimtek BTAM</p>
-        <a href="/btam-system/pendaftar/">Daftar Sekarang</a>
-    </div>
+    <p class="footer">Balai Teknik Air Minum &mdash; Direktorat Jenderal Cipta Karya</p>
+
 </body>
 </html>

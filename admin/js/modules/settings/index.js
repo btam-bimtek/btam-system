@@ -94,7 +94,7 @@ function _renderLembaga(container) {
 
         <div>
           <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama Lembaga</label>
-          <input name="nama" class="form-input" placeholder="BTAM Terpadu"
+          <input name="nama" class="form-input" placeholder="SI-SABAT"
                  value="${_esc(d.nama ?? '')}" />
         </div>
 

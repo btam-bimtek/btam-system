@@ -28,7 +28,7 @@ export async function renderDashboard() {
     <div class="max-w-5xl mx-auto">
       <div class="mb-8">
         <h1 class="text-xl font-bold text-white">Selamat datang, ${_esc(nama)}</h1>
-        <p class="text-gray-500 text-sm mt-1">Sistem Manajemen Bimtek BTAM</p>
+        <p class="text-gray-500 text-sm mt-1">Seleksi & Asesmen Bimtek Air Minum Terpadu</p>
       </div>
 
       <!-- Stat cards -->

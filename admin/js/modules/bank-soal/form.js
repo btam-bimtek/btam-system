@@ -8,21 +8,28 @@ import { BIDANG_LIST, BLOOM_LEVELS } from '../../../../shared/constants.js';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 import { storage } from '../../../../shared/firebase-config.js';
 import { generateId } from '../../../../shared/normalize.js';
+import { listUKAktif } from '../master-uk/api.js';
 
 // State gambar — di-reset setiap kali form dibuka
 let _pendingFile      = null;   // File object baru yang dipilih user
 let _removeImage      = false;  // true jika user klik "Hapus Gambar"
 let _existingImageUrl = null;   // URL gambar saat ini (mode edit)
 
+// State UK picker
+let _ukList     = [];           // Array UK dari master (dimuat sekali per form open)
+let _selectedUK = null;         // { id, kode, nama } atau null
+
 /**
  * @param {string|null} soalId  - null = mode create, string = mode edit
  * @param {function}    onSaved - callback setelah berhasil simpan
  */
 export async function openSoalForm(soalId = null, onSaved) {
-  // Reset state gambar setiap kali form dibuka
+  // Reset state setiap kali form dibuka
   _pendingFile      = null;
   _removeImage      = false;
   _existingImageUrl = null;
+  _ukList           = [];
+  _selectedUK       = null;
 
   const isEdit   = !!soalId;
   const existing = isEdit ? await getSoal(soalId) : null;
@@ -67,9 +74,46 @@ export async function openSoalForm(soalId = null, onSaved) {
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1.5">Elemen Kompetensi</label>
-          <input name="elemenKompetensi" class="form-input" placeholder="Misal: EK-01"
-                 value="${_esc(existing?.elemenKompetensi ?? '')}" />
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Unit Kompetensi</label>
+          <!-- UK picker — combobox inline -->
+          <div class="relative" id="uk-picker-wrap">
+            <!-- Hidden inputs yang dikirim saat submit -->
+            <input type="hidden" id="uk-value" name="unitKompetensi" value="" />
+            <input type="hidden" id="uk-nama-hidden" name="ekNama" value="" />
+
+            <!-- Trigger button -->
+            <button type="button" id="btn-uk-trigger"
+                    class="form-input w-full text-left flex items-center justify-between gap-2 pr-2">
+              <span id="uk-display" class="truncate text-gray-500 text-sm">Pilih Unit Kompetensi…</span>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" id="btn-uk-clear"
+                        class="hidden text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded"
+                        title="Hapus pilihan">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </button>
+
+            <!-- Dropdown -->
+            <div id="uk-dropdown"
+                 class="hidden absolute z-30 left-0 right-0 mt-1 bg-gray-800 border border-gray-700
+                        rounded-xl shadow-2xl overflow-hidden">
+              <div class="p-2 border-b border-gray-700">
+                <input type="text" id="uk-search" placeholder="Cari kode atau nama UK…"
+                       class="form-input w-full text-xs" autocomplete="off" />
+              </div>
+              <div id="uk-list"
+                   class="overflow-y-auto max-h-52 py-1"
+                   style="scrollbar-width:thin">
+                <div class="px-3 py-6 text-center text-xs text-gray-500">Memuat daftar UK…</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -189,6 +233,7 @@ export async function openSoalForm(soalId = null, onSaved) {
 
   _bindOpsiEvents();
   _bindImageEvents();
+  _initUKPicker(existing);
 }
 
 // ─── Opsi row HTML ────────────────────────────────────────────
@@ -297,6 +342,204 @@ function _bindImageEvents() {
   });
 }
 
+// ─── UK Picker ────────────────────────────────────────────────
+
+async function _initUKPicker(existing) {
+  // Coba cocokkan existing unitKompetensi ke master UK (bisa berupa docId atau kode)
+  const existingVal  = existing?.unitKompetensi ?? null;
+  const existingNama = existing?.ekNama ?? null;
+
+  // Load UK list (listUKAktif returns array langsung)
+  try {
+    _ukList = await listUKAktif();
+  } catch {
+    _ukList = [];
+  }
+
+  // Cari UK yang sesuai dengan nilai existing
+  if (existingVal) {
+    _selectedUK = _ukList.find(u =>
+      u.id === existingVal ||
+      (u.kode && u.kode.toLowerCase() === existingVal.toLowerCase())
+    ) ?? { id: existingVal, kode: existingVal, nama: existingNama ?? existingVal };
+  }
+
+  _renderUKSelection();
+  _bindUKPickerEvents();
+}
+
+function _renderUKSelection() {
+  const display    = document.getElementById('uk-display');
+  const valInput   = document.getElementById('uk-value');
+  const namaInput  = document.getElementById('uk-nama-hidden');
+  const clearBtn   = document.getElementById('btn-uk-clear');
+  if (!display) return;
+
+  if (_selectedUK) {
+    const label = _selectedUK.kode
+      ? `<span class="font-mono text-blue-400 mr-1.5">${_esc(_selectedUK.kode)}</span><span class="text-gray-200">${_esc(_selectedUK.nama)}</span>`
+      : `<span class="text-gray-200">${_esc(_selectedUK.nama)}</span>`;
+    display.innerHTML = label;
+    display.classList.remove('text-gray-500');
+    valInput.value  = _selectedUK.id  ?? '';
+    namaInput.value = _selectedUK.nama ?? '';
+    clearBtn?.classList.remove('hidden');
+  } else {
+    display.innerHTML = 'Pilih Unit Kompetensi…';
+    display.className = display.className.replace('text-gray-200','') + ' text-gray-500';
+    valInput.value  = '';
+    namaInput.value = '';
+    clearBtn?.classList.add('hidden');
+  }
+}
+
+function _renderUKList(filter = '') {
+  const listEl = document.getElementById('uk-list');
+  if (!listEl) return;
+
+  const bidangId = document.querySelector('[name="bidangId"]')?.value ?? '';
+  const q        = filter.toLowerCase().trim();
+
+  // Filter by bidang: UK dengan bidangIds kosong dianggap lintas bidang (tetap tampil)
+  let hits = bidangId
+    ? _ukList.filter(u => !u.bidangIds?.length || u.bidangIds.includes(bidangId))
+    : _ukList;
+
+  if (q) {
+    hits = hits.filter(u =>
+      (u.kode && u.kode.toLowerCase().includes(q)) ||
+      (u.nama && u.nama.toLowerCase().includes(q))
+    );
+  }
+
+  let html = '';
+
+  // Tampilkan label bidang aktif
+  if (bidangId && !q) {
+    const bidangNama = BIDANG_LIST.find(b => b.bidangId === bidangId)?.nama ?? bidangId;
+    html += `<div class="px-3 py-1.5 text-xs text-gray-600 border-b border-gray-700/50">
+      UK untuk bidang: <span class="text-gray-400 font-medium">${_esc(bidangNama)}</span>
+    </div>`;
+  }
+
+  if (!hits.length) {
+    html += `<div class="px-3 py-4 text-center text-xs text-gray-500">
+      ${q ? 'Tidak ditemukan.' : (bidangId ? 'Tidak ada UK untuk bidang ini.' : 'Belum ada Unit Kompetensi aktif.')}
+    </div>`;
+  } else {
+    html += hits.map(u => {
+      const isSelected = _selectedUK?.id === u.id;
+      return `
+        <button type="button" data-uk-id="${u.id}" data-uk-kode="${_esc(u.kode ?? '')}" data-uk-nama="${_esc(u.nama)}"
+                class="uk-item w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors
+                       ${isSelected ? 'bg-blue-600/20 text-blue-300' : 'text-gray-300 hover:bg-gray-700'}">
+          ${u.kode
+            ? `<span class="font-mono text-xs text-blue-400 shrink-0 w-28 truncate">${_esc(u.kode)}</span>`
+            : `<span class="text-xs text-gray-600 italic shrink-0 w-28">Non-SKKNI</span>`}
+          <span class="truncate">${_esc(u.nama)}</span>
+          ${isSelected ? '<svg class="w-3.5 h-3.5 ml-auto shrink-0 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
+        </button>`;
+    }).join('');
+  }
+
+  // Opsi input manual — tampil saat ada teks pencarian
+  if (q) {
+    html += `
+      <div class="border-t border-gray-700 mt-1 px-3 py-2">
+        <button type="button" id="btn-uk-manual" data-uk-manual="${_esc(filter)}"
+                class="w-full text-left text-xs text-gray-500 hover:text-blue-400 transition-colors py-1 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+          Isi manual: "<span class="text-gray-300 font-medium">${_esc(filter)}</span>"
+        </button>
+      </div>`;
+  }
+
+  listEl.innerHTML = html;
+
+  // Bind klik item dari daftar
+  listEl.querySelectorAll('.uk-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _selectedUK = {
+        id:   btn.dataset.ukId,
+        kode: btn.dataset.ukKode || null,
+        nama: btn.dataset.ukNama,
+      };
+      _renderUKSelection();
+      _closeUKDropdown();
+    });
+  });
+
+  // Bind klik input manual
+  document.getElementById('btn-uk-manual')?.addEventListener('click', e => {
+    const val = e.currentTarget.dataset.ukManual;
+    _selectedUK = { id: val, kode: null, nama: val };
+    _renderUKSelection();
+    _closeUKDropdown();
+  });
+}
+
+function _openUKDropdown() {
+  const dropdown = document.getElementById('uk-dropdown');
+  const search   = document.getElementById('uk-search');
+  dropdown?.classList.remove('hidden');
+  search?.focus();
+  _renderUKList('');
+}
+
+function _closeUKDropdown() {
+  document.getElementById('uk-dropdown')?.classList.add('hidden');
+  if (document.getElementById('uk-search'))
+    document.getElementById('uk-search').value = '';
+}
+
+function _bindUKPickerEvents() {
+  const trigger  = document.getElementById('btn-uk-trigger');
+  const clearBtn = document.getElementById('btn-uk-clear');
+  const search   = document.getElementById('uk-search');
+  const dropdown = document.getElementById('uk-dropdown');
+
+  // Toggle dropdown on trigger click (but not if clicking the clear button)
+  trigger?.addEventListener('click', e => {
+    if (e.target.closest('#btn-uk-clear')) return;
+    dropdown?.classList.contains('hidden') ? _openUKDropdown() : _closeUKDropdown();
+  });
+
+  // Clear selection
+  clearBtn?.addEventListener('click', e => {
+    e.stopPropagation();
+    _selectedUK = null;
+    _renderUKSelection();
+    _closeUKDropdown();
+  });
+
+  // Search filter
+  let _deb;
+  search?.addEventListener('input', e => {
+    clearTimeout(_deb);
+    _deb = setTimeout(() => _renderUKList(e.target.value), 150);
+  });
+
+  // Re-filter list saat bidang berubah (dropdown sedang terbuka atau tidak)
+  document.querySelector('[name="bidangId"]')?.addEventListener('change', () => {
+    const dd = document.getElementById('uk-dropdown');
+    if (!dd?.classList.contains('hidden')) {
+      _renderUKList(document.getElementById('uk-search')?.value ?? '');
+    }
+  });
+
+  // Close dropdown on click outside
+  document.addEventListener('click', function _outsideClick(e) {
+    const wrap = document.getElementById('uk-picker-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      _closeUKDropdown();
+      document.removeEventListener('click', _outsideClick);
+    }
+  });
+}
+
 // ─── Submit ───────────────────────────────────────────────────
 
 async function _submit(close, soalId, onSaved) {
@@ -323,8 +566,8 @@ async function _submit(close, soalId, onSaved) {
     pertanyaan:              fd.get('pertanyaan'),
     bidangId:                fd.get('bidangId'),
     bloomLevel:              fd.get('bloomLevel'),
-    elemenKompetensi:        fd.get('elemenKompetensi'),
-    ekNama:                  null,
+    unitKompetensi:          fd.get('unitKompetensi') || null,
+    ekNama:                  fd.get('ekNama') || null,
     opsi,
     kunci,
     pembahasan:              fd.get('pembahasan'),

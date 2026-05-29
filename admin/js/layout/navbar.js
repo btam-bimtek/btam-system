@@ -35,5 +35,5 @@ export function renderNavbar() {
 export function setPageTitle(title) {
   const el = document.getElementById('page-title');
   if (el) el.textContent = title;
-  document.title = `${title} — BTAM Terpadu`;
+  document.title = `${title} — SI-SABAT`;
 }
