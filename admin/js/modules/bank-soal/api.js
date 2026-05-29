@@ -41,7 +41,7 @@ export async function listSoal({
     const s = search.toLowerCase();
     data = data.filter(s2 =>
       s2.pertanyaan?.toLowerCase().includes(s) ||
-      s2.elemenKompetensi?.toLowerCase().includes(s) ||
+      s2.unitKompetensi?.toLowerCase().includes(s) ||
       s2.tags?.some(t => t.toLowerCase().includes(s))
     );
   }
@@ -88,7 +88,7 @@ export async function createSoal(data, preGeneratedId = null) {
     pertanyaanImage:         data.pertanyaanImage ?? null,
     opsi:                    _normalizeOpsi(data.opsi),
     bidangId:                data.bidangId,
-    elemenKompetensi:        data.elemenKompetensi?.trim() ?? '',
+    unitKompetensi:        data.unitKompetensi?.trim() ?? '',
     ekNama:                  data.ekNama?.trim() ?? null,
     bloomLevel:              data.bloomLevel,
     bobot,
@@ -139,7 +139,7 @@ export async function updateSoal(soalId, data) {
     pertanyaanImage:         data.pertanyaanImage ?? null,
     opsi:                    _normalizeOpsi(data.opsi),
     bidangId:                data.bidangId,
-    elemenKompetensi:        data.elemenKompetensi?.trim() ?? '',
+    unitKompetensi:        data.unitKompetensi?.trim() ?? '',
     ekNama:                  data.ekNama?.trim() ?? null,
     bloomLevel:              data.bloomLevel,
     bobot,
@@ -190,19 +190,19 @@ export async function deleteSoal(soalId) {
  * Ambil soal secara acak berdasarkan kriteria.
  * @param {object} opts
  * @param {string}   opts.bidangId
- * @param {string}   [opts.elemenKompetensi]
+ * @param {string}   [opts.unitKompetensi]
  * @param {string[]} [opts.bloomLevels]   - filter bloom level
  * @param {number}   opts.jumlah          - berapa soal yang diambil
  * @param {string[]} [opts.excludeIds]    - soal yang sudah dipakai sebelumnya
  * @returns {Promise<object[]>}
  */
-export async function pickSoalRandom({ bidangId, elemenKompetensi, bloomLevels, jumlah, excludeIds = [] }) {
+export async function pickSoalRandom({ bidangId, unitKompetensi, bloomLevels, jumlah, excludeIds = [] }) {
   const constraints = [
     where('deleted', '==', false),
     where('active', '==', true),
     where('bidangId', '==', bidangId)
   ];
-  if (elemenKompetensi) constraints.push(where('elemenKompetensi', '==', elemenKompetensi));
+  if (unitKompetensi) constraints.push(where('unitKompetensi', '==', unitKompetensi));
   if (bloomLevels?.length === 1) constraints.push(where('bloomLevel', '==', bloomLevels[0]));
 
   const snap = await getDocs(query(collection(db, COL.BANK_SOAL), ...constraints));

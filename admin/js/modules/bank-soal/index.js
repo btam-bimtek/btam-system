@@ -1,4 +1,4 @@
-// admin/js/modules/bank-soal/index.js
+﻿// admin/js/modules/bank-soal/index.js
 // List view bank soal dengan filter bidang + bloom level.
 
 import { setPageTitle } from '../../layout/navbar.js';
@@ -54,7 +54,7 @@ export async function renderBankSoalList({ query = {} } = {}) {
                fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
-          <input id="search-input" type="search" placeholder="Cari pertanyaan, EK, tag…"
+          <input id="search-input" type="search" placeholder="Cari pertanyaan, UK, tag…"
                  class="form-input pl-9 w-64" value="${_esc(_state.search)}" />
         </div>
 
@@ -130,7 +130,7 @@ function _renderTable() {
             <div class="flex items-center gap-1.5 mt-1">
               ${_bidangBadge(row.bidangId)}
               <span class="badge badge-gray">${row.bloomLevel}</span>
-              ${row.elemenKompetensi ? `<span class="badge badge-gray font-mono">${_esc(row.elemenKompetensi)}</span>` : ''}
+              ${row.unitKompetensi ? `<span class="badge badge-gray font-mono">${_esc(row.unitKompetensi)}</span>` : ''}
             </div>
           </div>` },
       { key: 'opsi',  label: 'Opsi', width: '60px',
@@ -138,7 +138,7 @@ function _renderTable() {
       { key: 'bobot', label: 'Bobot', width: '60px',
         render: v => `<span class="font-mono text-sm text-gray-300">${v ?? '—'}</span>` },
       { key: 'usedCount', label: 'Dipakai', width: '70px',
-        render: v => `<span class="text-gray-400">${v ?? 0}×</span>` },
+        render: v => `<span class="text-gray-400">${v ?? 0}Ã—</span>` },
       { key: 'correctRate', label: 'Benar %', width: '70px',
         render: v => v != null
           ? `<span class="${v >= 60 ? 'text-green-400' : 'text-yellow-400'}">${Math.round(v)}%</span>`
@@ -232,7 +232,7 @@ function _bindEvents() {
         'Pertanyaan':    s.pertanyaan,
         'Bidang':        s.bidangId,
         'Bloom':         s.bloomLevel,
-        'EK':            s.elemenKompetensi ?? '',
+        'UK':            s.unitKompetensi ?? '',
         'Bobot':         s.bobot ?? '',
         'Opsi A':        s.opsi?.[0]?.text ?? '',
         'Opsi B':        s.opsi?.[1]?.text ?? '',
@@ -278,3 +278,4 @@ function _loadSheetJS() {
     s.onload = res; s.onerror = rej; document.head.appendChild(s);
   });
 }
+

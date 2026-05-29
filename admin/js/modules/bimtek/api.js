@@ -32,6 +32,23 @@ export function generateKodeBimtek(tahun, urutan) {
   return `BIM-${tahun}-${pad}`;
 }
 
+// ─── GENERATE ACCESS CODE ────────────────────────────────────────────────────
+// 6 karakter uppercase alphanumeric (tanpa 0/O/1/I agar tidak membingungkan)
+
+function _generateAccessCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+export async function generateBimtekAccessCode(bimtekId) {
+  const code = _generateAccessCode();
+  await updateDoc(doc(db, COL, bimtekId), { accessCode: code, updatedAt: serverTimestamp() });
+  await logAudit('bimtek', 'generate_access_code', bimtekId, { accessCode: code });
+  return code;
+}
+
 // ─── LIST BIMTEK ────────────────────────────────────────────────────────────
 
 export async function listBimtek({ tipe, status, bidangId } = {}) {
@@ -80,10 +97,12 @@ export async function createBimtek(data) {
     kapasitas: data.kapasitas ?? kapasitasDefault,
     pesertaIds: [],
     pengajarIds: data.pengajarIds || [],
+    ukIds: data.ukIds || [],
     kkm: data.kkm ?? DEFAULT_KKM,
     weights: data.weights || { ...DEFAULT_WEIGHTS },
     hasTugas: data.hasTugas ?? false,
     hasPresentasi: data.hasPresentasi ?? false,
+    accessCode: _generateAccessCode(),
     preTestExamId: null,
     postTestExamId: null,
     reportThresholds: null,
@@ -105,9 +124,9 @@ export async function createBimtek(data) {
 export async function updateBimtek(bimtekId, data) {
   const allowed = [
     'nama', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
-    'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'kkm', 'weights',
+    'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'ukIds', 'kkm', 'weights',
     'hasTugas', 'hasPresentasi', 'reportThresholds', 'status', 'cancelReason',
-    'preTestExamId', 'postTestExamId',
+    'preTestExamId', 'postTestExamId', 'accessCode',
   ];
   const payload = {};
   for (const key of allowed) {
@@ -198,7 +217,7 @@ export async function createMapel(bimtekId, data) {
     urutan: nextUrutan,
     nama: data.nama.trim(),
     bidangId: data.bidangId,
-    ekIds: data.ekIds || null,
+    ukIds: data.ukIds || null,
     totalJp: data.totalJp,
     pengajarIds: data.pengajarIds || [],
     pengajarPenilaiId: data.pengajarPenilaiId,
@@ -216,7 +235,7 @@ export async function createMapel(bimtekId, data) {
 export async function updateMapel(bimtekId, mapelId, data) {
   validateMapel(data);
   const allowed = [
-    'urutan', 'nama', 'bidangId', 'ekIds', 'totalJp',
+    'urutan', 'nama', 'bidangId', 'ukIds', 'totalJp',
     'pengajarIds', 'pengajarPenilaiId', 'jadwal', 'keterangan',
   ];
   const payload = {};

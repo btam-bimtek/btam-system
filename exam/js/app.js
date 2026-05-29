@@ -2,7 +2,10 @@
 // Orchestrator utama exam app.
 // Mengelola alur: loading → validasi token → entry screen → instruksi → ujian → result.
 
-import { getSessionByToken, getExam, getSoalList, startSession } from './db.js';
+import {
+  getSessionByToken, getExam, getSoalList, startSession,
+  getBimtekByAccessCode, getSessionsByBimtekAndPeserta,
+} from './db.js';
 import { initExamRunner, destroyExamRunner }                     from './exam-runner.js';
 import { requestFullscreen }                                      from './anti-cheat.js';
 import { EXAM_DEFAULTS }                                          from '../../shared/constants.js';
@@ -19,23 +22,25 @@ window.addEventListener('DOMContentLoaded', _boot);
 async function _boot() {
   _renderLoading();
 
-  // Support dua format URL:
-  // 1. ?token=UUID              (format baru — recommended)
-  // 2. #/session/UUID           (format lama dari M1.5)
+  // Support dua format URL (backward compat magic link lama):
+  // 1. ?token=UUID
+  // 2. #/session/UUID
   let token = new URLSearchParams(window.location.search).get('token');
   if (!token) {
     const hashMatch = window.location.hash.match(/^#\/session\/(.+)$/);
     if (hashMatch) token = hashMatch[1].trim();
   }
 
-  if (!token) {
-    return _renderError({
-      icon:  '🔗',
-      title: 'Tautan Tidak Valid',
-      msg:   'Tautan ujian tidak ditemukan. Pastikan Anda menggunakan tautan yang diberikan oleh panitia.',
-    });
+  if (token) {
+    await _bootByToken(token);
+  } else {
+    _renderKodeUjianScreen();
   }
+}
 
+// ─── Boot via Magic Link (backward compat) ────────────────────
+
+async function _bootByToken(token) {
   // ── 1. Fetch session ──
   try {
     _session = await getSessionByToken(token);
@@ -96,7 +101,7 @@ async function _boot() {
     });
   }
 
-  // ── 5a. Resume — sudah 'started' sebelumnya ──
+  // ── 5a. Resume ──
   if (_session.status === 'started') {
     _renderLoading('Melanjutkan ujian...');
     try {
@@ -114,8 +119,359 @@ async function _boot() {
     return;
   }
 
-  // ── 5b. Status 'issued' — tampilkan entry screen ──
+  // ── 5b. Issued — entry screen lama (input noPeserta) ──
   _renderEntryScreen();
+}
+
+// ─── Alur Kode Ujian (4 Langkah) ─────────────────────────────
+
+function _renderKodeUjianScreen() {
+  const appEl = document.getElementById('app');
+
+  // State lokal alur ini
+  let _bimtekL   = null;
+  let _sessionsL = null;
+  let _tipeL     = null;
+
+  appEl.innerHTML = `
+    <div class="w-full max-w-md mx-auto space-y-3">
+
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
+          <span class="text-white text-xl font-black">B</span>
+        </div>
+        <h1 class="text-lg font-bold text-gray-900">Sistem Ujian BTAM</h1>
+        <p class="text-sm text-gray-400">Balai Teknik Air Minum</p>
+      </div>
+
+      <!-- Langkah 1 -->
+      <div id="s1" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 1 — Kode Ujian</p>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Kode ujian dari panitia</label>
+        <div class="flex gap-2">
+          <input id="inp-kode" type="text" maxlength="7" placeholder="Contoh: ABC-DEF"
+            autocomplete="off" spellcheck="false"
+            class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-mono uppercase
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <button id="btn-cek-kode"
+            class="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+            Periksa
+          </button>
+        </div>
+        <p id="s1-err" class="text-red-500 text-xs mt-1.5 hidden"></p>
+        <div id="s1-info" class="hidden mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+          <p class="text-xs font-semibold text-blue-600 mb-0.5">✓ Ujian ditemukan</p>
+          <p id="s1-nama" class="text-sm font-bold text-gray-900"></p>
+          <p id="s1-periode" class="text-xs text-gray-500 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- Langkah 2 (hidden) -->
+      <div id="s2" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 2 — Nomor Peserta</p>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Nomor peserta Anda</label>
+        <div class="flex gap-2">
+          <input id="inp-np" type="text" placeholder="Contoh: BT-001"
+            autocomplete="off" spellcheck="false"
+            class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <button id="btn-cek-np"
+            class="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+            Periksa
+          </button>
+        </div>
+        <p id="s2-err" class="text-red-500 text-xs mt-1.5 hidden"></p>
+        <div id="s2-info" class="hidden mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <p class="text-xs font-semibold text-blue-600 mb-1">✓ Peserta ditemukan</p>
+              <p id="s2-nama" class="text-sm font-bold text-gray-900"></p>
+              <p id="s2-jabatan" class="text-xs text-gray-600 mt-0.5"></p>
+              <p id="s2-instansi" class="text-xs text-gray-500"></p>
+            </div>
+            <button id="btn-ubah-np"
+              class="shrink-0 text-xs px-2.5 py-1 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-600 transition-colors">
+              Ubah
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Langkah 3 (hidden) -->
+      <div id="s3" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 3 — Jenis Ujian</p>
+        <div id="s3-opts" class="space-y-2"></div>
+      </div>
+
+      <!-- Langkah 4 (hidden) -->
+      <div id="s4" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 4 — Status Sesi</p>
+        <div id="s4-body"></div>
+      </div>
+
+    </div>`;
+
+  const q = id => appEl.querySelector(id);
+
+  // ── Langkah 1 ────────────────────────────────────────────────
+  const inpKode = q('#inp-kode');
+  inpKode.focus();
+  inpKode.addEventListener('input', () => {
+    inpKode.value = inpKode.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7);
+  });
+  inpKode.addEventListener('keydown', e => { if (e.key === 'Enter') q('#btn-cek-kode').click(); });
+
+  q('#btn-cek-kode').addEventListener('click', async () => {
+    const raw  = inpKode.value.trim();
+    const kode = raw.replace(/[^A-Z0-9]/g, '');
+    const err  = q('#s1-err');
+    if (!kode) { _showErr(err, 'Kode ujian wajib diisi.'); return; }
+
+    const btn = q('#btn-cek-kode');
+    btn.disabled = true; btn.textContent = 'Memeriksa...';
+    err.classList.add('hidden');
+
+    try {
+      _bimtekL = await getBimtekByAccessCode(kode);
+    } catch {
+      _showErr(err, 'Koneksi gagal. Periksa internet dan coba lagi.');
+      btn.disabled = false; btn.textContent = 'Periksa';
+      return;
+    }
+
+    if (!_bimtekL) {
+      _showErr(err, 'Kode ujian tidak ditemukan atau ujian belum dibuka.');
+      btn.disabled = false; btn.textContent = 'Periksa';
+      return;
+    }
+
+    q('#s1-nama').textContent    = _bimtekL.nama || '—';
+    q('#s1-periode').textContent = _fmtPeriode(_bimtekL.periode);
+    q('#s1-info').classList.remove('hidden');
+    inpKode.readOnly = true;
+    btn.classList.add('hidden');
+
+    q('#s2').classList.remove('hidden');
+    q('#inp-np').focus();
+    q('#s2').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // ── Langkah 2 ────────────────────────────────────────────────
+  const inpNp = q('#inp-np');
+  inpNp.addEventListener('keydown', e => { if (e.key === 'Enter') q('#btn-cek-np').click(); });
+
+  q('#btn-cek-np').addEventListener('click', async () => {
+    const np  = inpNp.value.trim();
+    const err = q('#s2-err');
+    if (!np) { _showErr(err, 'Nomor peserta wajib diisi.'); return; }
+
+    const btn = q('#btn-cek-np');
+    btn.disabled = true; btn.textContent = 'Memeriksa...';
+    err.classList.add('hidden');
+
+    try {
+      _sessionsL = await getSessionsByBimtekAndPeserta(_bimtekL.id, np);
+      // Coba uppercase jika tidak ditemukan
+      if (!_sessionsL.length && np !== np.toUpperCase()) {
+        _sessionsL = await getSessionsByBimtekAndPeserta(_bimtekL.id, np.toUpperCase());
+      }
+    } catch {
+      _showErr(err, 'Koneksi gagal. Periksa internet dan coba lagi.');
+      btn.disabled = false; btn.textContent = 'Periksa';
+      return;
+    }
+
+    if (!_sessionsL.length) {
+      _showErr(err, 'Nomor peserta tidak ditemukan dalam ujian ini. Periksa kembali atau hubungi panitia.');
+      btn.disabled = false; btn.textContent = 'Periksa';
+      return;
+    }
+
+    const info = _sessionsL[0];
+    q('#s2-nama').textContent     = info.namaPeserta     || np;
+    q('#s2-jabatan').textContent  = info.jabatanPeserta  || '';
+    q('#s2-instansi').textContent = info.instansiPeserta || '';
+    q('#s2-info').classList.remove('hidden');
+    inpNp.readOnly = true;
+    btn.classList.add('hidden');
+
+    _renderStep3();
+
+    q('#btn-ubah-np').addEventListener('click', () => {
+      // Reset state lokal
+      _sessionsL = null;
+      _tipeL     = null;
+
+      // Kembalikan step 2 ke input state
+      q('#s2-info').classList.add('hidden');
+      inpNp.readOnly = false;
+      inpNp.value    = '';
+      q('#btn-cek-np').classList.remove('hidden');
+      q('#btn-cek-np').disabled  = false;
+      q('#btn-cek-np').textContent = 'Periksa';
+      q('#s2-err').classList.add('hidden');
+
+      // Sembunyikan step 3 & 4
+      q('#s3').classList.add('hidden');
+      q('#s3-opts').innerHTML = '';
+      q('#s4').classList.add('hidden');
+      q('#s4-body').innerHTML = '';
+
+      inpNp.focus();
+    });
+  });
+
+  // ── Langkah 3 ────────────────────────────────────────────────
+  function _renderStep3() {
+    const s3   = q('#s3');
+    const opts = q('#s3-opts');
+    s3.classList.remove('hidden');
+
+    const sPretest  = _sessionsL.find(s => s.tipeSession === 'pretest');
+    const sPosttest = _sessionsL.find(s => s.tipeSession === 'posttest');
+    const pretestOK = sPretest?.status === 'submitted';
+
+    const _buildOpt = (sess, label, locked) => {
+      if (!sess) return '';
+      const st  = sess.status;
+      const stTxt = st === 'submitted' ? '✓ Sudah dikumpulkan'
+                  : st === 'started'   ? '⏳ Sedang dikerjakan'
+                  :                      'Belum dikerjakan';
+      const stCls = st === 'submitted'  ? 'text-green-600'
+                  : locked              ? 'text-amber-600'
+                  :                       'text-gray-400';
+      const sel   = _tipeL === sess.tipeSession;
+      return `
+        <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors
+          ${locked
+            ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200'
+            : sel ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                  : 'border-gray-200 hover:bg-gray-50 cursor-pointer'}">
+          <input type="radio" name="tipe" value="${sess.tipeSession}" class="accent-blue-600 shrink-0"
+            ${locked ? 'disabled' : ''} ${sel ? 'checked' : ''}>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">${label}</p>
+            <p class="text-xs ${stCls} mt-0.5">
+              ${locked ? '🔒 Selesaikan Pre-Test terlebih dahulu' : stTxt}
+            </p>
+          </div>
+        </label>`;
+    };
+
+    opts.innerHTML = [
+      _buildOpt(sPretest,  'Pre-Test',  false),
+      _buildOpt(sPosttest, 'Post-Test', !pretestOK),
+    ].join('');
+
+    if (!sPretest && !sPosttest) {
+      opts.innerHTML = `<p class="text-sm text-gray-500">Tidak ada sesi ujian tersedia. Hubungi panitia.</p>`;
+    }
+
+    opts.querySelectorAll('input[type="radio"]').forEach(r => {
+      r.addEventListener('change', () => {
+        _tipeL = r.value;
+        _renderStep3();
+        _renderStep4();
+      });
+    });
+
+    s3.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Langkah 4 ────────────────────────────────────────────────
+  function _renderStep4() {
+    const s4   = q('#s4');
+    const body = q('#s4-body');
+    s4.classList.remove('hidden');
+
+    const sess = _sessionsL.find(s => s.tipeSession === _tipeL);
+    if (!sess) { s4.classList.add('hidden'); return; }
+
+    const label = _tipeL === 'pretest' ? 'Pre-Test' : 'Post-Test';
+
+    // Sesi kedaluwarsa
+    const expiredAt = _toDate(sess.expiredAt);
+    if (expiredAt && Date.now() > expiredAt.getTime()) {
+      body.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p class="text-2xl mb-2">⏰</p>
+          <p class="text-sm font-semibold text-red-700">Sesi ${_esc(label)} sudah kedaluwarsa.</p>
+          <p class="text-xs text-gray-500 mt-1">Hubungi panitia untuk memperpanjang sesi.</p>
+        </div>`;
+      s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+
+    // Sudah submit
+    if (sess.status === 'submitted') {
+      body.innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+          <p class="text-2xl mb-2">✅</p>
+          <p class="text-sm font-semibold text-green-700">Anda sudah mengumpulkan ${_esc(label)} ini.</p>
+          <p class="text-xs text-gray-500 mt-1">Hubungi panitia jika ada masalah.</p>
+        </div>`;
+      s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+
+    const isResume  = sess.status === 'started';
+    const soalCount = sess.soalIds?.length || 0;
+    const durasi    = sess.examDurasi      || '—';
+
+    body.innerHTML = `
+      <div class="${isResume ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-100'} rounded-xl p-4 mb-4">
+        ${isResume
+          ? `<p class="text-sm font-semibold text-amber-700">⚠ Sesi ${_esc(label)} Anda belum selesai.</p>
+             <p class="text-xs text-gray-600 mt-1">Klik "Lanjutkan Ujian" untuk melanjutkan dari jawaban terakhir.</p>`
+          : `<p class="text-sm font-semibold text-blue-700">✓ Sesi ${_esc(label)} siap dimulai.</p>
+             <p class="text-xs text-gray-600 mt-1">Durasi: <strong>${durasi} menit</strong> · <strong>${soalCount} soal</strong></p>`
+        }
+      </div>
+      <button id="btn-mulai"
+        class="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors text-sm">
+        ${isResume ? '↩ Lanjutkan Ujian' : '🚀 Mulai Ujian'}
+      </button>`;
+
+    q('#btn-mulai').addEventListener('click', async () => {
+      const btn = q('#btn-mulai');
+      btn.disabled = true; btn.textContent = 'Memuat...';
+
+      // Set state modul
+      _session = sess;
+      try {
+        _exam = await getExam(sess.examId);
+      } catch {
+        alert('Gagal memuat konfigurasi ujian. Hubungi panitia.');
+        btn.disabled = false;
+        btn.textContent = isResume ? '↩ Lanjutkan Ujian' : '🚀 Mulai Ujian';
+        return;
+      }
+      if (!_exam) {
+        alert('Konfigurasi ujian tidak ditemukan. Hubungi panitia.');
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        _soalList = await _loadAndShuffleSoal();
+      } catch {
+        alert('Gagal memuat soal. Periksa koneksi dan coba lagi.');
+        btn.disabled = false;
+        return;
+      }
+
+      if (isResume) {
+        _renderLoading('Melanjutkan ujian...');
+        await requestFullscreen();
+        await _startExam();
+      } else {
+        _renderInstructionScreen();
+      }
+    });
+
+    s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 // ─── Entry Screen ─────────────────────────────────────────────
@@ -461,4 +817,21 @@ function _esc(str) {
   const el = document.createElement('span');
   el.appendChild(document.createTextNode(str ?? ''));
   return el.innerHTML;
+}
+
+function _showErr(el, msg) {
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function _fmtPeriode(periode) {
+  if (!periode) return '';
+  const fmt = ts => {
+    if (!ts) return '';
+    return _toDate(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const mulai   = fmt(periode.mulai);
+  const selesai = fmt(periode.selesai);
+  if (mulai && selesai) return `${mulai} – ${selesai}`;
+  return mulai || selesai || '';
 }

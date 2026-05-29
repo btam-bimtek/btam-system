@@ -1,8 +1,8 @@
 # Progress Implementasi Sistem Bimtek BTAM
 
-**Last Updated:** 18 Mei 2026  
-**Status:** M1.1-1.9 ✅ Done | M1.10 ⬜ End-to-end Testing  
-**Total Progress:** 9/10 milestones selesai (Phase 1 core 90% done)
+**Last Updated:** 26 Mei 2026  
+**Status:** M1.1-1.9 ✅ Done | M1.10 dipindah ke akhir | M1.11-1.12 ⬜ Master EK + Tracing (baru)  
+**Total Progress:** 9/12 milestones selesai (Phase 1 core 75% — milestone baru ditambah)
 
 ---
 
@@ -176,6 +176,28 @@
 
 ---
 
+### ⬜ M1.11 — Master EK + Link ke Bimtek + Update Laporan
+**Target:** TBD  
+**Estimasi:** ~8-12 jam  
+**Keputusan Desain:** `docs/RESUME_DISKUSI_26MEI2026_EK_MASTER.md`  
+**Deliverables:**
+- Modul `master-ek`: CRUD + Import Excel
+- Update form & API bimtek: tambah field `ekIds`
+- Update laporan peserta Section C: gunakan `bimtek.ekIds` sebagai baseline EK
+- Update Firestore rules: tambah `elemen_kompetensi`
+- Bank soal: badge warning kalau EK tidak ada di master
+
+### ⬜ M1.12 — Tracing Kompetensi Peserta + Halaman Detail Peserta
+**Target:** TBD  
+**Estimasi:** ~6-10 jam  
+**Deliverables:**
+- Halaman detail peserta (`/peserta/:noPeserta`): Tab Info + Tab Riwayat Bimtek + Tab Kompetensi
+- Tab Kompetensi: trend EK lintas bimtek (tabel + chart)
+- `getPesertaEKHistory()` API function
+- Update list peserta: nama jadi link klik
+
+---
+
 ## Phase 1 Summary
 
 | Fase | Milestone | Est. Jam | Real Jam | Status |
@@ -185,8 +207,10 @@
 | Exam (M1.5-1.6) | Exam Editor + Runner | 26-36 | ~30 | ✅ |
 | Penilaian (M1.7) | Input Nilai & Kelulusan | 16-22 | ~8 | ✅ |
 | Report (M1.8-1.9) | Report + Dashboard + Settings | ~40 | ~2 sesi | ✅ |
-| Testing (M1.10) | End-to-end testing | 8-12 | TBD | ⬜ |
-| **Phase 1 Total** | **M1.1-1.10** | **165-220** | **~75+** | **90% done** |
+| EK (M1.11) | Master EK + Update Laporan | 8-12 | TBD | ⬜ |
+| Tracing (M1.12) | Tracing Kompetensi Peserta | 6-10 | TBD | ⬜ |
+| Testing (M1.10) | End-to-end testing (incl. EK) | 8-12 | TBD | ⬜ |
+| **Phase 1 Total** | **M1.1-1.12+1.10** | **~179-242** | **~75+** | **75% done** |
 
 ---
 

@@ -7,6 +7,7 @@ import { listBimtekScores, listExamResults, hitungKehadiran } from './penilaian-
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
 import { listExams } from './exam-api.js';
 import { listSesi } from './api.js';
+import { getUKByKodes } from '../master-uk/api.js';
 
 // ─── DEFAULT THRESHOLDS (sesuai STRUKTUR_APLIKASI_v3) ─────────────────────────
 
@@ -78,7 +79,7 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
   // Sorted untuk per-peserta table (by nilaiAkhir desc)
   const scoresSorted = [...enriched].sort((a, b) => (b.nilaiAkhir ?? -1) - (a.nilaiAkhir ?? -1));
 
-  // Per-EK aggregate (semua peserta, pre vs post)
+  // Per-UK aggregate (semua peserta, pre vs post)
   const ekDataAll = await _calcEKDataAll(examResults, exams);
 
   // Per-soal error rate
@@ -160,7 +161,7 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     if (pretestResult && posttestResult) break;
   }
 
-  // Per-EK analysis
+  // Per-UK analysis
   let ekComparison = null;
   const allSoalIds = [...new Set([...pretestSoalIds, ...posttestSoalIds])];
   if (allSoalIds.length > 0 && (pretestResult || posttestResult)) {
@@ -172,6 +173,37 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     );
   }
 
+  // ── Merge dengan baseline UK dari bimtek.ukIds ────────────────────────────
+  // Jika bimtek punya ukIds yang terdefinisi, UK yang ada di baseline tapi
+  // tidak ada di exam results → tetap ditampilkan dengan data null.
+  const baselineUkIds = bimtek.ukIds || [];
+  if (baselineUkIds.length > 0) {
+    const ukMasterMap = await getUKByKodes(baselineUkIds);
+    const existingKeys = new Set((ekComparison || []).map(e => e.ekKey?.toLowerCase()));
+
+    const missing = baselineUkIds
+      .filter(id => !existingKeys.has(id.toLowerCase()))
+      .map(id => {
+        const master = ukMasterMap[id.toLowerCase()];
+        return {
+          ekKey:   master?.kode ?? id,
+          ekNama:  master?.nama ?? id,
+          prePct:  null,
+          postPct: null,
+          delta:   null,
+          fromBaseline: true, // marker: UK ini dari definisi bimtek, belum ada data ujian
+        };
+      });
+
+    // Update nama UK di ekComparison dengan nama dari master (lebih akurat)
+    const updatedComparison = (ekComparison || []).map(e => {
+      const master = ukMasterMap[e.ekKey?.toLowerCase()];
+      return master ? { ...e, ekNama: master.nama } : e;
+    });
+
+    ekComparison = [...updatedComparison, ...missing];
+  }
+
   return {
     peserta,
     scores,
@@ -179,14 +211,15 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     pretestResult,
     posttestResult,
     ekComparison,
+    hasUKBaseline: baselineUkIds.length > 0,
     thresholds: bimtek.reportThresholds ?? DEFAULT_REPORT_THRESHOLDS
   };
 }
 
-// ─── PER-EK COMPARISON ────────────────────────────────────────────────────────
+// ─── PER-UK COMPARISON ────────────────────────────────────────────────────────
 
 /**
- * Hitung persentase penguasaan per Elemen Kompetensi (pre vs post).
+ * Hitung persentase penguasaan per Unit Kompetensi (pre vs post).
  * @param {object} pretestDetail  - { soalId: {benar, bobot, skor} }
  * @param {object} posttestDetail - { soalId: {benar, bobot, skor} }
  * @param {object} soalMap        - { soalId: soalDoc }
@@ -199,7 +232,7 @@ export function calcEKComparison(pretestDetail, posttestDetail, soalMap) {
     for (const [soalId, d] of Object.entries(detail ?? {})) {
       const soal  = soalMap[soalId];
       if (!soal) continue;
-      const ekKey  = soal.elemenKompetensi || soal.bloomLevel || 'unknown';
+      const ekKey  = soal.unitKompetensi || soal.bloomLevel || 'unknown';
       const ekNama = soal.ekNama || ekKey;
       if (!ekMap[ekKey]) {
         ekMap[ekKey] = { ekKey, ekNama, preSkor: 0, preBobot: 0, postSkor: 0, postBobot: 0 };
@@ -277,7 +310,7 @@ async function _calcEKDataAll(examResults, exams) {
   const pretestResults  = examResults.filter(r => r.tipeSession === 'pretest');
   const posttestResults = examResults.filter(r => r.tipeSession === 'posttest');
 
-  // Per-EK per peserta, lalu rata-rata
+  // Per-UK per peserta, lalu rata-rata
   const ekAggPre  = {};  // ekKey → {totalPct, count}
   const ekAggPost = {};
 
@@ -287,7 +320,7 @@ async function _calcEKDataAll(examResults, exams) {
       for (const [soalId, d] of Object.entries(detail)) {
         const soal = soalMap[soalId];
         if (!soal) continue;
-        const ekKey = soal.elemenKompetensi || soal.bloomLevel || 'unknown';
+        const ekKey = soal.unitKompetensi || soal.bloomLevel || 'unknown';
         if (!agg[ekKey]) agg[ekKey] = { ekNama: soal.ekNama || ekKey, totalSkor: 0, totalBobot: 0, pesertaSet: new Set() };
         agg[ekKey].totalSkor  += d.skor  ?? 0;
         agg[ekKey].totalBobot += d.bobot ?? 1;
@@ -376,7 +409,7 @@ async function _buildSoalErrorData(examResults, exams) {
     return {
       ...s,
       pertanyaan:       soal?.pertanyaan       ?? s.soalId,
-      elemenKompetensi: soal?.elemenKompetensi ?? '—',
+      unitKompetensi: soal?.unitKompetensi ?? '—',
       bloomLevel:       soal?.bloomLevel       ?? '—',
       persenSalah: s.totalAttempts > 0
         ? Math.round((s.salahCount / s.totalAttempts) * 100)

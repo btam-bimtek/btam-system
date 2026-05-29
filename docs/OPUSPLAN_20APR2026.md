@@ -5,6 +5,23 @@
 **Pengganti:** `STATUS_DISKUSI.md` (konsolidasi semua keputusan)  
 **Pelengkap:** `SCHEMA_HARMONIZATION.md`, `STRUKTUR_APLIKASI_v3.md`, `kode_daerah_fixed.xlsx`, `data_kinerja_1.xlsx`, `data_all.xlsx`
 
+---
+
+### 📌 Revisi 26 Mei 2026 — Master Elemen Kompetensi (EK)
+
+Tambahan fitur **Master EK Global** + **Tracing Kompetensi Peserta** berdasarkan diskusi `RESUME_DISKUSI_26MEI2026_EK_MASTER.md`.
+
+**Perubahan schema:**
+- Collection baru `elemen_kompetensi` (section 4.20)
+- Field baru `ekIds: string[]` di `bimtek` (section 4.9)
+
+**Milestone baru (Phase 1):**
+- M1.11 — Master EK + Link ke Bimtek + Update Laporan (~8-12 jam)
+- M1.12 — Tracing Kompetensi Peserta + Halaman Detail Peserta (~6-10 jam)
+- M1.10 (E2E Testing) dipindah ke setelah M1.11–M1.12
+
+**Total Phase 1 direvisi:** ~179-242 jam (naik dari 165-220 jam)
+
 Dokumen ini adalah **blueprint definitif** untuk membangun sistem BTAM terpadu menggantikan 3 aplikasi HTML standalone yang ada (`exam-app-main-11.html`, `penilaian-bimtek-btam.html`, `simlatbang-ai.html`). Dokumen ini mencakup seluruh keputusan arsitektur, schema database, struktur folder, milestone breakdown, dan risk register yang diperlukan untuk memulai coding.
 
 ---
@@ -311,6 +328,7 @@ MASTER:
   bidang/{bidangId}                 ← seed: 4 fixed
   provinsi_master/{kodeBps}         ← seed: 38 provinsi dengan kode BPS
   kabkota_master/{kodeBps}          ← seed: 417 kab/kota dari kode_daerah_fixed.xlsx
+  elemen_kompetensi/{ekId}          ← BARU (rev. 26 Mei 2026): master EK global lintas bidang
   bank_soal/{soalId}
   bank_soal_answers/{soalId}        ← admin-only, pisah dari soal
 
@@ -721,6 +739,12 @@ Saat seed awal, 6 kode duplikat di `kode_daerah.xlsx` sudah diperbaiki:
   
   // Pengajar
   pengajarIds: string[],            // array of pengajarId
+  
+  // Elemen Kompetensi yang diukur (BARU rev. 26 Mei 2026)
+  ekIds: string[],                  // array of ekId dari elemen_kompetensi. Default [].
+                                    // Ini adalah daftar RESMI EK yang ingin diukur di bimtek ini.
+                                    // Laporan Section C menggunakan ini sebagai baseline.
+                                    // Kalau [], laporan fallback ke auto-discover dari soal ujian.
   
   // Konfigurasi penilaian
   kkm: number,                      // default 60
@@ -1544,6 +1568,59 @@ evaluasiPengajarProgress: {              // untuk UI progress bar
 
 ---
 
+### 4.20. Collection: `elemen_kompetensi/{ekId}` *(BARU — rev. 26 Mei 2026)*
+
+Master data Elemen Kompetensi yang bersifat **global dan lintas bidang**. EK yang sama bisa dipakai di beberapa bimtek berbeda bidang. Dikelola admin via modul `master-ek`.
+
+```js
+{
+  ekId: string,           // PK — kode singkat, misal "EK-001", "EK-PROD-01"
+                          // Kode ini yang dipakai di bank_soal.elemenKompetensi untuk matching.
+  nama: string,           // WAJIB — deskripsi lengkap
+                          // misal: "Perencanaan Sistem Distribusi Air Minum"
+  deskripsi: string | null, // penjelasan lebih panjang (opsional)
+  
+  bidangIds: string[],    // informatif: bidang mana yang relevan. Default [].
+                          // [] = relevan untuk semua bidang (lintas bidang).
+                          // Bukan constraint — admin tetap bisa assign EK ke bimtek bidang apapun.
+  
+  status: 'aktif' | 'nonaktif',
+                          // nonaktif = tidak muncul di picker bimtek/bank soal,
+                          // tapi data lama (bimtek.ekIds, bank_soal.elemenKompetensi) tetap valid.
+  
+  // Audit
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+  createdBy: string,
+  deleted: boolean,
+  deletedAt: Timestamp | null
+}
+```
+
+**Matching ke Bank Soal:**
+
+Field `bank_soal.elemenKompetensi` (string kode) di-match ke `elemen_kompetensi.ekId` secara **exact case-insensitive**. Tidak ada FK hard constraint — kalau kode tidak ada di master, laporan tetap jalan tapi tampilkan kode mentah sebagai fallback.
+
+**Warning di UI:**
+
+Bank Soal list menampilkan badge merah/orange kalau `elemenKompetensi` tidak ada di master EK (untuk memotivasi admin merapikan data).
+
+**Index yang dibutuhkan:**
+- `bidangIds` array-contains + `status` — untuk picker filter per bidang
+- `nama` ascending — untuk search
+- `status` + `deleted` — untuk list
+
+**Firestore rules:**
+```js
+match /elemen_kompetensi/{ekId} {
+  allow read: if isAdmin();
+  allow create, update: if canWrite();
+  allow delete: if isSuperAdmin();
+}
+```
+
+---
+
 ## 5. Firestore Security Rules
 
 ### 5.1. Prinsip
@@ -1936,14 +2013,14 @@ flowchart TD
 
 | Phase | Nama | Durasi Estimasi | Jam Effort | Target Bulan |
 |---|---|---|---|---|
-| 1 | Core Bimtek | 3 bulan | 165-220 jam | Mei-Jul 2026 |
-| 2a | Dashboard Alumni + Peta + Live Edit | 2 bulan (parallel test Phase 1) | 35-53 jam | Aug-Sep 2026 |
+| 1 | Core Bimtek (incl. Master EK + Tracing) | 3 bulan | ~~165-220~~ **179-242 jam** | Mei-Jul 2026 |
+| 2a | Dashboard Alumni + Peta + Live Edit | 2 bulan (parallel test Phase 1) | 54-80 jam | Aug-Sep 2026 |
 | 2b | Rekrutmen | 2 bulan | 55-75 jam | Okt-Nov 2026 |
-| 3 | Fitur Tambahan | 1 bulan | 25-40 jam | Des 2026 |
+| 3 | Fitur Tambahan | 1 bulan | 41-62 jam | Des 2026 |
 | Final | Testing + Dry Run | 1 bulan | 15-25 jam | Jan 2027 |
 | Live | Seleksi 2027 | — | — | Feb 2027 |
 
-**Total effort: 333-467 jam** (naik dari 295-413 karena Phase 2a expand untuk cleaning data historis + seed instansi/kinerja + M2a.5 dashboard kinerja).
+**Total effort: ~344-484 jam** *(naik dari 333-467 jam karena M1.11 Master EK +8-12j dan M1.12 Tracing +6-10j)*
 
 ---
 
@@ -2152,18 +2229,82 @@ flowchart TD
 
 **Definisi selesai:** dashboard load dengan data aktual, settings bisa disimpan.
 
+#### Milestone 1.11 — Master EK + Link ke Bimtek + Update Laporan (8-12 jam) *(BARU — rev. 26 Mei 2026)*
+
+**Konteks:** Lihat `RESUME_DISKUSI_26MEI2026_EK_MASTER.md` untuk keputusan desain lengkap.
+
+- [ ] **Modul `master-ek` (admin app):**
+  - [ ] List EK dengan filter bidang + status + search nama/kode
+  - [ ] Form CRUD: kode (unique), nama, deskripsi, bidangIds (multi-select), status
+  - [ ] Validasi: kode unik case-insensitive
+  - [ ] Import Excel (kolom: kode, nama, deskripsi, bidang)
+  - [ ] Soft delete
+  - [ ] Tambah menu "Master EK" di navbar admin
+
+- [ ] **Update `shared/constants.js`:**
+  - [ ] Tambah `COL.ELEMEN_KOMPETENSI = 'elemen_kompetensi'`
+
+- [ ] **Update Form & API Bimtek:**
+  - [ ] Tambah section "Elemen Kompetensi yang Diukur" di form bimtek (multi-select EK aktif, filter per `bidangIds` bimtek)
+  - [ ] Tambah tombol "+ EK" di tab detail bimtek (untuk assign/hapus EK post-create)
+  - [ ] `api.js`: update `createBimtek()` dan `updateBimtek()` untuk handle field `ekIds`
+
+- [ ] **Update Laporan Peserta (report-api.js):**
+  - [ ] `getPesertaReportData()`: kalau `bimtek.ekIds` tidak kosong, gunakan sebagai baseline EK
+  - [ ] EK di baseline tapi tidak ada di exam_results → masuk sebagai `{ ekKey, ekNama, prePct: null, postPct: null, delta: null }`
+  - [ ] Fallback: `bimtek.ekIds` kosong → behavior lama (auto-discover dari soal)
+  - [ ] Tambah warning di tab Report kalau `bimtek.ekIds` kosong
+
+- [ ] **Update Firestore rules:**
+  - [ ] Tambah rule untuk `elemen_kompetensi`
+
+- [ ] **Update bank_soal list:**
+  - [ ] Badge warning kalau `elemenKompetensi` soal tidak ada di master EK
+
+**Definisi selesai:** bisa CRUD master EK, assign EK ke bimtek, laporan peserta menampilkan EK dari `bimtek.ekIds` sebagai baseline.
+
+---
+
+#### Milestone 1.12 — Tracing Kompetensi Peserta + Halaman Detail Peserta (6-10 jam) *(BARU — rev. 26 Mei 2026)*
+
+- [ ] **Halaman Detail Peserta (`/peserta/:noPeserta`):**
+  - [ ] Tab Info: data master (nama, jabatan, instansi, provinsi, dll) — read-only + link edit
+  - [ ] Tab Riwayat Bimtek: list semua bimtek yang pernah diikuti (filter dari `bimtek.pesertaIds`), status lulus/tidak, nilai akhir
+  - [ ] Tab Kompetensi: EK tracing lintas bimtek
+
+- [ ] **Tab Kompetensi:**
+  - [ ] Query `exam_results` per peserta → group per EK → sort by tanggal bimtek
+  - [ ] Tabel ringkasan: EK | Bimtek | Tanggal | Pre% | Post% | Δ
+  - [ ] Chart trend per EK (Chart.js line chart, x-axis = bimtek, y-axis = %)
+  - [ ] Filter: per EK (dropdown), per rentang tahun
+  - [ ] Badge: EK konsisten naik (↑), konsisten turun (↓), belum pernah diukur
+
+- [ ] **Update list peserta (`peserta-master/index.js`):**
+  - [ ] Nama peserta jadi link yang bisa diklik → navigate ke `/peserta/:noPeserta`
+
+- [ ] **`peserta-master/api.js` — tambah fungsi:**
+  - [ ] `getPesertaEKHistory(noPeserta)` — ambil semua exam_results peserta, enrich dengan soal + bimtek data, return grouped per EK
+
+**Definisi selesai:** klik nama peserta di list → halaman detail terbuka. Tab Kompetensi tampil trend EK dari minimal 2 bimtek berbeda.
+
+---
+
 #### Milestone 1.10 — End-to-end Testing (8-12 jam)
 
-- [ ] Buat Bimtek Reguler dummy dari nol
+*Catatan: Dipindah ke setelah M1.11–M1.12 supaya testing mencakup fitur EK.*
+
+- [ ] Buat Bimtek Reguler dummy dari nol (dengan EK set)
 - [ ] Jalankan full workflow: create → jadwal → peserta → pretest → bimtek → posttest → nilai → report
+- [ ] Verifikasi laporan Section C menampilkan EK dari `bimtek.ekIds`
 - [ ] Fix bug yang ditemukan
 - [ ] Buat Bimtek PNBP dummy
 - [ ] Test multi-bidang workflow
+- [ ] Test tracing peserta: 1 peserta ikut 2 bimtek berbeda → Tab Kompetensi tampil trend
 - [ ] Dokumentasi user (singkat)
 
-**Definisi selesai:** 1 Bimtek Reguler + 1 PNBP jalan lengkap tanpa error kritis. Admin bisa ikuti dokumentasi tanpa bertanya.
+**Definisi selesai:** 1 Bimtek Reguler + 1 PNBP jalan lengkap tanpa error kritis. Tracing EK berfungsi. Admin bisa ikuti dokumentasi tanpa bertanya.
 
-**Total Phase 1: 165-220 jam**
+**Total Phase 1: ~179-242 jam** *(naik dari 165-220 jam karena tambah M1.11 ~8-12j + M1.12 ~6-10j)*
 
 ---
 

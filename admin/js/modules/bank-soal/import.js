@@ -1,6 +1,6 @@
-// admin/js/modules/bank-soal/import.js
+﻿// admin/js/modules/bank-soal/import.js
 // Import soal dari Excel. Satu baris = satu soal.
-// Format kolom: Pertanyaan | Bidang | Bloom | EK | Opsi A | Opsi B | Opsi C | Opsi D | Kunci | Pembahasan | Tags
+// Format kolom: Pertanyaan | Bidang | Bloom | UK | Opsi A | Opsi B | Opsi C | Opsi D | Kunci | Pembahasan | Tags
 
 import { openModal } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
@@ -27,7 +27,8 @@ const COLUMN_MAP = {
   'pertanyaan': 'pertanyaan', 'soal': 'pertanyaan', 'question': 'pertanyaan',
   'bidang': 'bidang', 'bidangid': 'bidang',
   'bloom': 'bloomLevel', 'bloom level': 'bloomLevel', 'level': 'bloomLevel',
-  'elemen kompetensi': 'elemenKompetensi', 'ek': 'elemenKompetensi', 'elemen': 'elemenKompetensi',
+  'unit kompetensi': 'unitKompetensi', 'uk': 'unitKompetensi',
+  'elemen kompetensi': 'unitKompetensi', 'ek': 'unitKompetensi', 'elemen': 'unitKompetensi',
   'opsi a': 'opsiA', 'a': 'opsiA', 'pilihan a': 'opsiA',
   'opsi b': 'opsiB', 'b': 'opsiB', 'pilihan b': 'opsiB',
   'opsi c': 'opsiC', 'c': 'opsiC', 'pilihan c': 'opsiC',
@@ -48,7 +49,7 @@ export function openImportSoal(onDone) {
       <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4">
         <p class="text-sm font-medium text-blue-300 mb-1">Format kolom Excel:</p>
         <p class="text-xs text-blue-400/80 font-mono">
-          Pertanyaan | Bidang | Bloom | EK | Opsi A | Opsi B | Opsi C | Opsi D | Kunci | Pembahasan | Tags
+          Pertanyaan | Bidang | Bloom | UK | Opsi A | Opsi B | Opsi C | Opsi D | Kunci | Pembahasan | Tags
         </p>
         <p class="text-xs text-blue-400/60 mt-2">
           Bidang: produksi / trandis / me / pendukung<br/>
@@ -252,7 +253,7 @@ function _mapRowToSoal(row) {
     pertanyaan:              row.pertanyaan,
     bidangId,
     bloomLevel,
-    elemenKompetensi:        row.elemenKompetensi ?? '',
+    unitKompetensi:        row.unitKompetensi ?? '',
     opsi,
     kunci,
     pembahasan:              row.pembahasan ?? '',
@@ -270,7 +271,7 @@ function _downloadTemplate() {
       'Pertanyaan': 'Apa fungsi utama bak sedimentasi pada proses pengolahan air?',
       'Bidang': 'produksi',
       'Bloom': 'C2',
-      'EK': 'EK-01',
+      'UK': 'UK-01',
       'Opsi A': 'Mengendapkan partikel tersuspensi',
       'Opsi B': 'Membunuh kuman patogen',
       'Opsi C': 'Mengurangi kekeruhan dengan koagulan',
@@ -302,3 +303,4 @@ function _loadSheetJS() {
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+

@@ -160,6 +160,7 @@ export const COL = {
   BIDANG:             'bidang',
   PROVINSI_MASTER:    'provinsi_master',
   KABKOTA_MASTER:     'kabkota_master',
+  UNIT_KOMPETENSI:  'unit_kompetensi',
   BANK_SOAL:          'bank_soal',
   BANK_SOAL_ANSWERS:  'bank_soal_answers',
   BIMTEK:             'bimtek',

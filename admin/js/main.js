@@ -89,6 +89,12 @@ function _registerRoutes() {
     import('./modules/peserta-master/import.js').then(m => m.renderImport());
   });
 
+  route('/peserta/:noPeserta', ({ params }) => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/peserta-master/detail.js').then(m => m.renderPesertaDetail({ noPeserta: params.noPeserta }));
+  });
+
   // ── Pengajar Master ──
   route('/pengajar', ({ query }) => {
     _setLoginMode(false);
@@ -108,6 +114,13 @@ function _registerRoutes() {
     _setLoginMode(false);
     if (!_guardRoute()) return;
     import('./modules/bank-soal/index.js').then(m => m.renderBankSoalList({ query }));
+  });
+
+  // ── Master UK ──
+  route('/master-uk', ({ query }) => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/master-uk/index.js').then(m => m.renderMasterUK({ query }));
   });
 
   // ── Bimtek ──

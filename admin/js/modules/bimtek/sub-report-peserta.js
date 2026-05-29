@@ -420,20 +420,20 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       <canvas id="report-chart-prepost" width="400" height="180"></canvas>
     </div>` : '';
 
-  // C.2 — Grouped bar chart per-EK
+  // C.2 — Grouped bar chart per-UK
   let ekChartSection = '';
   if (ekComparison && ekComparison.length > 0) {
     const chartH = Math.max(160, ekComparison.length * 36);
     ekChartSection = `
       <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:10px; font-family:sans-serif;">
-        C.2 Penguasaan per Elemen Kompetensi
+        C.2 Penguasaan per Unit Kompetensi
       </div>
       <div style="position:relative; margin-bottom:20px; height:${chartH}px;">
         <canvas id="report-chart-ek" height="${chartH}"></canvas>
       </div>`;
   }
 
-  // C.3 — Tabel per EK
+  // C.3 — Tabel per UK
   let ekTableSection = '';
   if (ekComparison && ekComparison.length > 0) {
     const ekRows = ekComparison.map(ek => {
@@ -451,12 +451,12 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
 
     ekTableSection = `
       <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
-        C.3 Rincian per Elemen Kompetensi
+        C.3 Rincian per Unit Kompetensi
       </div>
       <table style="width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin-bottom:20px;">
         <thead>
           <tr style="background:#f9fafb;">
-            <th style="padding:7px 10px; text-align:left; font-size:12px; font-weight:600; color:#374151;">Elemen Kompetensi</th>
+            <th style="padding:7px 10px; text-align:left; font-size:12px; font-weight:600; color:#374151;">Unit Kompetensi</th>
             <th style="padding:7px 10px; text-align:center; font-size:12px; font-weight:600; color:#374151;">Pre</th>
             <th style="padding:7px 10px; text-align:center; font-size:12px; font-weight:600; color:#374151;">Post</th>
             <th style="padding:7px 10px; text-align:center; font-size:12px; font-weight:600; color:#374151;">Δ</th>

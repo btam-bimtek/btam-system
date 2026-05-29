@@ -111,11 +111,27 @@ export async function listSessionsByBimtek(bimtekId) {
  * @returns {{ created: number, skipped: number }}
  */
 export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
-  const user    = getCurrentUser();
+  const user      = getCurrentUser();
   const expiredAt = new Date(Date.now() + expiredJam * 60 * 60 * 1000);
 
+  // Fetch info peserta untuk disimpan di session (agar exam app tidak perlu akses peserta_master)
+  const pesertaMap = {};
+  await Promise.all(pesertaIds.map(async id => {
+    try {
+      const snap = await getDoc(doc(db, COL.PESERTA_MASTER, id));
+      if (snap.exists()) {
+        const d = snap.data();
+        pesertaMap[id] = {
+          namaPeserta:     d.nama     || '',
+          jabatanPeserta:  d.jabatan  || '',
+          instansiPeserta: d.instansi || '',
+        };
+      }
+    } catch { /* lewati jika gagal fetch satu peserta */ }
+  }));
+
   // Ambil sessions yang sudah ada untuk exam ini
-  const existing = await listSessions(exam.id);
+  const existing    = await listSessions(exam.id);
   const existingSet = new Set(existing.map(s => `${s.noPeserta}__${s.tipeSession}`));
 
   const tipes = exam.tipe === 'pretest_posttest' ? ['pretest', 'posttest'] : [exam.tipe];
@@ -133,22 +149,28 @@ export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
       // pretest_posttest: soal identik (shuffle hanya di exam app)
       // pretest/posttest terpisah: random pick sejumlah jumlahDitampilkan
       const soalIds = _pickSoal(exam.soalIds, exam.jumlahDitampilkan);
+      const info    = pesertaMap[noPeserta] || {};
 
       const token = _generateToken();
       const ref   = doc(collection(db, COL.EXAM_SESSIONS));
       batch.set(ref, {
-        examId:      exam.id,
-        bimtekId:    exam.bimtekId,
+        examId:          exam.id,
+        bimtekId:        exam.bimtekId,
         noPeserta,
         tipeSession,
         soalIds,
         token,
         expiredAt,
-        status:      'issued',
-        startedAt:   null,
-        submittedAt: null,
-        createdAt:   serverTimestamp(),
-        createdBy:   user.uid,
+        status:          'issued',
+        startedAt:       null,
+        submittedAt:     null,
+        namaPeserta:     info.namaPeserta     || '',
+        jabatanPeserta:  info.jabatanPeserta  || '',
+        instansiPeserta: info.instansiPeserta || '',
+        examJudul:       exam.judul           || '',
+        examDurasi:      exam.durasi          || 0,
+        createdAt:       serverTimestamp(),
+        createdBy:       user.uid,
       });
       created++;
     }

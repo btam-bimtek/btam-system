@@ -11,10 +11,49 @@ import {
 
 // Collection names — mirror dari shared/constants.js COL
 // (tidak import langsung agar exam/js/db.js tetap berdiri sendiri)
+const BIMTEK           = 'bimtek';
 const EXAMS            = 'exams';
 const EXAM_SESSIONS    = 'exam_sessions';
 const EXAM_SUBMISSIONS = 'exam_submissions';
 const BANK_SOAL        = 'bank_soal';
+
+// ─── Bimtek (lookup by accessCode) ───────────────────────────
+
+/**
+ * Cari bimtek berdasarkan kode ujian (accessCode).
+ * Firestore rule: bimtek collection harus allow read tanpa auth.
+ * @param {string} code  - kode ujian mentah dari input (misal "ABC-DEF" atau "ABCDEF")
+ * @returns {object|null} bimtek doc + id, atau null
+ */
+export async function getBimtekByAccessCode(code) {
+  const normalized = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const snap = await getDocs(
+    query(collection(db, BIMTEK), where('accessCode', '==', normalized))
+  );
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const data = d.data();
+  if (data.deleted) return null;
+  return { id: d.id, ...data };
+}
+
+/**
+ * Ambil semua sessions milik seorang peserta dalam satu bimtek.
+ * Dipakai oleh alur kode ujian untuk step 2 & 3.
+ * @param {string} bimtekId
+ * @param {string} noPeserta
+ * @returns {object[]} array session docs
+ */
+export async function getSessionsByBimtekAndPeserta(bimtekId, noPeserta) {
+  const snap = await getDocs(
+    query(
+      collection(db, EXAM_SESSIONS),
+      where('bimtekId',   '==', bimtekId),
+      where('noPeserta',  '==', noPeserta),
+    )
+  );
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
 // ─── Session ──────────────────────────────────────────────────
 

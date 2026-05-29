@@ -33,7 +33,13 @@ Rekam keputusan di setiap sesi diskusi:
    - Workflow hybrid (PC=Claude Code, HP=claude.ai)
    - M1.7 desain: 4 sub-tab penilaian, scoring engine, redistribusi bobot
 
-5. **`RESUME_IMPLEMENTASI_13MEI2026_GAMBAR_SOAL.md`** (13 May)
+5. **`RESUME_DISKUSI_26MEI2026_EK_MASTER.md`** (26 May) ⭐ NEW
+   - Arsitektur Master EK global (lintas bidang, lintas bimtek)
+   - Keputusan: EK sebagai entitas global, bimtek punya `ekIds` baseline
+   - Tracing: compute on-the-fly, UI di halaman detail peserta
+   - Scope M1.11 (Master EK) + M1.12 (Tracing)
+
+6. **`RESUME_IMPLEMENTASI_13MEI2026_GAMBAR_SOAL.md`** (13 May)
    - Fitur upload gambar soal ke Firebase Storage
    - Setup infrastruktur: upgrade Blaze, CORS, Storage Rules
    - Kendala & solusi lengkap (CORS, 403, bucket not found)
@@ -88,11 +94,14 @@ Per-milestone progress, bugs fixed, keputusan teknis:
 | M1.4 Bimtek CRUD | ✅ Done | ~25 jam | 27 Apr - 6 May |
 | M1.5 Exam Editor | ✅ Done | ~12 jam | 6 May |
 | M1.6 Exam Runner | ✅ Done | ~18 jam | 7 May |
-| **M1.7 Input Nilai & Kelulusan** | ⬜ Next | ~25-30 jam | TBD |
-| M1.8 Report Peserta | ⬜ Future | ~12-16 jam | - |
-| M1.9+ | ⬜ Future | - | - |
+| M1.7 Input Nilai | ✅ Done | ~8 jam | 11 May |
+| M1.8 Report Generation | ✅ Done | ~1 sesi | 18 May |
+| M1.9 Dashboard + Settings | ✅ Done | ~1 sesi | 18 May |
+| **M1.11 Master EK + Laporan** | ⬜ Next | ~8-12 jam | TBD |
+| M1.12 Tracing Kompetensi | ⬜ Next | ~6-10 jam | TBD |
+| M1.10 E2E Testing | ⬜ Last | ~8-12 jam | TBD |
 
-**Total Phase 1 (M1.1-1.10):** ~265-355 jam | **Target:** End Juni 2026
+**Total Phase 1 (M1.1-1.12+1.10):** ~179-242 jam | **Target:** Jul 2026
 
 ## 🛠️ 3 Coding Rules Wajib Dipatuhi
 
@@ -133,25 +142,29 @@ btam-system/
         └── db.js                  ← Firestore helpers
 ```
 
-## 🚀 Next: M1.7 Input Nilai & Kelulusan
+## 🚀 Next: M1.11 Master EK + Link ke Bimtek + Update Laporan
 
-**File yang akan dibuat:**
-- `tab-penilaian.js` — Orchestrator 4 sub-tab
-- `penilaian-api.js` — CRUD scores, attendance, results
-- `sub-kehadiran.js` — Matrix kehadiran (baris=peserta, kolom=sesi)
-- `sub-nilai-manual.js` — Input pengajar/keaktifan/respek/tugas/presentasi
-- `sub-prepost.js` — Sync + trigger scoring engine
-- `sub-kelulusan.js` — List + threshold config
-- `scorer.js` — Scoring engine (submissions → results)
+**File yang akan dibuat/diubah:**
+- `admin/js/modules/master-ek/api.js` — CRUD EK
+- `admin/js/modules/master-ek/index.js` — List EK
+- `admin/js/modules/master-ek/form.js` — Form CRUD
+- `admin/js/modules/master-ek/import.js` — Import Excel
+- `shared/constants.js` — tambah `COL.ELEMEN_KOMPETENSI`
+- `admin/js/router.js` — tambah route `/master-ek`
+- `admin/js/modules/bimtek/form.js` — tambah EK multi-select
+- `admin/js/modules/bimtek/api.js` — update field `ekIds`
+- `admin/js/modules/bimtek/report-api.js` — gunakan `ekIds` sebagai baseline
+- `firestore.rules` — tambah rule `elemen_kompetensi`
 
-**Estimasi:** 25-30 jam
+**Estimasi:** ~8-12 jam
 
 **Wajib baca sebelum mulai:**
-- OPUSPLAN section 3.5 (Input Nilai & Kelulusan)
-- RESUME_DISKUSI_11MEI2026_M1.7.md (desain lengkap)
+- `docs/RESUME_DISKUSI_26MEI2026_EK_MASTER.md` (keputusan desain lengkap)
+- `shared/constants.js` (COL, BIDANG_LIST)
+- `admin/js/modules/bimtek/report-api.js` (cara kerja laporan sekarang)
 - 3 coding rules di atas
 
 ---
 
-**Last Update:** 11 Mei 2026  
-**Status:** M1.6 ✅ Done | M1.7 ⬜ Next
+**Last Update:** 26 Mei 2026  
+**Status:** M1.9 ✅ Done | M1.11 ⬜ Next (Master EK)

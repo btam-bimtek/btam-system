@@ -9,6 +9,7 @@ import {
 import { renderTabUjian } from './tab-ujian.js';
 import { renderTabPenilaian } from './tab-penilaian.js';
 import { renderTabReport } from './tab-report.js';
+import { renderTabUK } from './tab-uk.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
@@ -105,6 +106,7 @@ function _render(app) {
       ${_buildTabBtn('peserta', 'Peserta')}
       ${_buildTabBtn('ujian',   'Ujian')}
       ${_buildTabBtn('penilaian', 'Penilaian')}
+      ${_buildTabBtn('uk',      'Kompetensi')}
       ${_buildTabBtn('report',  'Report')}
     </div>
 
@@ -146,6 +148,7 @@ function _renderTab(app) {
   if (S.tab === 'peserta')   { el.innerHTML = _buildTabPeserta(); _loadPeserta(app, el); }
   if (S.tab === 'ujian')     { renderTabUjian(app, el, S); }
   if (S.tab === 'penilaian') { renderTabPenilaian(el, S.id, S.bimtek); }
+  if (S.tab === 'uk')        { renderTabUK(el, S.id, S.bimtek, (updatedUkIds) => { S.bimtek = { ...S.bimtek, ukIds: updatedUkIds }; }); }
   if (S.tab === 'report')    { renderTabReport(el, S.id, S.bimtek, S.mapels, S.pengajars); }
 }
 

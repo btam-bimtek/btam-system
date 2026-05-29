@@ -1,5 +1,5 @@
-// admin/js/modules/bimtek/sub-report-penyelenggara.js
-// Laporan penyelenggara: overview, per-peserta, per-EK, per-pengajar + Chart.js charts.
+﻿// admin/js/modules/bimtek/sub-report-penyelenggara.js
+// Laporan penyelenggara: overview, per-peserta, per-UK, per-pengajar + Chart.js charts.
 
 import { getBimtekReportData } from './report-api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -38,7 +38,7 @@ function _renderShell(container) {
       <div class="flex gap-1 text-sm">
         ${_innerTabBtn('overview',    'Overview')}
         ${_innerTabBtn('per-peserta', 'Per Peserta')}
-        ${_innerTabBtn('per-ek',      'Per EK')}
+        ${_innerTabBtn('per-ek',      'Per UK')}
         ${_innerTabBtn('per-soal',    'Per Soal')}
         ${_innerTabBtn('per-pengajar','Per Pengajar')}
       </div>
@@ -219,7 +219,7 @@ function _renderPerPeserta(el) {
     </tr>`).join('');
 
   el.innerHTML = `
-    <div class="text-xs text-gray-400 mb-3">${scoresSorted.length} peserta · KKM ${kkm}</div>
+    <div class="text-xs text-gray-400 mb-3">${scoresSorted.length} peserta Â· KKM ${kkm}</div>
     <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-x-auto">
       <table class="btam-table">
         <thead>
@@ -240,7 +240,7 @@ function _renderPerPeserta(el) {
     </div>`;
 }
 
-// ─── PER EK ───────────────────────────────────────────────────────────────────
+// ─── PER UK ───────────────────────────────────────────────────────────────────
 
 function _renderPerEK(el) {
   const { ekDataAll } = S.data;
@@ -248,7 +248,7 @@ function _renderPerEK(el) {
   if (!ekDataAll || ekDataAll.length === 0) {
     el.innerHTML = `
       <div class="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center">
-        <p class="text-gray-400 text-sm">Data per-Elemen Kompetensi belum tersedia.</p>
+        <p class="text-gray-400 text-sm">Data per-Unit Kompetensi belum tersedia.</p>
         <p class="text-gray-600 text-xs mt-2">Sinkronisasi nilai pre/post test terlebih dahulu di tab Penilaian.</p>
       </div>`;
     return;
@@ -269,9 +269,9 @@ function _renderPerEK(el) {
   }).join('');
 
   el.innerHTML = `
-    <!-- Chart per-EK -->
+    <!-- Chart per-UK -->
     <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
-      <h3 class="text-sm font-semibold text-white mb-4">Perbandingan Pre/Post per Elemen Kompetensi</h3>
+      <h3 class="text-sm font-semibold text-white mb-4">Perbandingan Pre/Post per Unit Kompetensi</h3>
       <div class="relative" style="height: ${Math.max(200, ekDataAll.length * 40)}px">
         <canvas id="chart-ek"></canvas>
       </div>
@@ -282,7 +282,7 @@ function _renderPerEK(el) {
       <table class="btam-table">
         <thead>
           <tr>
-            <th>Elemen Kompetensi</th>
+            <th>Unit Kompetensi</th>
             <th class="text-center">Pre Test (avg)</th>
             <th class="text-center">Post Test (avg)</th>
             <th class="text-center">Perubahan</th>
@@ -323,7 +323,7 @@ function _renderPerSoal(el) {
         <td class="text-sm text-gray-200 max-w-xs">
           <div class="line-clamp-2">${_esc(s.pertanyaan)}</div>
           <div class="flex gap-1 mt-1">
-            <span class="badge badge-blue text-xs">${_esc(s.elemenKompetensi)}</span>
+            <span class="badge badge-blue text-xs">${_esc(s.unitKompetensi)}</span>
             <span class="badge badge-gray text-xs">${_esc(s.bloomLevel)}</span>
           </div>
         </td>
@@ -347,7 +347,7 @@ function _renderPerSoal(el) {
 
   el.innerHTML = `
     <div class="text-xs text-gray-400 mb-4">
-      ${soalErrorData.length} soal · Diurutkan dari yang paling sering salah
+      ${soalErrorData.length} soal Â· Diurutkan dari yang paling sering salah
     </div>
 
     <!-- Chart top 10 -->
@@ -552,8 +552,8 @@ function _initSoalErrorChart(top10) {
   if (!canvas || !window.Chart || !top10.length) return;
 
   _destroyChart('soal-error');
-  // Label disingkat: nomor urut + EK agar tidak terlalu panjang
-  const labels = top10.map((s, i) => `#${i + 1} ${s.elemenKompetensi !== '—' ? s.elemenKompetensi : ''}`);
+  // Label disingkat: nomor urut + UK agar tidak terlalu panjang
+  const labels = top10.map((s, i) => `#${i + 1} ${s.unitKompetensi !== '—' ? s.unitKompetensi : ''}`);
   const colors = top10.map(s =>
     s.persenSalah >= 70 ? '#ef4444' : s.persenSalah >= 40 ? '#f59e0b' : '#22c55e'
   );
@@ -704,3 +704,4 @@ function _loadSheetJS() {
     document.head.appendChild(s);
   });
 }
+
