@@ -161,6 +161,13 @@ function _registerRoutes() {
     if (!_guardRoute()) return;
     import('./modules/admin-users/index.js').then(m => m.renderAdminUsers());
   });
+
+  // ── Data Historis ──
+  route('/historis', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/historis/index.js').then(m => m.renderHistoris());
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────

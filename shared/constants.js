@@ -172,5 +172,12 @@ export const COL = {
   EXAM_RESULTS:       'exam_results',
   APP_SETTINGS:       'app_settings',
   AUDIT_LOG:          'audit_log',
-  ALUMNI_HISTORIS:    'alumni_historis'
+  ALUMNI_HISTORIS:    'alumni_historis',
+  KINERJA_INSTANSI:   'kinerja_instansi'
 };
+
+// ─── Alumni Historis — nilai enum yang valid ──────────────────
+export const HISTORIS_BIDANG = ['produksi', 'trandis', 'me', 'pendukung', 'multi_bidang'];
+export const HISTORIS_TIPE   = ['reguler', 'pnbp'];
+export const HISTORIS_SIFAT  = ['tatap muka', 'online'];
+export const HISTORIS_LOKASI = ['kab_kota', 'regional', 'pusat'];
