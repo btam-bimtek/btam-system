@@ -207,7 +207,7 @@ function _doPrint() {
 // ─── REPORT HTML TEMPLATE ─────────────────────────────────────────────────────
 
 function _buildReportHTML(data) {
-  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, thresholds } = data;
+  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, hasIncompleteUKData, hasUKBaseline, thresholds } = data;
   const b = S.bimtek;
 
   return `
@@ -224,7 +224,7 @@ function _buildReportHTML(data) {
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
       <!-- SECTION C: PERUBAHAN KOMPETENSI -->
-      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta)}
+      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline)}
 
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
@@ -388,7 +388,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
 
 // ── Section C ─────────────────────────────────────────────────────────────────
 
-function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta) {
+function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline) {
   const pre  = scores?.pretest  ?? null;
   const post = scores?.posttest ?? null;
 
@@ -486,10 +486,23 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       ${rekomendasi}
     </div>`;
 
+  // Warning: soal tanpa unitKompetensi → data per-UK mungkin tidak lengkap
+  const incompleteWarning = (hasUKBaseline && hasIncompleteUKData) ? `
+    <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px;
+                margin-bottom:16px; display:flex; align-items:flex-start; gap:10px;">
+      <span style="font-size:16px; line-height:1;">⚠️</span>
+      <div style="font-size:12px; color:#78350f; line-height:1.6;">
+        <strong>Catatan:</strong> Sebagian soal ujian belum ditetapkan Unit Kompetensinya.
+        Data per-UK pada bagian C.2 dan C.3 mungkin tidak mencakup seluruh hasil ujian.
+        Untuk laporan yang lebih akurat, pastikan setiap soal di Bank Soal sudah memiliki UK yang sesuai.
+      </div>
+    </div>` : '';
+
   return `
     <div style="font-size:15px; font-weight:bold; margin-bottom:16px; font-family:sans-serif;">
       C. Perubahan Kompetensi
     </div>
+    ${incompleteWarning}
     ${chartSection}
     ${ekChartSection}
     ${ekTableSection}

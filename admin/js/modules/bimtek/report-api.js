@@ -204,6 +204,10 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     ekComparison = [...updatedComparison, ...missing];
   }
 
+  // Deteksi soal yang tidak punya unitKompetensi (jatuh ke bloomLevel sebagai ekKey)
+  const _bloomPat = /^C[1-6]$/i;
+  const hasIncompleteUKData = !!(ekComparison?.some(e => _bloomPat.test(e.ekKey)));
+
   return {
     peserta,
     scores,
@@ -212,6 +216,7 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     posttestResult,
     ekComparison,
     hasUKBaseline: baselineUkIds.length > 0,
+    hasIncompleteUKData,
     thresholds: bimtek.reportThresholds ?? DEFAULT_REPORT_THRESHOLDS
   };
 }
