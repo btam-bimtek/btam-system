@@ -2,7 +2,7 @@
 // Normalisasi dan validasi satu baris Excel → format alumni_historis.
 
 import {
-  HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_SIFAT, HISTORIS_LOKASI
+  HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_MODE, HISTORIS_LOKASI
 } from '../../../../shared/constants.js';
 
 // Alias normalisasi — typo / singkatan umum yang mungkin ada di data lama
@@ -19,8 +19,8 @@ const _TIPE_ALIAS = {
   'pnbp': 'pnbp', 'kerjasama': 'pnbp', 'kerja sama': 'pnbp', 'berbayar': 'pnbp',
 };
 
-const _SIFAT_ALIAS = {
-  'tatap muka': 'tatap muka', 'offline': 'tatap muka', 'luring': 'tatap muka',
+const _MODE_ALIAS = {
+  'offline': 'offline', 'tatap muka': 'offline', 'luring': 'offline',
   'online': 'online', 'daring': 'online', 'e-learning': 'online', 'elearning': 'online',
 };
 
@@ -64,8 +64,8 @@ export function normalizeAlumniRow(raw) {
   const tipe = _resolve(raw.tipe, _TIPE_ALIAS);
   if (!tipe) errors.push(`tipe tidak dikenal: "${raw.tipe}" — gunakan: ${HISTORIS_TIPE.join(', ')}`);
 
-  const sifat_bimtek = _resolve(raw.sifat_bimtek, _SIFAT_ALIAS) || null;
-  // sifat_bimtek boleh kosong (data lama mungkin tidak ada)
+  const mode = _resolve(raw.sifat_bimtek ?? raw.mode, _MODE_ALIAS) || null;
+  // mode boleh kosong (data lama mungkin tidak ada)
 
   const jenis_lokasi = _resolve(raw.jenis_lokasi, _LOKASI_ALIAS) || null;
 
@@ -94,7 +94,7 @@ export function normalizeAlumniRow(raw) {
     nama_bimtek,
     bidang,
     tipe,
-    ...(sifat_bimtek  && { sifat_bimtek }),
+    ...(mode          && { mode }),
     ...(jenis_lokasi  && { jenis_lokasi }),
     instansi,
     provinsi: provinsi || null,

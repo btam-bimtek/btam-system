@@ -5,10 +5,10 @@ import { setPageTitle }         from '../../layout/navbar.js';
 import { showToast }            from '../../components/toast.js';
 import { requireWrite }         from '../../auth-guard.js';
 import { getState }             from '../../store.js';
-import { batchImportAlumni, batchImportKinerja, countAlumniHistoris, listKinerjaInstansi }
+import { batchImportAlumni, batchImportKinerja, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
   from './api.js';
 import { normalizeAlumniRow, normalizeKinerjaRow } from './normalize.js';
-import { HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_SIFAT, HISTORIS_LOKASI } from '../../../../shared/constants.js';
+import { HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_MODE, HISTORIS_LOKASI } from '../../../../shared/constants.js';
 
 // Field Grup A alumni — wajib di-mapping
 const ALUMNI_FIELDS_A = [
@@ -16,7 +16,7 @@ const ALUMNI_FIELDS_A = [
   { key: 'nama_bimtek',  label: 'Nama Bimtek',    hint: 'nama kegiatan' },
   { key: 'bidang',       label: 'Bidang',          hint: HISTORIS_BIDANG.join(' / ') },
   { key: 'tipe',         label: 'Tipe',            hint: HISTORIS_TIPE.join(' / ') },
-  { key: 'sifat_bimtek', label: 'Sifat Bimtek',   hint: HISTORIS_SIFAT.join(' / ') },
+  { key: 'mode',         label: 'Mode',            hint: HISTORIS_MODE.join(' / ') },
   { key: 'instansi',     label: 'Instansi',        hint: 'nama canonical PDAM' },
   { key: 'jenis_lokasi', label: 'Jenis Lokasi',   hint: HISTORIS_LOKASI.join(' / ') },
   { key: 'provinsi',     label: 'Provinsi',        hint: 'nama resmi provinsi' },
@@ -65,6 +65,22 @@ export async function renderHistoris() {
         <p class="text-xs text-gray-500 mt-0.5">Import data peserta historis dan kinerja PDAM untuk analisis sebaran & korelasi</p>
       </div>
 
+      <!-- Export master data -->
+      <div class="mb-5 flex items-center gap-3">
+        <button id="btn-export-master"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                       bg-green-700 hover:bg-green-600 text-white transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Export Master Data (.xlsx)
+        </button>
+        <span class="text-xs text-gray-500">
+          Gabungan alumni historis + peserta bimtek selesai dari sistem
+        </span>
+      </div>
+
       <!-- Tab buttons -->
       <div class="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
         <button id="tab-alumni"  class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -80,6 +96,43 @@ export async function renderHistoris() {
 
   _bindTabs();
   _switchTab('alumni');
+
+  document.getElementById('btn-export-master').addEventListener('click', _doExportMaster);
+}
+
+async function _doExportMaster() {
+  const btn = document.getElementById('btn-export-master');
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Menyiapkan…`;
+
+  try {
+    const XLSX  = await _loadXLSX();
+    const rows  = await buildMasterExportRows();
+
+    if (rows.length === 0) {
+      showToast('Tidak ada data untuk diekspor.', 'warning');
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Master Data');
+
+    // Lebar kolom otomatis (max 40 char)
+    const cols = Object.keys(rows[0]).map(k => ({ wch: Math.min(40, Math.max(k.length, 12)) }));
+    ws['!cols'] = cols;
+
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `master_alumni_${today}.xlsx`);
+    showToast(`${rows.length.toLocaleString('id-ID')} baris diekspor.`, 'success');
+  } catch (err) {
+    showToast('Export gagal: ' + err.message, 'error');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
 }
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
@@ -283,7 +336,7 @@ function _runAlumniValidation() {
   const NONE = '— Tidak ada —';
   const valid   = [];
   const invalid = [];
-  const enumErrs = { bidang: {}, tipe: {}, sifat_bimtek: {}, jenis_lokasi: {} };
+  const enumErrs = { bidang: {}, tipe: {}, mode: {}, jenis_lokasi: {} };
 
   S.alumniRows.forEach((row, i) => {
     // Remap kolom Excel → field schema
@@ -297,7 +350,7 @@ function _runAlumniValidation() {
     if (data) {
       valid.push(data);
       // Catat nilai enum yang tidak dikenal
-      ['bidang','tipe','sifat_bimtek','jenis_lokasi'].forEach(f => {
+      ['bidang','tipe','mode','jenis_lokasi'].forEach(f => {
         if (mapped[f] && !data[f]) {
           const v = String(mapped[f]).toLowerCase().trim();
           enumErrs[f][v] = (enumErrs[f][v] || 0) + 1;

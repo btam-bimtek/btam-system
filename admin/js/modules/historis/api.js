@@ -2,7 +2,7 @@
 // CRUD untuk alumni_historis dan kinerja_instansi.
 
 import {
-  db, collection, doc, getDocs, setDoc, writeBatch,
+  db, collection, doc, getDoc, getDocs, setDoc, writeBatch,
   query, orderBy, limit, where, getCountFromServer, snapToArray
 } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
@@ -119,6 +119,120 @@ export async function getAlumniStats() {
     provinsiCount,
     instansiCount,
   };
+}
+
+// ─── Export Master Data ───────────────────────────────────────────────────────
+
+/**
+ * Kumpulkan semua data untuk export master:
+ * (1) alumni_historis — semua record historis
+ * (2) bimtek completed — peserta dari sistem baru, dikonversi ke format alumni
+ *
+ * Return: array of flat objects, kolom sama persis dengan schema alumni_historis.
+ */
+export async function buildMasterExportRows() {
+  // Load paralel
+  const [alumniSnap, bimtekSnap] = await Promise.all([
+    getDocs(collection(db, COL.ALUMNI_HISTORIS)),
+    getDocs(query(collection(db, COL.BIMTEK), where('status', '==', 'completed'))),
+  ]);
+
+  const rows = [];
+
+  // (1) Data historis — sudah dalam format yang benar
+  alumniSnap.docs.forEach(d => {
+    const r = d.data();
+    rows.push(_flattenAlumni(r));
+  });
+
+  // (2) Data sistem baru — bimtek completed, baca pesertaIds lalu enriched dari peserta_master
+  const bimteks = bimtekSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Batch read semua peserta yang terlibat
+  const allPesertaIds = [...new Set(bimteks.flatMap(b => b.pesertaIds || []))];
+  const pesertaMap    = await _batchGetPeserta(allPesertaIds);
+
+  bimteks.forEach(b => {
+    const tahun = b.periode?.mulai
+      ? (b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai)).getFullYear()
+      : null;
+    if (!tahun) return;
+
+    const bidang = b.bidangIds?.length === 1
+      ? b.bidangIds[0]
+      : (b.bidangIds?.length > 1 ? 'multi_bidang' : null);
+
+    (b.pesertaIds || []).forEach(noPeserta => {
+      const p = pesertaMap[noPeserta];
+      rows.push({
+        tahun,
+        tanggal_mulai:   _fmtDate(b.periode?.mulai),
+        tanggal_selesai: _fmtDate(b.periode?.selesai),
+        nama_bimtek:     b.nama  || '',
+        bidang:          bidang  || '',
+        tipe:            b.tipe  || '',
+        mode:            b.mode  || '',
+        instansi:        p?.instansi  || '',
+        jenis_lokasi:    '',
+        provinsi:        p?.provinsi  || '',
+        kab_kota:        p?.kabKota   || '',
+        nama_peserta:    p?.nama      || noPeserta,
+        jabatan:         p?.jabatan   || '',
+        kelas_jabatan:   '',
+        pendidikan:      p?.pendidikan || '',
+        jenis_kelamin:   p?.jenisKelamin || '',
+        email:           p?.email  || '',
+        noHP:            p?.noHp   || '',
+        NIK:             p?.NIK    || '',
+        _sumber:         'sistem_baru',
+      });
+    });
+  });
+
+  // Sort: tahun asc, nama_bimtek asc
+  rows.sort((a, b) => (a.tahun - b.tahun) || a.nama_bimtek.localeCompare(b.nama_bimtek));
+  return rows;
+}
+
+function _flattenAlumni(r) {
+  return {
+    tahun:           r.tahun           ?? '',
+    tanggal_mulai:   r.tanggal_mulai   ?? '',
+    tanggal_selesai: r.tanggal_selesai ?? '',
+    nama_bimtek:     r.nama_bimtek     ?? '',
+    bidang:          r.bidang          ?? '',
+    tipe:            r.tipe            ?? '',
+    mode:            r.mode            ?? '',
+    instansi:        r.instansi        ?? '',
+    jenis_lokasi:    r.jenis_lokasi    ?? '',
+    provinsi:        r.provinsi        ?? '',
+    kab_kota:        r.kab_kota        ?? '',
+    nama_peserta:    r.nama_peserta    ?? '',
+    jabatan:         r.jabatan         ?? '',
+    kelas_jabatan:   r.kelas_jabatan   ?? '',
+    pendidikan:      r.pendidikan      ?? '',
+    jenis_kelamin:   r.jenis_kelamin   ?? '',
+    email:           r.email           ?? '',
+    noHP:            r.noHP            ?? '',
+    NIK:             r.NIK             ?? '',
+    _sumber:         'historis',
+  };
+}
+
+async function _batchGetPeserta(ids) {
+  if (!ids.length) return {};
+  const snaps = await Promise.all(ids.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))));
+  const map = {};
+  snaps.forEach(snap => { if (snap.exists()) map[snap.id] = snap.data(); });
+  return map;
+}
+
+function _fmtDate(ts) {
+  if (!ts) return '';
+  try {
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  } catch { return ''; }
 }
 
 // ─── Kinerja Instansi ─────────────────────────────────────────────────────────
