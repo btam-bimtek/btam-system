@@ -10,6 +10,7 @@ import {
   db, collection, query, where, getDocs, doc, getDoc, snapToArray
 } from '../../../../shared/db.js';
 import { COL, BIDANG_LIST } from '../../../../shared/constants.js';
+import { getAlumniStats } from '../historis/api.js';
 
 // Simpan instance Chart agar bisa di-destroy saat re-render
 let _charts = {};
@@ -116,22 +117,23 @@ export async function renderDashboard() {
 
 async function _loadData() {
   try {
-    const [allBimtek, totalPeserta, totalPengajar] = await Promise.all([
+    const [allBimtek, totalPeserta, totalPengajar, alumniStats] = await Promise.all([
       listBimtek(),
       countPeserta(),
       countPengajar(),
+      getAlumniStats().catch(() => null),
     ]);
 
     const aktif   = allBimtek.filter(b => ['ongoing','planned'].includes(b.status)).length;
     const selesai = allBimtek.filter(b => b.status === 'completed').length;
 
-    _renderStats(aktif, selesai, totalPeserta, totalPengajar);
+    _renderStats(aktif, selesai, totalPeserta, totalPengajar, alumniStats);
     _renderRecentList(allBimtek.slice(0, 5));
-    _renderChartTren(allBimtek);
-    _renderChartBidang(allBimtek);
+    _renderChartTren(allBimtek, alumniStats);
+    _renderChartBidang(allBimtek, alumniStats);
     _loadKelulusanChart(allBimtek);
-    _renderChartTrenPeserta(allBimtek);
-    _loadSebaranData(allBimtek);
+    _renderChartTrenPeserta(allBimtek, alumniStats);
+    _loadSebaranData(allBimtek, alumniStats);
   } catch (err) {
     console.error('[dashboard]', err);
     const sg = document.getElementById('stat-grid');
@@ -141,27 +143,34 @@ async function _loadData() {
 
 // ─── Stat Cards ───────────────────────────────────────────────────────────────
 
-function _renderStats(aktif, selesai, peserta, pengajar) {
+function _renderStats(aktif, selesai, peserta, pengajar, alumniStats) {
   document.getElementById('stat-grid').innerHTML = [
     _statCard('Bimtek Aktif',   aktif,    'text-blue-400',   _iconCalendar('w-5 h-5')),
     _statCard('Bimtek Selesai', selesai,  'text-green-400',  _iconCheck('w-5 h-5')),
-    _statCard('Total Peserta',  peserta,  'text-purple-400', _iconUsers('w-5 h-5')),
+    _statCard('Peserta Master', peserta,  'text-purple-400', _iconUsers('w-5 h-5'),
+      alumniStats?.totalRows ? `+${alumniStats.totalRows.toLocaleString('id-ID')} historis` : null),
     _statCard('Total Pengajar', pengajar, 'text-yellow-400', _iconAcademic('w-5 h-5')),
   ].join('');
 }
 
 // ─── Chart: Tren Bimtek per Tahun ─────────────────────────────────────────────
 
-function _renderChartTren(allBimtek) {
-  const byYear = {};
+function _renderChartTren(allBimtek, alumniStats) {
+  // Bimtek baru (dari sistem)
+  const byYearNew = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
-    byYear[yr] = (byYear[yr] || 0) + 1;
+    byYearNew[yr] = (byYearNew[yr] || 0) + 1;
   });
 
-  const years  = Object.keys(byYear).map(Number).sort();
+  // Gabungkan semua tahun dari historis + baru
+  const allYears = new Set([
+    ...Object.keys(byYearNew).map(Number),
+    ...Object.keys(alumniStats?.bimtekCountByYear ?? {}).map(Number),
+  ]);
+  const years  = [...allYears].sort();
   const canvas = document.getElementById('chart-tren');
   if (!canvas) return;
 
@@ -170,26 +179,42 @@ function _renderChartTren(allBimtek) {
     return;
   }
 
+  const hasHistoris = alumniStats && Object.keys(alumniStats.bimtekCountByYear).length > 0;
+  const datasets = [];
+
+  if (hasHistoris) {
+    datasets.push({
+      label: 'Historis',
+      data: years.map(y => alumniStats.bimtekCountByYear[y] || 0),
+      backgroundColor: 'rgba(59,130,246,0.35)',
+      borderColor: '#3b82f6',
+      borderWidth: 1,
+      borderRadius: 3,
+      stack: 'total',
+    });
+  }
+  datasets.push({
+    label: 'Sistem Baru',
+    data: years.map(y => byYearNew[y] || 0),
+    backgroundColor: 'rgba(59,130,246,0.85)',
+    borderColor: '#3b82f6',
+    borderWidth: 1,
+    borderRadius: 4,
+    stack: 'total',
+  });
+
   _charts.tren = new Chart(canvas, {
     type: 'bar',
-    data: {
-      labels: years.map(String),
-      datasets: [{
-        label: 'Jumlah Bimtek',
-        data: years.map(y => byYear[y]),
-        backgroundColor: 'rgba(59,130,246,0.7)',
-        borderColor: '#3b82f6',
-        borderWidth: 1,
-        borderRadius: 4,
-      }]
-    },
+    data: { labels: years.map(String), datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: hasHistoris, labels: { color: '#9ca3af', font: { size: 11 } } },
+      },
       scales: {
-        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#1f2937' } },
-        y: { ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+        x: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#1f2937' } },
+        y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
       }
     }
   });
@@ -197,12 +222,16 @@ function _renderChartTren(allBimtek) {
 
 // ─── Chart: Sebaran Bidang ────────────────────────────────────────────────────
 
-function _renderChartBidang(allBimtek) {
+function _renderChartBidang(allBimtek, alumniStats) {
   const byBidang = {};
   allBimtek.forEach(b => {
     (b.bidangIds || []).forEach(id => {
       byBidang[id] = (byBidang[id] || 0) + 1;
     });
+  });
+  // Merge historis bidang (dalam satuan peserta, bukan bimtek)
+  Object.entries(alumniStats?.bidangCount ?? {}).forEach(([bidang, cnt]) => {
+    byBidang[bidang] = (byBidang[bidang] || 0) + cnt;
   });
 
   const wrap   = document.getElementById('chart-bidang-wrap');
@@ -311,45 +340,66 @@ async function _loadKelulusanChart(allBimtek) {
 
 // ─── Chart: Tren Peserta per Tahun ───────────────────────────────────────────
 
-function _renderChartTrenPeserta(allBimtek) {
-  const byYear = {};
+function _renderChartTrenPeserta(allBimtek, alumniStats) {
+  // Peserta baru (dari sistem)
+  const byYearNew = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
-    byYear[yr] = (byYear[yr] || 0) + (b.pesertaIds?.length || 0);
+    byYearNew[yr] = (byYearNew[yr] || 0) + (b.pesertaIds?.length || 0);
   });
 
+  const allYears = new Set([
+    ...Object.keys(byYearNew).map(Number),
+    ...Object.keys(alumniStats?.pesertaByYear ?? {}).map(Number),
+  ]);
+  const years  = [...allYears].sort();
   const wrap   = document.getElementById('chart-tren-peserta-wrap');
   const canvas = document.getElementById('chart-tren-peserta');
   if (!canvas) return;
 
-  const years = Object.keys(byYear).map(Number).sort();
   if (years.length === 0) {
     wrap.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Belum ada data.</p>`;
     return;
   }
 
+  const hasHistoris = alumniStats && Object.keys(alumniStats.pesertaByYear).length > 0;
+  const datasets = [];
+
+  if (hasHistoris) {
+    datasets.push({
+      label: 'Historis',
+      data: years.map(y => alumniStats.pesertaByYear[y] || 0),
+      backgroundColor: 'rgba(168,85,247,0.35)',
+      borderColor: '#a855f7',
+      borderWidth: 1,
+      borderRadius: 3,
+      stack: 'total',
+    });
+  }
+  datasets.push({
+    label: 'Sistem Baru',
+    data: years.map(y => byYearNew[y] || 0),
+    backgroundColor: 'rgba(168,85,247,0.85)',
+    borderColor: '#a855f7',
+    borderWidth: 1,
+    borderRadius: 4,
+    stack: 'total',
+  });
+
   _charts.trenPeserta = new Chart(canvas, {
     type: 'bar',
-    data: {
-      labels: years.map(String),
-      datasets: [{
-        label: 'Jumlah Peserta',
-        data: years.map(y => byYear[y]),
-        backgroundColor: 'rgba(168,85,247,0.7)',
-        borderColor: '#a855f7',
-        borderWidth: 1,
-        borderRadius: 4,
-      }]
-    },
+    data: { labels: years.map(String), datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: hasHistoris, labels: { color: '#9ca3af', font: { size: 11 } } },
+      },
       scales: {
-        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#1f2937' } },
-        y: { ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+        x: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#1f2937' } },
+        y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
       }
     }
   });
@@ -357,47 +407,49 @@ function _renderChartTrenPeserta(allBimtek) {
 
 // ─── Sebaran Provinsi & Instansi ──────────────────────────────────────────────
 
-async function _loadSebaranData(allBimtek) {
-  // Kumpulkan semua unique noPeserta dari semua bimtek
-  const allIds = [...new Set(allBimtek.flatMap(b => b.pesertaIds || []))];
+async function _loadSebaranData(allBimtek, alumniStats) {
+  const provinsiCount = {};
+  const instansiCount = {};
 
-  if (allIds.length === 0) {
+  // Seed dari alumni_historis
+  Object.entries(alumniStats?.provinsiCount ?? {}).forEach(([k, v]) => {
+    provinsiCount[k] = (provinsiCount[k] || 0) + v;
+  });
+  Object.entries(alumniStats?.instansiCount ?? {}).forEach(([k, v]) => {
+    instansiCount[k] = (instansiCount[k] || 0) + v;
+  });
+
+  // Tambah data peserta sistem baru dari peserta_master
+  const allIds = [...new Set(allBimtek.flatMap(b => b.pesertaIds || []))];
+  if (allIds.length > 0) {
+    try {
+      const CHUNK = 30;
+      const chunks = [];
+      for (let i = 0; i < allIds.length; i += CHUNK) chunks.push(allIds.slice(i, i + CHUNK));
+      const snaps = await Promise.all(
+        chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))))
+      );
+      snaps.forEach(snap => {
+        if (!snap.exists()) return;
+        const d = snap.data();
+        if (d.provinsi) provinsiCount[d.provinsi] = (provinsiCount[d.provinsi] || 0) + 1;
+        if (d.instansi) instansiCount[d.instansi] = (instansiCount[d.instansi] || 0) + 1;
+      });
+    } catch (err) {
+      console.error('[dashboard sebaran peserta baru]', err);
+    }
+  }
+
+  if (Object.keys(provinsiCount).length === 0 && Object.keys(instansiCount).length === 0) {
     document.getElementById('chart-provinsi-wrap').innerHTML =
-      `<p class="text-xs text-gray-500 text-center py-8">Belum ada peserta.</p>`;
+      `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
     document.getElementById('chart-instansi-wrap').innerHTML =
-      `<p class="text-xs text-gray-500 text-center py-8">Belum ada peserta.</p>`;
+      `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
     return;
   }
 
-  try {
-    // Batch read peserta_master (max 500 per batch, untuk saat ini cukup satu batch)
-    const CHUNK = 30;
-    const chunks = [];
-    for (let i = 0; i < allIds.length; i += CHUNK) chunks.push(allIds.slice(i, i + CHUNK));
-
-    const snaps = await Promise.all(
-      chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))))
-    );
-
-    const provinsiCount = {};
-    const instansiCount = {};
-
-    snaps.forEach(snap => {
-      if (!snap.exists()) return;
-      const d = snap.data();
-      if (d.provinsi) provinsiCount[d.provinsi] = (provinsiCount[d.provinsi] || 0) + 1;
-      if (d.instansi) instansiCount[d.instansi] = (instansiCount[d.instansi] || 0) + 1;
-    });
-
-    _renderChartProvinsi(provinsiCount);
-    _renderChartInstansi(instansiCount);
-  } catch (err) {
-    console.error('[dashboard sebaran]', err);
-    document.getElementById('chart-provinsi-wrap').innerHTML =
-      `<p class="text-xs text-red-400 p-4">Gagal memuat: ${_esc(err.message)}</p>`;
-    document.getElementById('chart-instansi-wrap').innerHTML =
-      `<p class="text-xs text-red-400 p-4">Gagal memuat: ${_esc(err.message)}</p>`;
-  }
+  _renderChartProvinsi(provinsiCount);
+  _renderChartInstansi(instansiCount);
 }
 
 function _renderChartProvinsi(provinsiCount) {
@@ -509,7 +561,7 @@ function _truncate(str, max) {
   return str.length > max ? str.slice(0, max - 1) + '…' : str;
 }
 
-function _statCard(label, value, valueCls, iconSvg) {
+function _statCard(label, value, valueCls, iconSvg, subLabel = null) {
   return `
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
@@ -517,6 +569,7 @@ function _statCard(label, value, valueCls, iconSvg) {
         <span class="${valueCls}">${iconSvg}</span>
       </div>
       <p class="text-2xl font-bold text-white">${value}</p>
+      ${subLabel ? `<p class="text-xs text-gray-600 mt-1">${subLabel}</p>` : ''}
     </div>`;
 }
 

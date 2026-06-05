@@ -65,27 +65,59 @@ export async function listAlumniSample(limitN = 20) {
 }
 
 /**
- * Statistik ringkas alumni_historis (untuk dashboard section).
+ * Statistik lengkap alumni_historis untuk dashboard.
+ * Membaca semua dokumen sekali, aggregasi semua dimensi yang diperlukan.
  */
 export async function getAlumniStats() {
   const snap = await getDocs(collection(db, COL.ALUMNI_HISTORIS));
-  const rows  = snapToArray(snap);
+  if (snap.empty) return null;
 
-  const tahunSet    = new Set();
-  const instansiSet = new Set();
-  const provinsiCount = {};
+  const rows = snapToArray(snap);
+
+  const pesertaByYear  = {};  // { tahun: jumlah_baris }
+  const bimtekByYear   = {};  // { tahun: Set<nama_bimtek> } → unique bimtek per tahun
+  const bidangCount    = {};  // { bidang: count }
+  const provinsiCount  = {};  // { provinsi: count }
+  const instansiCount  = {};  // { instansi: count }
 
   rows.forEach(r => {
-    if (r.tahun)     tahunSet.add(r.tahun);
-    if (r.instansi)  instansiSet.add(r.instansi);
-    if (r.provinsi)  provinsiCount[r.provinsi] = (provinsiCount[r.provinsi] || 0) + 1;
+    const yr = r.tahun;
+    if (!yr) return;
+
+    // Peserta per tahun
+    pesertaByYear[yr] = (pesertaByYear[yr] || 0) + 1;
+
+    // Bimtek unik per tahun (approx: distinct nama_bimtek)
+    if (r.nama_bimtek) {
+      if (!bimtekByYear[yr]) bimtekByYear[yr] = new Set();
+      bimtekByYear[yr].add(r.nama_bimtek.toLowerCase().trim());
+    }
+
+    // Bidang
+    if (r.bidang) bidangCount[r.bidang] = (bidangCount[r.bidang] || 0) + 1;
+
+    // Provinsi
+    if (r.provinsi) provinsiCount[r.provinsi] = (provinsiCount[r.provinsi] || 0) + 1;
+
+    // Instansi
+    if (r.instansi) instansiCount[r.instansi] = (instansiCount[r.instansi] || 0) + 1;
   });
 
+  // Convert bimtekByYear Set → count
+  const bimtekCountByYear = Object.fromEntries(
+    Object.entries(bimtekByYear).map(([yr, s]) => [yr, s.size])
+  );
+
+  const years = Object.keys(pesertaByYear).map(Number).filter(Boolean);
+
   return {
-    totalRows:       rows.length,
-    tahunRange:      tahunSet.size ? [Math.min(...tahunSet), Math.max(...tahunSet)] : null,
-    totalInstansi:   instansiSet.size,
+    totalRows:        rows.length,
+    tahunRange:       years.length ? [Math.min(...years), Math.max(...years)] : null,
+    pesertaByYear,
+    bimtekCountByYear,
+    bidangCount,
     provinsiCount,
+    instansiCount,
   };
 }
 
