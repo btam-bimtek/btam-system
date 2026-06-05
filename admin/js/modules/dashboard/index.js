@@ -7,7 +7,7 @@ import { countPeserta }  from '../peserta-master/api.js';
 import { countPengajar } from '../pengajar-master/api.js';
 import { hitungNilaiAkhir, cekKelulusan } from '../bimtek/scorer.js';
 import {
-  db, collection, query, where, getDocs, snapToArray
+  db, collection, query, where, getDocs, doc, getDoc, snapToArray
 } from '../../../../shared/db.js';
 import { COL, BIDANG_LIST } from '../../../../shared/constants.js';
 
@@ -63,6 +63,30 @@ export async function renderDashboard() {
         </div>
       </div>
 
+      <!-- Historis: Tren Peserta per Tahun -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
+        <h2 class="text-sm font-semibold text-gray-200 mb-4">Tren Peserta per Tahun</h2>
+        <div id="chart-tren-peserta-wrap" style="height:220px;position:relative;">
+          <canvas id="chart-tren-peserta"></canvas>
+        </div>
+      </div>
+
+      <!-- Historis: Sebaran Provinsi & Top Instansi -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" id="sebaran-grid">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h2 class="text-sm font-semibold text-gray-200 mb-4">Sebaran Provinsi Peserta</h2>
+          <div id="chart-provinsi-wrap" style="height:260px;position:relative;">
+            <div class="text-xs text-gray-500 py-6 text-center animate-pulse">Memuat data provinsi…</div>
+          </div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h2 class="text-sm font-semibold text-gray-200 mb-4">Top Instansi Pengirim Peserta</h2>
+          <div id="chart-instansi-wrap" style="height:260px;position:relative;">
+            <div class="text-xs text-gray-500 py-6 text-center animate-pulse">Memuat data instansi…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Bimtek terbaru -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl mb-8">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
@@ -106,6 +130,8 @@ async function _loadData() {
     _renderChartTren(allBimtek);
     _renderChartBidang(allBimtek);
     _loadKelulusanChart(allBimtek);
+    _renderChartTrenPeserta(allBimtek);
+    _loadSebaranData(allBimtek);
   } catch (err) {
     console.error('[dashboard]', err);
     const sg = document.getElementById('stat-grid');
@@ -281,6 +307,181 @@ async function _loadKelulusanChart(allBimtek) {
   } catch (err) {
     el.innerHTML = `<p class="text-xs text-red-400 p-4">Gagal memuat kelulusan: ${_esc(err.message)}</p>`;
   }
+}
+
+// ─── Chart: Tren Peserta per Tahun ───────────────────────────────────────────
+
+function _renderChartTrenPeserta(allBimtek) {
+  const byYear = {};
+  allBimtek.forEach(b => {
+    if (!b.periode?.mulai) return;
+    const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
+    const yr = d.getFullYear();
+    byYear[yr] = (byYear[yr] || 0) + (b.pesertaIds?.length || 0);
+  });
+
+  const wrap   = document.getElementById('chart-tren-peserta-wrap');
+  const canvas = document.getElementById('chart-tren-peserta');
+  if (!canvas) return;
+
+  const years = Object.keys(byYear).map(Number).sort();
+  if (years.length === 0) {
+    wrap.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Belum ada data.</p>`;
+    return;
+  }
+
+  _charts.trenPeserta = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: years.map(String),
+      datasets: [{
+        label: 'Jumlah Peserta',
+        data: years.map(y => byYear[y]),
+        backgroundColor: 'rgba(168,85,247,0.7)',
+        borderColor: '#a855f7',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#1f2937' } },
+        y: { ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ─── Sebaran Provinsi & Instansi ──────────────────────────────────────────────
+
+async function _loadSebaranData(allBimtek) {
+  // Kumpulkan semua unique noPeserta dari semua bimtek
+  const allIds = [...new Set(allBimtek.flatMap(b => b.pesertaIds || []))];
+
+  if (allIds.length === 0) {
+    document.getElementById('chart-provinsi-wrap').innerHTML =
+      `<p class="text-xs text-gray-500 text-center py-8">Belum ada peserta.</p>`;
+    document.getElementById('chart-instansi-wrap').innerHTML =
+      `<p class="text-xs text-gray-500 text-center py-8">Belum ada peserta.</p>`;
+    return;
+  }
+
+  try {
+    // Batch read peserta_master (max 500 per batch, untuk saat ini cukup satu batch)
+    const CHUNK = 30;
+    const chunks = [];
+    for (let i = 0; i < allIds.length; i += CHUNK) chunks.push(allIds.slice(i, i + CHUNK));
+
+    const snaps = await Promise.all(
+      chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))))
+    );
+
+    const provinsiCount = {};
+    const instansiCount = {};
+
+    snaps.forEach(snap => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d.provinsi) provinsiCount[d.provinsi] = (provinsiCount[d.provinsi] || 0) + 1;
+      if (d.instansi) instansiCount[d.instansi] = (instansiCount[d.instansi] || 0) + 1;
+    });
+
+    _renderChartProvinsi(provinsiCount);
+    _renderChartInstansi(instansiCount);
+  } catch (err) {
+    console.error('[dashboard sebaran]', err);
+    document.getElementById('chart-provinsi-wrap').innerHTML =
+      `<p class="text-xs text-red-400 p-4">Gagal memuat: ${_esc(err.message)}</p>`;
+    document.getElementById('chart-instansi-wrap').innerHTML =
+      `<p class="text-xs text-red-400 p-4">Gagal memuat: ${_esc(err.message)}</p>`;
+  }
+}
+
+function _renderChartProvinsi(provinsiCount) {
+  const wrap = document.getElementById('chart-provinsi-wrap');
+  if (!wrap) return;
+
+  const sorted = Object.entries(provinsiCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  if (sorted.length === 0) {
+    wrap.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Data provinsi belum tersedia.</p>`;
+    return;
+  }
+
+  const h = Math.max(220, sorted.length * 28);
+  wrap.innerHTML = `<div style="height:${h}px;position:relative;"><canvas id="chart-provinsi"></canvas></div>`;
+
+  _charts.provinsi = new Chart(document.getElementById('chart-provinsi'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([p]) => _truncate(p, 22)),
+      datasets: [{
+        label: 'Peserta',
+        data: sorted.map(([, v]) => v),
+        backgroundColor: 'rgba(20,184,166,0.7)',
+        borderColor: '#14b8a6',
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true },
+        y: { ticks: { color: '#d1d5db', font: { size: 10 } }, grid: { color: '#1f2937' } }
+      }
+    }
+  });
+}
+
+function _renderChartInstansi(instansiCount) {
+  const wrap = document.getElementById('chart-instansi-wrap');
+  if (!wrap) return;
+
+  const sorted = Object.entries(instansiCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  if (sorted.length === 0) {
+    wrap.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Data instansi belum tersedia.</p>`;
+    return;
+  }
+
+  const h = Math.max(220, sorted.length * 28);
+  wrap.innerHTML = `<div style="height:${h}px;position:relative;"><canvas id="chart-instansi"></canvas></div>`;
+
+  _charts.instansi = new Chart(document.getElementById('chart-instansi'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([inst]) => _truncate(inst, 22)),
+      datasets: [{
+        label: 'Peserta',
+        data: sorted.map(([, v]) => v),
+        backgroundColor: 'rgba(251,146,60,0.7)',
+        borderColor: '#fb923c',
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true },
+        y: { ticks: { color: '#d1d5db', font: { size: 10 } }, grid: { color: '#1f2937' } }
+      }
+    }
+  });
 }
 
 // ─── Recent List ──────────────────────────────────────────────────────────────
