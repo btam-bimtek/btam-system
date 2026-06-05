@@ -45,7 +45,7 @@ function _renderShell() {
     <div id="shell" class="hidden min-h-screen flex bg-gray-950 text-gray-100">
       <aside id="sidebar" class="w-64 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
       </aside>
-      <div class="flex-1 flex flex-col min-w-0">
+      <div id="shell-content" class="flex-1 flex flex-col min-w-0">
         <header id="navbar" class="h-14 bg-gray-900 border-b border-gray-800 flex items-center px-6 shrink-0">
         </header>
         <main id="app" class="flex-1 p-6 overflow-auto">
@@ -183,9 +183,9 @@ function _setLoginMode(isLogin) {
   } else {
     shell?.classList.remove('hidden');
     loginRoot?.classList.add('hidden');
-    const app  = document.getElementById('app');
-    const main = document.querySelector('#shell main');
-    if (app && main && !main.contains(app)) main.appendChild(app);
+    const app          = document.getElementById('app');
+    const shellContent = document.getElementById('shell-content');
+    if (app && shellContent && !shellContent.contains(app)) shellContent.appendChild(app);
   }
 }
 
