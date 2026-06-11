@@ -238,9 +238,24 @@ function _fmtDate(ts) {
 // ─── Kinerja Instansi ─────────────────────────────────────────────────────────
 
 /**
- * Batch import kinerja instansi.
- * DocId = slug instansi (lowercase, spasi → underscore).
- * Merge: re-import aman, tidak menghapus data existing.
+ * Hapus semua dokumen di kinerja_instansi (untuk reset sebelum import ulang).
+ * @returns {number} jumlah dokumen yang dihapus
+ */
+export async function clearKinerjaInstansi() {
+  const snap = await getDocs(collection(db, COL.KINERJA_INSTANSI));
+  if (snap.empty) return 0;
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return snap.docs.length;
+}
+
+/**
+ * Batch import kinerja instansi dari CSV BPPSPAM (schema baru).
+ * DocId = slug nama_bumd. Selalu set (bukan merge) — panggil clearKinerjaInstansi() dulu.
  */
 export async function batchImportKinerja(rows, sourceFile, performedBy) {
   const BATCH_SIZE = 400;
@@ -250,9 +265,9 @@ export async function batchImportKinerja(rows, sourceFile, performedBy) {
     const chunk = rows.slice(i, i + BATCH_SIZE);
     const batch = writeBatch(db);
     chunk.forEach(row => {
-      const id  = _slugify(row.instansi);
+      const id  = _slugifyBumd(row.nama_bumd);
       const ref = doc(db, COL.KINERJA_INSTANSI, id);
-      batch.set(ref, { ...row, kinerjaId: id }, { merge: true });
+      batch.set(ref, { ...row, kinerjaId: id });
     });
     await batch.commit();
     imported += chunk.length;
@@ -271,9 +286,142 @@ export async function batchImportKinerja(rows, sourceFile, performedBy) {
 export async function listKinerjaInstansi() {
   const snap = await getDocs(query(
     collection(db, COL.KINERJA_INSTANSI),
-    orderBy('instansi')
+    orderBy('nama_bumd')
   ));
   return snapToArray(snap);
+}
+
+// ─── Korelasi ─────────────────────────────────────────────────────────────────
+
+/**
+ * Gabungkan alumni_historis + kinerja_instansi untuk analisis korelasi.
+ * Join key: normalisasi nama (strip PDAM/PERUMDAM, kabupaten/kota).
+ *
+ * alumni:  { total, total5yr, eventUnik, byYear, byBidang, byBimtek } | null
+ * kinerja: { nama_bumd, wilayah, pulau, byYear, tarif, pelanggan, pegawai } | null
+ *   byYear: { "2021": { total, kategori, bobot_keuangan, bobot_pelayanan,
+ *                       bobot_operasi, bobot_sdm, nrw, cakupan, ratio_diklat } }
+ */
+export async function getKorelasiData() {
+  const [alumniSnap, kinerjaSnap] = await Promise.all([
+    getDocs(collection(db, COL.ALUMNI_HISTORIS)),
+    getDocs(collection(db, COL.KINERJA_INSTANSI)),
+  ]);
+
+  // Tahun kinerja terbaru — untuk cutoff 5 tahun ke belakang
+  const KINERJA_YEARS = [2021, 2022, 2023];
+  const LATEST_KINERJA = Math.max(...KINERJA_YEARS);
+  const CUTOFF_5YR = LATEST_KINERJA - 4;  // 2019
+
+  // ── Agregasi alumni per instansi ──────────────────────────────
+  const alumniMap = {};
+  alumniSnap.docs.forEach(d => {
+    const r = d.data();
+    if (!r.instansi) return;
+    if (!alumniMap[r.instansi]) {
+      alumniMap[r.instansi] = {
+        total: 0, total5yr: 0,
+        byYear: {}, byBidang: {}, byBimtek: {},
+        bimtekEvents: new Set(),
+        provinsi: null, kab_kota: null,
+      };
+    }
+    const a = alumniMap[r.instansi];
+    a.total++;
+    if (r.tahun >= CUTOFF_5YR) a.total5yr++;
+    if (r.tahun) a.byYear[r.tahun] = (a.byYear[r.tahun] || 0) + 1;
+    if (r.bidang) a.byBidang[r.bidang] = (a.byBidang[r.bidang] || 0) + 1;
+    if (r.nama_bimtek) {
+      a.byBimtek[r.nama_bimtek] = (a.byBimtek[r.nama_bimtek] || 0) + 1;
+      a.bimtekEvents.add(`${r.nama_bimtek}|${r.tahun}`);
+    }
+    if (!a.provinsi  && r.provinsi)  a.provinsi  = r.provinsi;
+    if (!a.kab_kota  && r.kab_kota)  a.kab_kota  = r.kab_kota;
+  });
+
+  // ── Map kinerja per nama_bumd ──────────────────────────────────
+  const kinerjaMap = {};
+  kinerjaSnap.docs.forEach(d => {
+    const r = d.data();
+    if (r.nama_bumd) kinerjaMap[r.nama_bumd] = r;
+  });
+
+  // Normalized lookup: normKey → nama_bumd asli
+  const kinerjaByNorm = {};
+  Object.keys(kinerjaMap).forEach(nama => {
+    const key = _normInstansi(nama);
+    if (key) kinerjaByNorm[key] = nama;
+  });
+
+  const _toKinerja = k => k ? {
+    nama_bumd: k.nama_bumd,
+    wilayah:   k.wilayah   || null,
+    pulau:     k.pulau     || null,
+    byYear:    k.kinerja   || {},
+    tarif:     k.tarif_rp_m3      ?? null,
+    pelanggan: k.jumlah_pelanggan ?? null,
+    pegawai:   k.jumlah_pegawai   ?? null,
+  } : null;
+
+  // ── Gabungkan ──────────────────────────────────────────────────
+  const result = [];
+  const usedKinerja = new Set();
+
+  Object.entries(alumniMap).forEach(([nama, a]) => {
+    let kNama = kinerjaMap[nama] ? nama : null;
+    if (!kNama) {
+      const nk = _normInstansi(nama);
+      kNama = nk && kinerjaByNorm[nk] ? kinerjaByNorm[nk] : null;
+    }
+    const k = kNama ? kinerjaMap[kNama] : null;
+    if (kNama) usedKinerja.add(kNama);
+
+    result.push({
+      instansi:        nama,
+      instansiKinerja: kNama,
+      provinsi:        a.provinsi || k?.provinsi || null,
+      kab_kota:        a.kab_kota || null,
+      alumni: {
+        total:     a.total,
+        total5yr:  a.total5yr,
+        eventUnik: a.bimtekEvents.size,
+        byYear:    a.byYear,
+        byBidang:  a.byBidang,
+        byBimtek:  a.byBimtek,
+      },
+      kinerja: _toKinerja(k),
+    });
+  });
+
+  // Kinerja tanpa pasangan alumni
+  Object.keys(kinerjaMap).forEach(kNama => {
+    if (usedKinerja.has(kNama)) return;
+    const k = kinerjaMap[kNama];
+    result.push({
+      instansi:        kNama,
+      instansiKinerja: kNama,
+      provinsi:        k.provinsi || null,
+      kab_kota:        null,
+      alumni:          null,
+      kinerja:         _toKinerja(k),
+    });
+  });
+
+  const matched = result.filter(r => r.alumni && r.kinerja).length;
+  console.log('[korelasi] instansi:', result.length, '| matched:', matched);
+
+  result.sort((a, b) => a.instansi.localeCompare(b.instansi, 'id'));
+  return result;
+}
+
+function _normInstansi(nama) {
+  return String(nama ?? '')
+    .toLowerCase()
+    .replace(/\b(perumdam|pdam|pudam|pd\.?)\b/g, '')
+    .replace(/\b(kabupaten|kota|kab\.?|kec\.?)\b/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -295,6 +443,15 @@ function _slugify(str) {
     .trim()
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_]/g, '');
+}
+
+function _slugifyBumd(nama) {
+  return String(nama ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim()
+    .replace(/\s+/g, '_')
+    .slice(0, 100);
 }
 
 // FNV-1a 32-bit hash → hex string (deterministik, tidak butuh crypto)

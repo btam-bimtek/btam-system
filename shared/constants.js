@@ -178,6 +178,6 @@ export const COL = {
 
 // ─── Alumni Historis — nilai enum yang valid ──────────────────
 export const HISTORIS_BIDANG = ['produksi', 'trandis', 'me', 'pendukung', 'multi_bidang'];
-export const HISTORIS_TIPE   = ['reguler', 'pnbp'];
+export const HISTORIS_TIPE   = ['reguler', 'pnbp', 'elearning'];
 export const HISTORIS_MODE   = ['offline', 'online'];
-export const HISTORIS_LOKASI = ['kab_kota', 'regional', 'pusat'];
+export const HISTORIS_LOKASI = ['kabupaten', 'kota', 'regional', 'pusat'];

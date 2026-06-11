@@ -5,9 +5,10 @@ import { setPageTitle }         from '../../layout/navbar.js';
 import { showToast }            from '../../components/toast.js';
 import { requireWrite }         from '../../auth-guard.js';
 import { getState }             from '../../store.js';
-import { batchImportAlumni, batchImportKinerja, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
+import { batchImportAlumni, batchImportKinerja, clearKinerjaInstansi, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
   from './api.js';
-import { normalizeAlumniRow, normalizeKinerjaRow } from './normalize.js';
+import { renderKorelasiTab } from './tab-korelasi.js';
+import { normalizeAlumniRow, normalizeKinerjaBPPSPAM } from './normalize.js';
 import { HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_MODE, HISTORIS_LOKASI } from '../../../../shared/constants.js';
 
 // Field Grup A alumni — wajib di-mapping
@@ -18,7 +19,7 @@ const ALUMNI_FIELDS_A = [
   { key: 'tipe',         label: 'Tipe',            hint: HISTORIS_TIPE.join(' / ') },
   { key: 'mode',         label: 'Mode',            hint: HISTORIS_MODE.join(' / ') },
   { key: 'instansi',     label: 'Instansi',        hint: 'nama canonical PDAM' },
-  { key: 'jenis_lokasi', label: 'Jenis Lokasi',   hint: HISTORIS_LOKASI.join(' / ') },
+  { key: 'jenis_lokasi', label: 'Jenis Lokasi',    hint: HISTORIS_LOKASI.join(' / ') },
   { key: 'provinsi',     label: 'Provinsi',        hint: 'nama resmi provinsi' },
   { key: 'kab_kota',     label: 'Kab/Kota',       hint: 'misal Kota Bogor' },
   { key: 'nama_peserta', label: 'Nama Peserta',   hint: 'tanpa gelar' },
@@ -83,11 +84,14 @@ export async function renderHistoris() {
 
       <!-- Tab buttons -->
       <div class="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
-        <button id="tab-alumni"  class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+        <button id="tab-alumni"   class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           Bimtek Historis
         </button>
-        <button id="tab-kinerja" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+        <button id="tab-kinerja"  class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           Kinerja PDAM
+        </button>
+        <button id="tab-korelasi" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          Korelasi
         </button>
       </div>
 
@@ -138,21 +142,23 @@ async function _doExportMaster() {
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 function _bindTabs() {
-  document.getElementById('tab-alumni') .addEventListener('click', () => _switchTab('alumni'));
-  document.getElementById('tab-kinerja').addEventListener('click', () => _switchTab('kinerja'));
+  document.getElementById('tab-alumni')  .addEventListener('click', () => _switchTab('alumni'));
+  document.getElementById('tab-kinerja') .addEventListener('click', () => _switchTab('kinerja'));
+  document.getElementById('tab-korelasi').addEventListener('click', () => _switchTab('korelasi'));
 }
 
 function _switchTab(tab) {
   S.tab = tab;
-  ['alumni','kinerja'].forEach(t => {
+  ['alumni','kinerja','korelasi'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
-    btn.classList.toggle('bg-gray-700',  t === tab);
-    btn.classList.toggle('text-white',   t === tab);
+    btn.classList.toggle('bg-gray-700',   t === tab);
+    btn.classList.toggle('text-white',    t === tab);
     btn.classList.toggle('text-gray-400', t !== tab);
   });
-  if (tab === 'alumni')  _renderAlumniTab();
-  if (tab === 'kinerja') _renderKinerjaTab();
+  if (tab === 'alumni')   _renderAlumniTab();
+  if (tab === 'kinerja')  _renderKinerjaTab();
+  if (tab === 'korelasi') renderKorelasiTab();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -334,8 +340,9 @@ function _runAlumniValidation() {
   });
 
   const NONE = '— Tidak ada —';
-  const valid   = [];
-  const invalid = [];
+  const valid    = [];
+  const invalid  = [];
+  const withWarn = [];  // baris valid tapi ada warning
   const enumErrs = { bidang: {}, tipe: {}, mode: {}, jenis_lokasi: {} };
 
   S.alumniRows.forEach((row, i) => {
@@ -349,6 +356,7 @@ function _runAlumniValidation() {
 
     if (data) {
       valid.push(data);
+      if (errors.length) withWarn.push({ row: i + 2, warnings: errors });
       // Catat nilai enum yang tidak dikenal
       ['bidang','tipe','mode','jenis_lokasi'].forEach(f => {
         if (mapped[f] && !data[f]) {
@@ -361,10 +369,10 @@ function _runAlumniValidation() {
     }
   });
 
-  _renderValidationResult(valid, invalid, enumErrs);
+  _renderValidationResult(valid, invalid, withWarn, enumErrs);
 }
 
-function _renderValidationResult(valid, invalid, enumErrs) {
+function _renderValidationResult(valid, invalid, withWarn, enumErrs) {
   const elVal = document.getElementById('alumni-validation-section');
   const elImp = document.getElementById('alumni-import-section');
   elVal.classList.remove('hidden');
@@ -397,14 +405,18 @@ function _renderValidationResult(valid, invalid, enumErrs) {
       <h2 class="text-sm font-semibold text-white">3. Hasil Validasi</h2>
 
       <!-- Summary -->
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-4 gap-3">
         <div class="bg-gray-800 rounded-lg p-3 text-center">
           <p class="text-lg font-bold text-white">${valid.length.toLocaleString('id-ID')}</p>
           <p class="text-xs text-green-400">Siap import</p>
         </div>
         <div class="bg-gray-800 rounded-lg p-3 text-center">
+          <p class="text-lg font-bold text-white">${withWarn.length.toLocaleString('id-ID')}</p>
+          <p class="text-xs text-yellow-400">Ada field kosong</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3 text-center">
           <p class="text-lg font-bold text-white">${invalid.length.toLocaleString('id-ID')}</p>
-          <p class="text-xs text-red-400">Ditolak (field wajib kosong)</p>
+          <p class="text-xs text-red-400">Ditolak</p>
         </div>
         <div class="bg-gray-800 rounded-lg p-3 text-center">
           <p class="text-lg font-bold text-white">${S.alumniRows.length.toLocaleString('id-ID')}</p>
@@ -510,11 +522,11 @@ async function _renderKinerjaTab() {
       <!-- Status -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-white">${existing.length} instansi tersimpan</p>
+          <p class="text-sm font-medium text-white">${existing.length} BUMD tersimpan</p>
           <p class="text-xs text-gray-500 mt-0.5">
             ${existing.length > 0
-              ? 'Re-import aman — data di-merge, tidak overwrite'
-              : 'Belum ada data kinerja'}
+              ? 'Import baru akan menghapus semua data lama terlebih dahulu'
+              : 'Belum ada data kinerja — upload CSV Buku Kinerja BPPSPAM'}
           </p>
         </div>
         ${existing.length > 0
@@ -524,33 +536,33 @@ async function _renderKinerjaTab() {
 
       <!-- Format panduan -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-2">Format File Excel Kinerja</h2>
+        <h2 class="text-sm font-semibold text-white mb-2">Format File — Buku Kinerja BUMD Air Minum BPPSPAM</h2>
         <p class="text-xs text-gray-400 mb-3">
-          Satu baris = satu instansi. Kolom tahun (<code class="bg-gray-800 px-1 rounded">2019</code>,
-          <code class="bg-gray-800 px-1 rounded">2020</code>, dst) dideteksi otomatis.
+          File CSV dengan kolom <code class="bg-gray-800 px-1 rounded">nama_bumd</code>,
+          <code class="bg-gray-800 px-1 rounded">wilayah</code>,
+          <code class="bg-gray-800 px-1 rounded">pulau</code>,
+          <code class="bg-gray-800 px-1 rounded">provinsi</code>,
+          dan kolom kinerja per tahun (2021–2023) seperti
+          <code class="bg-gray-800 px-1 rounded">total_kinerja_2023</code>,
+          <code class="bg-gray-800 px-1 rounded">kategori_2023</code>,
+          <code class="bg-gray-800 px-1 rounded">bobot_keuangan_2023</code>, dst.
         </p>
-        <div class="bg-gray-800 rounded-lg p-3 font-mono text-xs text-gray-300 overflow-x-auto">
-          instansi | provinsi | 2019 | 2020 | 2021 | 2022 | 2023<br/>
-          PERUMDAM Tirta Pakuan Kota Bogor | Jawa Barat | 3.2 | 3.5 | 3.8 | 4.0 | 4.1
-        </div>
-        <p class="text-xs text-gray-500 mt-2">
-          Kolom metrik tambahan boleh ditambah dengan format
-          <code class="bg-gray-800 px-1 rounded">nama_metrik_tahun</code>,
-          misal <code class="bg-gray-800 px-1 rounded">layanan_2020</code>.
+        <p class="text-xs text-gray-500">
+          Format angka Indonesia (koma desimal, titik ribuan, %) ditangani otomatis.
         </p>
       </div>
 
       <!-- Upload -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-3">Upload File Excel Kinerja</h2>
+        <h2 class="text-sm font-semibold text-white mb-3">Upload File CSV Kinerja</h2>
         <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg
                        bg-blue-600 hover:bg-blue-500 text-white text-sm transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
-          Pilih File Excel
-          <input id="kinerja-file-input" type="file" accept=".xlsx,.xls" class="hidden" />
+          Pilih File CSV
+          <input id="kinerja-file-input" type="file" accept=".csv,.xlsx,.xls" class="hidden" />
         </label>
         <span id="kinerja-filename" class="ml-3 text-xs text-gray-500"></span>
       </div>
@@ -573,67 +585,60 @@ async function _onKinerjaFileSelected(e) {
   const ws   = wb.Sheets[wb.SheetNames[0]];
   const all  = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-  if (!all.length) { showToast('File kosong.', 'error'); return; }
+  if (!all.length) { showToast('File kosong atau tidak terbaca.', 'error'); return; }
 
-  const headers = Object.keys(all[0]);
-  // Auto-detect kolom tahun: 4 digit angka antara 1990-2100
-  const tahunCols = headers.filter(h => /^(19|20)\d{2}$/.test(h.trim()));
-
-  S.kinerjaHeaders = headers;
-  S.kinerjaRows    = all;
-  S.tahunCols      = tahunCols;
-
-  // Normalisasi semua baris
   const valid   = [];
   const invalid = [];
   all.forEach((row, i) => {
-    const { data, errors } = normalizeKinerjaRow(row, tahunCols);
+    const { data, errors } = normalizeKinerjaBPPSPAM(row);
     if (data) valid.push(data);
     else invalid.push({ row: i + 2, errors });
   });
 
-  _renderKinerjaPreview(valid, invalid, tahunCols, file.name);
+  S.kinerjaRows = all;
+  _renderKinerjaPreview(valid, invalid, file.name);
 }
 
-function _renderKinerjaPreview(valid, invalid, tahunCols, fileName) {
+function _renderKinerjaPreview(valid, invalid, fileName) {
   const elPrev = document.getElementById('kinerja-preview-section');
   const elImp  = document.getElementById('kinerja-import-section');
   elPrev.classList.remove('hidden');
 
-  const previewRows = valid.slice(0, 8).map(r => {
-    const skorCells = tahunCols.slice(0, 6).map(t =>
-      `<td class="text-center">${r.skor?.[t] != null ? r.skor[t] : '—'}</td>`
-    ).join('');
-    return `<tr><td class="max-w-[200px] truncate">${_esc(r.instansi)}</td>
-                <td>${_esc(r.provinsi ?? '—')}</td>${skorCells}</tr>`;
-  }).join('');
+  const KAT_COLOR = { SEHAT: 'text-emerald-400', 'KURANG SEHAT': 'text-yellow-400', SAKIT: 'text-red-400' };
 
-  const thYears = tahunCols.slice(0,6).map(t => `<th class="text-center">${t}</th>`).join('');
+  const previewRows = valid.slice(0, 8).map(r => {
+    const katCells = ['2021','2022','2023'].map(y => {
+      const k = r.kinerja?.[y];
+      const label = k?.kategori ?? '—';
+      const cls   = KAT_COLOR[label] ?? 'text-gray-600';
+      const total = k?.total != null ? ` (${k.total.toFixed(2)})` : '';
+      return `<td class="text-center text-xs ${cls}">${label}${total}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="max-w-[220px] truncate font-medium text-white">${_esc(r.nama_bumd)}</td>
+      <td class="text-gray-400">${_esc(r.provinsi ?? '—')}</td>
+      ${katCells}
+    </tr>`;
+  }).join('');
 
   elPrev.innerHTML = `
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
       <h2 class="text-sm font-semibold text-white">Preview & Validasi</h2>
-
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div class="bg-gray-800 rounded-lg p-3 text-center">
           <p class="text-lg font-bold text-white">${valid.length}</p>
-          <p class="text-xs text-green-400">Siap import</p>
+          <p class="text-xs text-green-400">BUMD siap import</p>
         </div>
         <div class="bg-gray-800 rounded-lg p-3 text-center">
           <p class="text-lg font-bold text-white">${invalid.length}</p>
-          <p class="text-xs text-red-400">Ditolak</p>
-        </div>
-        <div class="bg-gray-800 rounded-lg p-3 text-center">
-          <p class="text-lg font-bold text-white">${tahunCols.length}</p>
-          <p class="text-xs text-gray-400">Kolom tahun: ${tahunCols.slice(0,4).join(', ')}${tahunCols.length > 4 ? '…' : ''}</p>
+          <p class="text-xs text-red-400">Ditolak (nama_bumd kosong)</p>
         </div>
       </div>
-
       ${valid.length > 0 ? `
         <div class="overflow-x-auto">
           <table class="btam-table text-xs">
             <thead>
-              <tr><th>Instansi</th><th>Provinsi</th>${thYears}</tr>
+              <tr><th>Nama BUMD</th><th>Provinsi</th><th class="text-center">2021</th><th class="text-center">2022</th><th class="text-center">2023</th></tr>
             </thead>
             <tbody>${previewRows}</tbody>
           </table>
@@ -643,19 +648,20 @@ function _renderKinerjaPreview(valid, invalid, tahunCols, fileName) {
   if (valid.length > 0) {
     elImp.classList.remove('hidden');
     elImp.innerHTML = `
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <p class="text-xs text-gray-500 mb-4">
-          ${valid.length} instansi akan diimport/diperbarui.
-        </p>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-lg p-3">
+          <p class="text-xs text-yellow-400 font-semibold">⚠️ Data kinerja lama akan dihapus semua sebelum import</p>
+          <p class="text-xs text-gray-400 mt-1">Import ini tidak bisa dibatalkan. Pastikan file sudah benar.</p>
+        </div>
         <button id="btn-do-import-kinerja"
-                class="px-5 py-2.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500
+                class="px-5 py-2.5 rounded-lg text-sm bg-orange-600 hover:bg-orange-500
                        text-white font-medium transition-colors">
-          Mulai Import ${valid.length} Instansi
+          Hapus Data Lama &amp; Import ${valid.length} BUMD
         </button>
-        <div id="kinerja-progress" class="hidden mt-3">
+        <div id="kinerja-progress" class="hidden">
           <div class="flex items-center gap-2 text-sm text-gray-400">
-            <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            Mengimport data…
+            <div class="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            <span id="kinerja-progress-text">Menghapus data lama…</span>
           </div>
         </div>
       </div>`;
@@ -668,18 +674,24 @@ function _renderKinerjaPreview(valid, invalid, tahunCols, fileName) {
 
 async function _doImportKinerja(valid, fileName) {
   document.getElementById('btn-do-import-kinerja').disabled = true;
-  document.getElementById('kinerja-progress').classList.remove('hidden');
+  const progressEl = document.getElementById('kinerja-progress');
+  const progressText = document.getElementById('kinerja-progress-text');
+  progressEl.classList.remove('hidden');
 
   const profile = getState('auth.profile');
 
   try {
+    progressText.textContent = 'Menghapus data lama…';
+    await clearKinerjaInstansi();
+
+    progressText.textContent = 'Mengimport data baru…';
     const { imported } = await batchImportKinerja(valid, fileName, profile?.email ?? 'admin');
-    showToast(`${imported} instansi berhasil diimport.`, 'success');
+    showToast(`${imported} BUMD berhasil diimport.`, 'success');
     await _renderKinerjaTab();
   } catch (err) {
     showToast('Import gagal: ' + err.message, 'error');
     document.getElementById('btn-do-import-kinerja').disabled = false;
-    document.getElementById('kinerja-progress').classList.add('hidden');
+    progressEl.classList.add('hidden');
   }
 }
 
