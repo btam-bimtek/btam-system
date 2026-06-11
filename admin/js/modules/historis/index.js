@@ -583,7 +583,9 @@ async function _onKinerjaFileSelected(e) {
   const XLSX = await _loadXLSX();
   const wb   = XLSX.read(await file.arrayBuffer(), { type: 'array' });
   const ws   = wb.Sheets[wb.SheetNames[0]];
-  const all  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  // raw: false → nilai dikembalikan sebagai string formatted, bukan angka auto-parsed,
+  // sehingga _parseId() bisa deteksi format Indonesia (koma=desimal, titik=ribuan, %)
+  const all  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
 
   if (!all.length) { showToast('File kosong atau tidak terbaca.', 'error'); return; }
 
