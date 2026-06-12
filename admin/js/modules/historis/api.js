@@ -53,6 +53,28 @@ export async function batchImportAlumni(rows, sourceFile, performedBy) {
 }
 
 /**
+ * Hapus semua dokumen di alumni_historis.
+ * @returns {number} jumlah dokumen yang dihapus
+ */
+export async function clearAlumniHistoris() {
+  const snap = await getDocs(collection(db, COL.ALUMNI_HISTORIS));
+  if (snap.empty) return 0;
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await logAudit({
+    action:     'clear_alumni_historis',
+    entityType: 'alumni_historis',
+    entityId:   'all',
+    metadata:   { count: snap.docs.length },
+  });
+  return snap.docs.length;
+}
+
+/**
  * Ambil sample alumni (untuk preview list setelah import).
  */
 export async function listAlumniSample(limitN = 20) {

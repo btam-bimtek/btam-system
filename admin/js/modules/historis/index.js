@@ -3,9 +3,10 @@
 
 import { setPageTitle }         from '../../layout/navbar.js';
 import { showToast }            from '../../components/toast.js';
+import { confirmDialog }        from '../../components/modal.js';
 import { requireWrite }         from '../../auth-guard.js';
 import { getState }             from '../../store.js';
-import { batchImportAlumni, batchImportKinerja, clearKinerjaInstansi, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
+import { batchImportAlumni, batchImportKinerja, clearAlumniHistoris, clearKinerjaInstansi, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
   from './api.js';
 import { renderKorelasiTab } from './tab-korelasi.js';
 import { normalizeAlumniRow, normalizeKinerjaBPPSPAM } from './normalize.js';
@@ -182,9 +183,22 @@ async function _renderAlumniTab() {
               : 'Belum ada data historis — upload file Excel untuk memulai'}
           </p>
         </div>
-        ${total > 0
-          ? `<span class="badge badge-green text-xs">Ada data</span>`
-          : `<span class="badge badge-gray text-xs">Kosong</span>`}
+        <div class="flex items-center gap-3">
+          ${total > 0
+            ? `<span class="badge badge-green text-xs">Ada data</span>`
+            : `<span class="badge badge-gray text-xs">Kosong</span>`}
+          ${total > 0 ? `
+            <button id="btn-clear-alumni"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
+                           bg-red-900/40 hover:bg-red-800/60 text-red-400
+                           border border-red-800/50 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Hapus Semua
+            </button>` : ''}
+        </div>
       </div>
 
       <!-- Upload area -->
@@ -219,6 +233,10 @@ async function _renderAlumniTab() {
     </div>`;
 
   document.getElementById('alumni-file-input').addEventListener('change', _onAlumniFileSelected);
+
+  if (total > 0) {
+    document.getElementById('btn-clear-alumni').addEventListener('click', _doClearAlumni);
+  }
 }
 
 async function _onAlumniFileSelected(e) {
@@ -505,6 +523,28 @@ async function _doImportAlumni(valid) {
     showToast('Import gagal: ' + err.message, 'error');
     document.getElementById('btn-do-import-alumni').disabled = false;
     document.getElementById('import-progress').classList.add('hidden');
+  }
+}
+
+async function _doClearAlumni() {
+  const confirmed = await confirmDialog({
+    title:        'Hapus Semua Data Historis?',
+    message:      'Seluruh record alumni historis akan dihapus permanen dari database. Tindakan ini tidak bisa dibatalkan.',
+    confirmLabel: 'Ya, Hapus Semua',
+    danger:       true,
+  });
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btn-clear-alumni');
+  if (btn) btn.disabled = true;
+
+  try {
+    const deleted = await clearAlumniHistoris();
+    showToast(`${deleted.toLocaleString('id-ID')} record berhasil dihapus.`, 'success');
+    await _renderAlumniTab();
+  } catch (err) {
+    showToast('Gagal menghapus: ' + err.message, 'error');
+    if (btn) btn.disabled = false;
   }
 }
 

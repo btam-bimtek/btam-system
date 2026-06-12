@@ -50,12 +50,12 @@ export function normalizeAlumniRow(raw) {
   const nama_peserta = _str(raw.nama_peserta);
   if (!nama_peserta) errors.push('nama_peserta kosong');
 
-  const instansi = _str(raw.instansi);
-  if (!instansi) errors.push('instansi kosong');
-
   if (errors.length > 0) return { data: null, errors };
 
   // ── Sangat disarankan (warning kalau kosong) ──────────────────
+  const instansi = _str(raw.instansi) || null;
+  if (!instansi) warnings.push('instansi kosong');
+
   const nama_bimtek = _str(raw.nama_bimtek) || null;
   if (!nama_bimtek) warnings.push('nama_bimtek kosong');
 
@@ -94,7 +94,7 @@ export function normalizeAlumniRow(raw) {
   const data = {
     tahun,
     nama_peserta,
-    instansi,
+    ...(instansi       && { instansi }),
     ...(nama_bimtek    && { nama_bimtek }),
     ...(provinsi       && { provinsi }),
     ...(bidang         && { bidang }),

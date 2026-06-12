@@ -191,24 +191,51 @@ function _renderK1() {
 
   _scatter('k1-chart', points, {
     xLabel,
-    yLabel:   'Tren Kinerja (poin/tahun)',
-    title:    `K-1${sub} — Intensitas Bimtek BTAM → Tren Kinerja PDAM`,
-    subtitle: 'Warna = kategori kinerja terbaru',
-    zeroLine: true,
+    yLabel:         'Tren Kinerja (poin/tahun)',
+    title:          `K-1${sub} — Intensitas Bimtek BTAM → Tren Kinerja PDAM`,
+    subtitle:       `${points.length} instansi · garis = regresi OLS · warna = arah tren kinerja`,
+    zeroLine:       true,
+    colorByTren:    true,
+    showRegression: true,
   });
 }
 
-// ─── K-2: Bidang → Aspek Kinerja ─────────────────────────────────────────────
+// ─── K-2: Bidang → Tren Metrik Kinerja ───────────────────────────────────────
 
 function _renderK2() {
   const el  = document.getElementById('kor-sub-content');
   const sub = _sub.k2;
 
   const META = {
-    A: { label: 'Trandis → NRW',         xDesc: 'Peserta bidang Trandis',                  yField: 'nrw',            yLabel: 'NRW Kehilangan Air (desimal)',       note: 'Y lebih rendah = lebih baik' },
-    B: { label: 'Teknis → bobot_operasi', xDesc: 'Peserta bidang teknis (Produksi+Trandis+ME)', yField: 'bobot_operasi',  yLabel: 'Bobot Operasi (0–1)',               note: '' },
-    E: { label: 'Semua → Cakupan',        xDesc: 'Total peserta semua bidang',              yField: 'cakupan',        yLabel: 'Cakupan Pelayanan (desimal)',        note: '' },
+    A: {
+      label:         'Trandis → Tren NRW',
+      xDesc:         'Peserta bidang Trandis',
+      yLabel:        'Tren NRW (unit/tahun)',
+      note:          'Y < 0 = NRW membaik (kehilangan air berkurang)',
+      lowerIsBetter: true,
+      getX: d => d.alumni?.byBidang?.trandis ?? 0,
+      getY: d => _metricSlope(d, 'nrw'),
+    },
+    B: {
+      label:         'Teknis → Tren Bobot Operasi',
+      xDesc:         'Peserta bidang Teknis (Produksi + Trandis + ME)',
+      yLabel:        'Tren Bobot Operasi (poin/tahun)',
+      note:          'Y > 0 = efisiensi operasi membaik',
+      lowerIsBetter: false,
+      getX: d => (d.alumni?.byBidang?.produksi ?? 0) + (d.alumni?.byBidang?.trandis ?? 0) + (d.alumni?.byBidang?.me ?? 0),
+      getY: d => _metricSlope(d, 'bobot_operasi'),
+    },
+    E: {
+      label:         'Semua → Tren Cakupan Pelayanan',
+      xDesc:         'Total peserta semua bidang',
+      yLabel:        'Tren Cakupan Pelayanan (unit/tahun)',
+      note:          'Y > 0 = cakupan meningkat',
+      lowerIsBetter: false,
+      getX: d => d.alumni?.total ?? 0,
+      getY: d => _metricSlope(d, 'cakupan'),
+    },
   };
+
   const m = META[sub];
 
   el.innerHTML = `
@@ -218,7 +245,10 @@ function _renderK2() {
           `<button class="k2-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="${s}">${md.label}</button>`
         ).join('')}
       </div>
-      <p class="text-xs text-gray-500">${_esc(m.xDesc)} vs <strong class="text-white">${_esc(m.yLabel)}</strong>${m.note ? ` · ${m.note}` : ''}</p>
+      <p class="text-xs text-gray-500">
+        ${_esc(m.xDesc)} vs <strong class="text-white">tren ${_esc(m.yLabel)}</strong>
+        (OLS slope 2021–2023) · ${_esc(m.note)}
+      </p>
       <div id="k2-chart"></div>
     </div>`;
 
@@ -230,26 +260,40 @@ function _renderK2() {
   });
 
   const points = _filtered()
-    .filter(d => d.alumni && d.kinerja)
-    .map(d => {
-      const xVal = sub === 'A' ? (d.alumni.byBidang.trandis ?? 0)
-                 : sub === 'B' ? ((d.alumni.byBidang.produksi ?? 0) + (d.alumni.byBidang.trandis ?? 0) + (d.alumni.byBidang.me ?? 0))
-                               : d.alumni.total;
-      return {
-        x:        xVal,
-        y:        _latestV(d, m.yField),
-        instansi: d.instansi,
-        provinsi: d.provinsi,
-        kategori: _latestKat(d),
-      };
-    })
+    .filter(d => d.kinerja)
+    .map(d => ({
+      x:        m.getX(d),
+      y:        m.getY(d),
+      instansi: d.instansi,
+      provinsi: d.provinsi,
+      kategori: _latestKat(d),
+    }))
     .filter(p => p.y !== null);
 
+  const lib = m.lowerIsBetter;
+  const dotColorFn = p => {
+    if (p.y == null) return 'rgba(100,116,139,0.6)';
+    const good = lib ? p.y < -0.001 : p.y >  0.001;
+    const bad  = lib ? p.y >  0.001 : p.y < -0.001;
+    if (good) return 'rgba(52,211,153,0.85)';
+    if (bad)  return 'rgba(248,113,113,0.85)';
+    return 'rgba(100,116,139,0.6)';
+  };
+  const legendItems = [
+    { color: 'rgba(52,211,153,0.85)',  label: lib ? 'NRW Membaik'  : 'Membaik'  },
+    { color: 'rgba(100,116,139,0.6)', label: 'Stabil' },
+    { color: 'rgba(248,113,113,0.85)', label: lib ? 'NRW Memburuk' : 'Memburuk' },
+  ];
+
   _scatter('k2-chart', points, {
-    xLabel:  m.xDesc,
-    yLabel:  m.yLabel,
-    title:   `K-2${sub} — ${m.label}`,
-    subtitle: 'Warna = kategori kinerja terbaru',
+    xLabel:         m.xDesc,
+    yLabel:         m.yLabel,
+    title:          `K-2${sub} — ${m.label}`,
+    subtitle:       `${points.length} instansi · garis = regresi OLS · ${m.note}`,
+    zeroLine:       true,
+    showRegression: true,
+    dotColorFn,
+    legendItems,
   });
 }
 
@@ -614,7 +658,7 @@ function _renderK5() {
 
 // ─── Scatter helper ───────────────────────────────────────────────────────────
 
-function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLine, isProvinsi } = {}) {
+function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLine, isProvinsi, colorByTren, showRegression, dotColorFn, legendItems } = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (_charts.main) { _charts.main.destroy(); delete _charts.main; }
@@ -627,6 +671,34 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
 
   const xMax = Math.max(...points.map(p => p.x), 0);
 
+  // OLS regression line + Pearson r
+  let rValue = null, regrDataset = null;
+  if (showRegression && points.length >= 3) {
+    const xs = points.map(p => p.x);
+    const ys = points.map(p => p.y);
+    const xm = xs.reduce((a,b) => a+b, 0) / xs.length;
+    const ym = ys.reduce((a,b) => a+b, 0) / ys.length;
+    const num  = xs.reduce((s,x,i) => s + (x-xm)*(ys[i]-ym), 0);
+    const denX = xs.reduce((s,x)   => s + (x-xm)**2, 0);
+    const denY = ys.reduce((s,y)   => s + (y-ym)**2, 0);
+    const sl   = denX === 0 ? 0 : num / denX;
+    const ic   = ym - sl * xm;
+    rValue = (denX === 0 || denY === 0) ? 0 : num / Math.sqrt(denX * denY);
+    const rClr = sl > 0.001 ? 'rgba(52,211,153,0.75)' : sl < -0.001 ? 'rgba(248,113,113,0.75)' : 'rgba(156,163,175,0.5)';
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    regrDataset = {
+      type: 'line', fill: false, pointRadius: 0, borderWidth: 2, borderDash: [6, 3],
+      borderColor: rClr,
+      data: [{ x: x0, y: ic + sl * x0 }, { x: x1, y: ic + sl * x1 }],
+    };
+  }
+  const rBadge = rValue !== null ? (() => {
+    const abs = Math.abs(rValue), sign = rValue >= 0 ? '+' : '';
+    const str = abs >= 0.5 ? 'kuat' : abs >= 0.3 ? 'sedang' : 'lemah';
+    const cls = rValue > 0.05 ? 'text-emerald-400' : rValue < -0.05 ? 'text-red-400' : 'text-gray-400';
+    return `<span class="text-xs font-mono ${cls}">r = ${sign}${rValue.toFixed(2)}</span><span class="text-xs text-gray-600 ml-1">(${str})</span>`;
+  })() : '';
+
   el.innerHTML = `
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -634,11 +706,24 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
           <h3 class="text-sm font-semibold text-white">${_esc(title || '')}</h3>
           ${subtitle ? `<p class="text-xs text-gray-500 mt-0.5">${_esc(subtitle)}</p>` : ''}
         </div>
-        ${!isProvinsi ? `<div class="flex gap-3 text-xs text-gray-400">
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>SEHAT</span>
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>KURANG SEHAT</span>
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>SAKIT</span>
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>—</span>
+        ${!isProvinsi ? `<div class="flex flex-col items-end gap-1.5">
+          ${rBadge ? `<div class="flex items-center gap-1.5">${rBadge}</div>` : ''}
+          ${legendItems
+            ? `<div class="flex flex-wrap gap-3 text-xs text-gray-400">
+                ${legendItems.map(l => `<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:${l.color}"></span>${_esc(l.label)}</span>`).join('')}
+              </div>`
+            : colorByTren
+            ? `<div class="flex flex-wrap gap-3 text-xs text-gray-400">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>Tren Naik</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>Stabil</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>Tren Turun</span>
+              </div>`
+            : `<div class="flex flex-wrap gap-3 text-xs text-gray-400">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>SEHAT</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>KURANG SEHAT</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>SAKIT</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>—</span>
+              </div>`}
         </div>` : ''}
       </div>
       <div style="height:420px;position:relative;"><canvas id="chart-main"></canvas></div>
@@ -648,7 +733,7 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
   const datasets = [{
     type: 'scatter',
     data:            points.map(p => ({ x: p.x, y: p.y })),
-    backgroundColor: points.map(p => _katBg(p.kategori)),
+    backgroundColor: points.map(p => dotColorFn ? dotColorFn(p) : (colorByTren ? _trenBg(p.y) : _katBg(p.kategori))),
     pointRadius:     isProvinsi ? 8 : 7,
     pointHoverRadius: 11,
   }];
@@ -662,6 +747,8 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
       pointRadius: 0, fill: false,
     });
   }
+
+  if (regrDataset) datasets.push(regrDataset);
 
   const ctx = document.getElementById('chart-main').getContext('2d');
   _charts.main = new Chart(ctx, {
@@ -875,8 +962,18 @@ function _renderDetail(nama) {
 
       <!-- Charts -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        ${byYearEntries.length ? `<div><p class="text-xs font-semibold text-gray-400 mb-2">Tren Total Kinerja</p>
-          <div style="height:180px;position:relative;"><canvas id="chart-det-kin"></canvas></div></div>` : ''}
+        ${byYearEntries.length ? `
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-semibold text-gray-400">Tren Total Kinerja</p>
+              <div class="flex gap-2 text-xs text-gray-600">
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>SEHAT</span>
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block"></span>KURANG SEHAT</span>
+                <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-400 inline-block"></span>SAKIT</span>
+              </div>
+            </div>
+            <div style="height:180px;position:relative;"><canvas id="chart-det-kin"></canvas></div>
+          </div>` : ''}
         ${alumniByYear.length ? `<div><p class="text-xs font-semibold text-gray-400 mb-2">Peserta Bimtek per Tahun</p>
           <div style="height:180px;position:relative;"><canvas id="chart-det-alumni"></canvas></div></div>` : ''}
       </div>
@@ -919,13 +1016,32 @@ function _renderDetail(nama) {
             datasets: [
               { label: 'Skor', data: byYearEntries.map(([,v]) => v.total ?? null),
                 borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.12)',
-                tension: 0.3, fill: true, pointRadius: 5, pointBackgroundColor: '#818cf8' },
+                tension: 0.3, fill: true, pointRadius: 7, pointHoverRadius: 9,
+                pointBackgroundColor: byYearEntries.map(([,v]) => _katPoint(v?.kategori)),
+                pointBorderColor:     byYearEntries.map(([,v]) => _katPoint(v?.kategori)),
+                pointBorderWidth: 2 },
               { label: 'Tren OLS', data: regrLine,
                 borderColor: slope != null && slope > 0.05 ? '#34d399' : slope != null && slope < -0.05 ? '#f87171' : '#94a3b8',
                 borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, fill: false },
             ],
           },
-          options: { ..._chartOpts({ yMin: 1, yMax: 5 }), plugins: { legend: { display: true, labels: { color: '#9ca3af', boxWidth: 14, font: { size: 10 } } } } },
+          options: {
+            ..._chartOpts({ yMin: 1, yMax: 5 }),
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+                titleColor: '#f3f4f6', bodyColor: '#9ca3af',
+                callbacks: {
+                  title: items => byYearEntries[items[0]?.dataIndex]?.[0] ?? '',
+                  label: item => {
+                    const [, v] = byYearEntries[item.dataIndex] || [];
+                    return [`Skor: ${item.parsed.y?.toFixed(2) ?? '—'}`, `Kategori: ${v?.kategori ?? '—'}`];
+                  },
+                },
+              },
+            },
+          },
         }
       );
     }
@@ -1047,6 +1163,22 @@ function _kSlope(d) {
   return den === 0 ? 0 : num / den;
 }
 
+/** OLS slope of a specific kinerja metric field (nrw, cakupan, bobot_operasi, dst). */
+function _metricSlope(d, field) {
+  if (!d.kinerja?.byYear) return null;
+  const pts = Object.entries(d.kinerja.byYear)
+    .map(([t, v]) => ({ x: +t, y: v?.[field] }))
+    .filter(p => p.y != null)
+    .sort((a, b) => a.x - b.x);
+  if (pts.length < 2) return null;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const xm = xs.reduce((a,b) => a+b, 0) / xs.length;
+  const ym = ys.reduce((a,b) => a+b, 0) / ys.length;
+  const num = xs.reduce((s,x,i) => s + (x-xm)*(ys[i]-ym), 0);
+  const den = xs.reduce((s,x) => s + (x-xm)**2, 0);
+  return den === 0 ? 0 : num / den;
+}
+
 /** Latest value of a kinerja field across available years. */
 function _latestV(d, field) {
   if (!d.kinerja?.byYear) return null;
@@ -1075,6 +1207,20 @@ function _katBg(kat) {
   if (kat === 'KURANG SEHAT')  return 'rgba(251,191,36,0.8)';
   if (kat === 'SAKIT')         return 'rgba(248,113,113,0.8)';
   return 'rgba(100,116,139,0.6)';
+}
+
+function _trenBg(slope) {
+  if (slope == null) return 'rgba(100,116,139,0.6)';
+  if (slope >  0.05) return 'rgba(52,211,153,0.85)';
+  if (slope < -0.05) return 'rgba(248,113,113,0.85)';
+  return 'rgba(100,116,139,0.6)';
+}
+
+function _katPoint(kat) {
+  if (kat === 'SEHAT')        return '#34d399';
+  if (kat === 'KURANG SEHAT') return '#fbbf24';
+  if (kat === 'SAKIT')        return '#f87171';
+  return '#818cf8';
 }
 
 function _slopeClass(slope) {
