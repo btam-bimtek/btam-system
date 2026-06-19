@@ -8,9 +8,10 @@ service firebase.storage {
       allow write: if request.auth != null;
     }
 
-    // KTP pendaftar — publik bisa upload (form tanpa login), tidak ada akses baca publik
+    // KTP pendaftar — publik bisa upload (form tanpa login) & baca (link admin tanpa header auth)
+    // Keamanan bersandar pada token download yang acak/tidak bisa ditebak.
     match /ktp/{tahun}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.resource.size < 2 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*|application/pdf');
     }

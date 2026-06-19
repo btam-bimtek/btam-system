@@ -5,8 +5,9 @@ import { renderDataTable } from '../../components/data-table.js';
 import { openModal, confirmDialog } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
 import { requireWrite } from '../../auth-guard.js';
-import { listInstansi, countInstansi, createInstansi, updateInstansi, deleteInstansi, exportAllInstansi } from './api.js';
+import { listInstansi, countInstansi, createInstansi, updateInstansi, deleteInstansi, exportAllInstansi, importInstansiFromHistoris } from './api.js';
 import { slugify } from '../../../../shared/normalize.js';
+import { PROVINSI_LIST } from '../../../../shared/constants.js';
 
 const KATEGORI_OPTIONS = ['PDAM','PERUMDAM','PERUMDA','PT','UPTD','Dinas PUPR','Pusat','Regional','Lainnya'];
 const JENIS_LOKASI_OPTIONS = ['Kabupaten','Kota','Pusat','Regional'];
@@ -25,6 +26,7 @@ export async function renderInstansiList({ query = {} } = {}) {
           <p class="text-xs text-gray-500 mt-0.5">PDAM, PERUMDAM, dan instansi terkait</p>
         </div>
         <div class="flex items-center gap-2">
+          <button id="btn-import-historis" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">Import dari Data Historis</button>
           <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">Export</button>
           <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -128,6 +130,13 @@ function _openForm(existing = null) {
               ${JENIS_LOKASI_OPTIONS.map(j => `<option value="${j}" ${existing?.jenisLokasi===j?'selected':''}>${j}</option>`).join('')}
             </select>
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Provinsi</label>
+            <select name="provinsiKode" class="form-select">
+              <option value="">— Pilih —</option>
+              ${PROVINSI_LIST.map(p => `<option value="${p}" ${existing?.provinsiKode===p?'selected':''}>${p}</option>`).join('')}
+            </select>
+          </div>
           <div class="col-span-2">
             <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama Alias (pisah koma)</label>
             <input name="namaAlias" class="form-input" value="${_esc((existing?.namaAlias ?? []).join(', '))}" placeholder="Nama lama atau variasi penulisan" />
@@ -165,6 +174,7 @@ async function _submit(close, existing) {
     singkatan:     fd.get('singkatan') || null,
     kategori:      fd.get('kategori') || null,
     jenisLokasi:   fd.get('jenisLokasi') || null,
+    provinsiKode:  fd.get('provinsiKode') || null,
     namaAlias:     fd.get('namaAlias'),
     alamat:        fd.get('alamat') || null,
     isPnbpClient:  fd.get('isPnbpClient') === 'on'
@@ -189,6 +199,24 @@ function _bindEvents() {
     _deb = setTimeout(() => { _state.search = e.target.value.trim(); _state.page = 1; _state.lastDocs = [null]; _load(); }, 350);
   });
   document.getElementById('btn-add')?.addEventListener('click', () => { if (!requireWrite()) return; _openForm(null); });
+  document.getElementById('btn-import-historis')?.addEventListener('click', async () => {
+    if (!requireWrite()) return;
+    const ok = await confirmDialog({
+      title: 'Import Instansi dari Data Historis?',
+      message: 'Sistem akan membuat entri instansi_master baru dari nama-nama instansi unik di alumni_historis (provinsi diambil dari data yang paling sering muncul). Instansi yang sudah ada tidak akan ditimpa.',
+      confirmLabel: 'Import',
+      danger: false
+    });
+    if (!ok) return;
+    const btn = document.getElementById('btn-import-historis');
+    btn.disabled = true; btn.textContent = 'Mengimpor…';
+    try {
+      const { created, skipped, errors } = await importInstansiFromHistoris();
+      showToast(`Selesai: ${created} instansi baru ditambahkan, ${skipped} dilewati (sudah ada).${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
+      _reload();
+    } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Import dari Data Historis'; }
+  });
   document.getElementById('btn-export')?.addEventListener('click', async () => {
     try {
       const data = await exportAllInstansi();

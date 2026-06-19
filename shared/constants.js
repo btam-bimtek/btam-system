@@ -17,6 +17,21 @@ export const BIDANG_MAP = Object.fromEntries(
   BIDANG_LIST.map(b => [b.bidangId, b])
 );
 
+// ─── Provinsi ───────────────────────────────────────────────────
+// Daftar 38 provinsi RI. Dipakai di form pendaftar & instansi-master.
+// Catatan: belum ada collection provinsi_master terisi, jadi dipakai sebagai
+// daftar statis (bukan kode) — instansi_master.provinsiKode menyimpan nama ini langsung.
+export const PROVINSI_LIST = [
+  'Aceh','Sumatera Utara','Sumatera Barat','Riau','Kepulauan Riau','Jambi',
+  'Bengkulu','Sumatera Selatan','Kepulauan Bangka Belitung','Lampung',
+  'Banten','DKI Jakarta','Jawa Barat','Jawa Tengah','DI Yogyakarta','Jawa Timur',
+  'Bali','Nusa Tenggara Barat','Nusa Tenggara Timur',
+  'Kalimantan Barat','Kalimantan Tengah','Kalimantan Selatan','Kalimantan Timur','Kalimantan Utara',
+  'Sulawesi Utara','Gorontalo','Sulawesi Tengah','Sulawesi Barat','Sulawesi Selatan','Sulawesi Tenggara',
+  'Maluku','Maluku Utara','Papua Barat','Papua Barat Daya','Papua','Papua Tengah',
+  'Papua Pegunungan','Papua Selatan'
+];
+
 // ─── Taksonomi Bloom ──────────────────────────────────────────
 export const BLOOM_LEVELS = [
   { level: 'C1', nama: 'Mengingat',     defaultBobot: 1 },
@@ -173,7 +188,11 @@ export const COL = {
   APP_SETTINGS:       'app_settings',
   AUDIT_LOG:          'audit_log',
   ALUMNI_HISTORIS:    'alumni_historis',
-  KINERJA_INSTANSI:   'kinerja_instansi'
+  KINERJA_INSTANSI:   'kinerja_instansi',
+  SIKLUS_SELEKSI:     'siklus_seleksi',
+  CALON_PESERTA:      'calon_peserta',
+  PENENTUAN_PESERTA:  'penentuan_peserta',
+  STATUS_LOOKUP:      'status_lookup'
 };
 
 // ─── Alumni Historis — nilai enum yang valid ──────────────────
@@ -181,3 +200,55 @@ export const HISTORIS_BIDANG = ['produksi', 'trandis', 'me', 'pendukung', 'multi
 export const HISTORIS_TIPE   = ['reguler', 'pnbp', 'elearning'];
 export const HISTORIS_MODE   = ['offline', 'online'];
 export const HISTORIS_LOKASI = ['kabupaten', 'kota', 'regional', 'pusat'];
+
+// ─── Rekrutmen ────────────────────────────────────────────────
+export const SIKLUS_STATUS = {
+  PLANNING:       'planning',
+  PENDAFTARAN:    'pendaftaran',
+  ADMINISTRASI:   'administrasi',
+  TERTULIS:       'tertulis',
+  PENENTUAN:      'penentuan',
+  SELESAI:        'selesai'
+};
+
+export const SIKLUS_STATUS_LABEL = {
+  planning:       'Perencanaan',
+  pendaftaran:    'Pendaftaran Dibuka',
+  administrasi:   'Seleksi Administrasi',
+  tertulis:       'Seleksi Tertulis',
+  penentuan:      'Penentuan Peserta',
+  selesai:        'Selesai'
+};
+
+export const CALON_STATUS_ADMIN = {
+  PENDING: 'pending',
+  LULUS:   'lulus',
+  GUGUR:   'gugur'
+};
+
+export const CALON_STATUS_FINAL = {
+  TERPILIH:         'terpilih',
+  CADANGAN:         'cadangan',
+  TIDAK_TERPILIH:   'tidak_terpilih'
+};
+
+// Urutan ordinal pendidikan — dipakai untuk evaluasi rule "pendidikan minimal"
+export const PENDIDIKAN_RANK = { SMA: 1, D3: 2, S1: 3, S2: 4, S3: 5 };
+
+// Kriteria administrasi — field yang bisa dipakai di rule builder
+// Catatan: pendidikan dievaluasi sebagai syarat MINIMAL (ordinal SMA < D3 < S1 < S2 < S3),
+// bukan exact match — operator yang relevan hanya 'gte'.
+export const ADMIN_RULE_FIELDS = [
+  { value: 'pendidikan', label: 'Pendidikan (minimal)', type: 'select',
+    options: ['SMA', 'D3', 'S1', 'S2', 'S3'], operators: ['gte'] },
+  { value: 'pengalamanTahun', label: 'Pengalaman Kerja di Bidang (minimal, tahun)', type: 'number',
+    operators: ['gte'] }
+];
+
+export const ADMIN_RULE_OPERATORS = {
+  eq:       'sama dengan',
+  not_eq:   'tidak sama dengan',
+  in:       'termasuk salah satu dari',
+  gte:      'lebih besar atau sama dengan',
+  lte:      'lebih kecil atau sama dengan'
+};

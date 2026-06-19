@@ -93,6 +93,59 @@ export async function exportAllInstansi() {
   return snapToArray(snap);
 }
 
+/**
+ * Bangun daftar instansi_master dari nama instansi unik yang ada di alumni_historis.
+ * Provinsi diambil dari nilai `provinsi` paling sering muncul untuk instansi tersebut.
+ * Instansi yang sudah ada (by slug id) dilewati, tidak ditimpa.
+ */
+export async function importInstansiFromHistoris() {
+  const histSnap = await getDocs(collection(db, COL.ALUMNI_HISTORIS));
+
+  // Kelompokkan: { instansiNama: { provinsiName: count } }
+  const grouped = {};
+  histSnap.docs.forEach(d => {
+    const r = d.data();
+    const nama = (r.instansi || '').trim();
+    if (!nama) return;
+    if (!grouped[nama]) grouped[nama] = {};
+    const prov = (r.provinsi || '').trim();
+    if (prov) grouped[nama][prov] = (grouped[nama][prov] || 0) + 1;
+  });
+
+  let created = 0, skipped = 0;
+  const errors = [];
+  const entries = Object.entries(grouped);
+  const BATCH = 450;
+
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const batch = writeBatch(db);
+    for (const [nama, provCounts] of entries.slice(i, i + BATCH)) {
+      const id = slugify(nama);
+      try {
+        const existing = await getDoc(doc(db, COL_NAME, id));
+        if (existing.exists() && !existing.data().deleted) { skipped++; continue; }
+
+        const provinsiKode = Object.entries(provCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+        const data = normalizeInstansi({ instansiId: id, nama, provinsiKode });
+
+        batch.set(doc(db, COL_NAME, id), {
+          ...data,
+          kinerjaSource: 'import_alumni_historis',
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          deleted: false, deletedAt: null
+        });
+        created++;
+      } catch (e) {
+        errors.push({ nama, error: e.message });
+      }
+    }
+    await batch.commit();
+  }
+
+  await logAudit({ action: 'import_instansi_from_historis', entityType: 'instansi', metadata: { created, skipped } });
+  return { created, skipped, errors };
+}
+
 export async function bulkImportInstansi(rows) {
   let created = 0, skipped = 0;
   const errors = [];

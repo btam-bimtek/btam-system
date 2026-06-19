@@ -1,0 +1,272 @@
+rules_version = '2';
+// firestore.rules
+// Security rules untuk BTAM Terpadu — Firestore.
+// Deploy via: firebase deploy --only firestore:rules
+// Atau paste manual di Firebase Console → Firestore → Rules.
+//
+// CATATAN PENTING:
+// - Peserta TIDAK punya Firebase Auth. Otorisasi peserta berbasis sessionId (magic link).
+// - "Exam app" artinya client tanpa Firebase Auth (request.auth == null).
+// - Lihat OPUSPLAN.md bab 5 untuk penjelasan lengkap trade-off security ini.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ────────────────────────────────────
+    function isAdmin() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/admin_users/$(request.auth.token.email));
+    }
+
+    function isSuperAdmin() {
+      return isAdmin()
+          && get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.role == 'superadmin';
+    }
+
+    function isViewer() {
+      return isAdmin()
+          && get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.role == 'viewer';
+    }
+
+    function canWrite() {
+      return isAdmin() && !isViewer();
+    }
+
+    // ─── Admin Users ─────────────────────────────────────────
+    match /admin_users/{email} {
+      allow read:  if isAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── App Settings ─────────────────────────────────────────
+    match /app_settings/{doc} {
+      allow read:  if isAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── Bidang (public read — exam app butuh) ────────────────
+    match /bidang/{doc} {
+      allow read:  if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── Provinsi & Kab/Kota ─────────────────────────────────
+    match /provinsi_master/{doc} {
+      allow read:  if isAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    match /kabkota_master/{doc} {
+      allow read:  if isAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── Peserta Master ───────────────────────────────────────
+    match /peserta_master/{doc} {
+      allow read:           if isAdmin();
+      allow create, update: if canWrite();
+      allow delete:         if isSuperAdmin();
+    }
+
+    // ─── Pengajar Master ──────────────────────────────────────
+    match /pengajar_master/{doc} {
+      allow read:           if isAdmin();
+      allow create, update: if canWrite();
+      allow delete:         if isSuperAdmin();
+    }
+
+    // ─── Instansi Master (public read — form pendaftar butuh untuk autocomplete) ─
+    match /instansi_master/{doc} {
+      allow read:           if true;
+      allow create, update: if canWrite();
+      allow delete:         if isSuperAdmin();
+    }
+
+    // ─── Bank Soal ────────────────────────────────────────────
+    // Soal (tanpa kunci): admin bisa semua; exam app bisa baca kalau active=true
+    match /bank_soal/{soalId} {
+      allow read:                  if isAdmin() || resource.data.active == true;
+      allow create, update, delete: if canWrite();
+    }
+
+    // TAMBAHKAN di match /bank_soal/{soalId}:
+    match /bank_soal/{soalId} {
+      allow read: if isAdmin() || request.auth == null;  // exam app baca soal
+      allow write: if canWrite();
+    }
+
+    // Kunci jawaban: STRICT — admin/write only, exam app tidak boleh baca
+    match /bank_soal_answers/{soalId} {
+      allow read, write: if canWrite();
+    }
+
+		match /unit_kompetensi/{id} {
+  		allow read, write: if isAdmin();
+		}
+
+
+
+    // ─── Bimtek ───────────────────────────────────────────────
+    match /bimtek/{bimtekId} {
+      allow read:           if isAdmin();
+      allow create, update: if canWrite();
+      allow delete:         if isSuperAdmin();
+
+      // Sub-collection: mapel (mata pelajaran)
+      match /mapel/{mapelId} {
+        allow read:  if isAdmin();
+        allow write: if canWrite();
+      }
+
+      // Sub-collection: sesi (blok waktu jadwal)
+      match /sesi/{sesiId} {
+        allow read:  if isAdmin();
+        allow write: if canWrite();
+      }
+    }
+
+    match /bimtek/{docId} {
+      allow read: if true;  // exam app perlu baca untuk lookup accessCode
+      allow write: if request.auth != null;
+    }
+
+
+    match /bimtek_scores/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    match /bimtek_attendance/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    // ─── Exam ─────────────────────────────────────────────────
+    match /exams/{examId} {
+      // Exam app bisa baca kalau published=true (untuk verifikasi session)
+      allow read:  if isAdmin() || resource.data.published == true;
+      allow write: if canWrite();
+    }
+
+    // Exam sessions: admin create, peserta (tanpa auth) bisa baca & update
+    // terbatas (hanya update answers + timeLeftSec saat session mereka sendiri)
+    match /exam_sessions/{sessionId} {
+      allow read:   if isAdmin() || request.auth == null;
+      allow create: if isAdmin();
+      allow delete: if canWrite();
+      allow update: if isAdmin()
+                    || (
+                         request.auth == null
+                         && resource.data.status in ['issued', 'started']
+                         && request.resource.data.noPeserta == resource.data.noPeserta
+                         && request.resource.data.examId    == resource.data.examId
+                       );
+    }
+
+    // Exam submissions: peserta tulis 1x (tanpa auth), admin baca semua
+    match /exam_submissions/{doc} {
+      allow read:           if isAdmin();
+      allow create:         if request.resource.data.keys().hasAll([
+                               'sessionId', 'examId', 'noPeserta', 'answers'
+                             ]);
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Exam results: admin only
+    match /exam_results/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    // ─── Rekrutmen (Phase 2b, pre-create rules) ───────────────
+    match /siklus_seleksi/{tahun} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    // Calon peserta: pendaftar publik (tanpa auth) bisa create saat submit;
+    // baca data lengkap (PII + KTP) hanya admin. Update/delete (seleksi) hanya admin.
+    match /calon_peserta/{doc} {
+      allow read:           if isAdmin();
+      allow create:         if true;
+      allow update, delete: if canWrite();
+    }
+
+    // Status lookup: salinan ringkas (tanpa PII sensitif: noHp, ktpUrl) untuk
+    // fitur "Cek Status Pendaftaran" publik tanpa login. Doc ID = pendaftarId.
+    // create: ditulis pendaftar saat submit. update: hanya admin (sinkron status).
+    match /status_lookup/{pendaftarId} {
+      allow read:   if true;
+      allow create: if true;
+      allow update: if canWrite();
+      allow delete: if false;
+    }
+
+    match /seleksi_admin_results/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    match /penentuan_peserta/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    // ─── Alumni Historis (Phase 2a) ───────────────────────────
+    match /alumni_historis/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    match /alumni_view_cache/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+// ─── Kinerja Instansi (Phase 2a) ─────────────────────────────
+  match /kinerja_instansi/{doc} {
+    allow read:  if isAdmin();
+    allow write: if canWrite();
+  }
+
+    // ─── Evaluasi Pengajar (Phase 3) ──────────────────────────
+    match /evaluasi_pengajar_template/{doc} {
+      allow read:  if true; // peserta baca template untuk isi form
+      allow write: if canWrite();
+    }
+
+    match /evaluasi_pengajar_response/{doc} {
+      allow read:   if isAdmin();
+      allow create: if true; // anonim, peserta bisa submit tanpa auth
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ─── Outreach (Phase 3) ───────────────────────────────────
+    match /outreach_sessions/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    match /outreach_messages/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
+    // ─── Audit Log (IMMUTABLE) ────────────────────────────────
+    match /audit_log/{doc} {
+      allow read:           if isSuperAdmin();
+      allow create:         if isAdmin();
+      allow update, delete: if false;  // TIDAK BISA diubah/dihapus siapapun
+    }
+
+		match /settings/{allPaths=**} {
+    allow read, write: if request.auth != null;
+		}
+
+		// --- Siklus Seleksi ----
+  match /siklus_seleksi/{doc} {
+    allow read: if resource.data.phases.pendaftaran.published == true;
+  }
+
+  }
+}
