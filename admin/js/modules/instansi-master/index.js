@@ -5,7 +5,7 @@ import { renderDataTable } from '../../components/data-table.js';
 import { openModal, confirmDialog } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
 import { requireWrite } from '../../auth-guard.js';
-import { listInstansi, countInstansi, createInstansi, updateInstansi, deleteInstansi, exportAllInstansi, importInstansiFromHistoris } from './api.js';
+import { listInstansi, countInstansi, createInstansi, updateInstansi, deleteInstansi, exportAllInstansi, replaceInstansiFromKinerja } from './api.js';
 import { slugify } from '../../../../shared/normalize.js';
 import { PROVINSI_LIST } from '../../../../shared/constants.js';
 
@@ -26,7 +26,7 @@ export async function renderInstansiList({ query = {} } = {}) {
           <p class="text-xs text-gray-500 mt-0.5">PDAM, PERUMDAM, dan instansi terkait</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-import-historis" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">Import dari Data Historis</button>
+          <button id="btn-import-historis" class="px-3 py-2 rounded-lg text-xs text-red-400 border border-red-800 hover:bg-red-900/20 transition-colors">Ganti dengan Data Kinerja PDAM</button>
           <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">Export</button>
           <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -202,20 +202,20 @@ function _bindEvents() {
   document.getElementById('btn-import-historis')?.addEventListener('click', async () => {
     if (!requireWrite()) return;
     const ok = await confirmDialog({
-      title: 'Import Instansi dari Data Historis?',
-      message: 'Sistem akan membuat entri instansi_master baru dari nama-nama instansi unik di alumni_historis (provinsi diambil dari data yang paling sering muncul). Instansi yang sudah ada tidak akan ditimpa.',
-      confirmLabel: 'Import',
-      danger: false
+      title: 'Ganti Semua Data Instansi Master?',
+      message: 'Tindakan ini akan MENGHAPUS SEMUA data instansi_master yang ada saat ini, lalu menggantinya dengan 394 PDAM dari data Kinerja PDAM (Tab Kinerja). Tindakan ini tidak bisa dibatalkan.',
+      confirmLabel: 'Hapus & Ganti',
+      danger: true
     });
     if (!ok) return;
     const btn = document.getElementById('btn-import-historis');
-    btn.disabled = true; btn.textContent = 'Mengimpor…';
+    btn.disabled = true; btn.textContent = 'Memproses…';
     try {
-      const { created, skipped, errors } = await importInstansiFromHistoris();
-      showToast(`Selesai: ${created} instansi baru ditambahkan, ${skipped} dilewati (sudah ada).${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
+      const { deleted, created, errors } = await replaceInstansiFromKinerja();
+      showToast(`Selesai: ${deleted} data lama dihapus, ${created} instansi PDAM ditambahkan.${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
       _reload();
     } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Import dari Data Historis'; }
+    finally { btn.disabled = false; btn.textContent = 'Ganti dengan Data Kinerja PDAM'; }
   });
   document.getElementById('btn-export')?.addEventListener('click', async () => {
     try {

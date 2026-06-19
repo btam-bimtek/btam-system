@@ -94,43 +94,44 @@ export async function exportAllInstansi() {
 }
 
 /**
- * Bangun daftar instansi_master dari nama instansi unik yang ada di alumni_historis.
- * Provinsi diambil dari nilai `provinsi` paling sering muncul untuk instansi tersebut.
- * Instansi yang sudah ada (by slug id) dilewati, tidak ditimpa.
+ * Hapus SEMUA dokumen instansi_master (hard delete, tidak soft-delete).
+ * Dipakai sebelum replace bersih dari sumber lain.
  */
-export async function importInstansiFromHistoris() {
-  const histSnap = await getDocs(collection(db, COL.ALUMNI_HISTORIS));
+export async function deleteAllInstansi() {
+  const snap = await getDocs(collection(db, COL_NAME));
+  const BATCH = 400;
+  for (let i = 0; i < snap.docs.length; i += BATCH) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return snap.docs.length;
+}
 
-  // Kelompokkan: { instansiNama: { provinsiName: count } }
-  const grouped = {};
-  histSnap.docs.forEach(d => {
-    const r = d.data();
-    const nama = (r.instansi || '').trim();
-    if (!nama) return;
-    if (!grouped[nama]) grouped[nama] = {};
-    const prov = (r.provinsi || '').trim();
-    if (prov) grouped[nama][prov] = (grouped[nama][prov] || 0) + 1;
-  });
+/**
+ * Ganti seluruh isi instansi_master dengan daftar PDAM dari kinerja_instansi
+ * (nama_bumd + provinsi). Menghapus semua data instansi_master yang ada sebelumnya.
+ */
+export async function replaceInstansiFromKinerja() {
+  const deleted = await deleteAllInstansi();
 
-  let created = 0, skipped = 0;
+  const kinerjaSnap = await getDocs(collection(db, COL.KINERJA_INSTANSI));
+  let created = 0;
   const errors = [];
-  const entries = Object.entries(grouped);
+  const rows = kinerjaSnap.docs.map(d => d.data());
   const BATCH = 450;
 
-  for (let i = 0; i < entries.length; i += BATCH) {
+  for (let i = 0; i < rows.length; i += BATCH) {
     const batch = writeBatch(db);
-    for (const [nama, provCounts] of entries.slice(i, i + BATCH)) {
+    for (const row of rows.slice(i, i + BATCH)) {
+      const nama = (row.nama_bumd || '').trim();
+      if (!nama) continue;
       const id = slugify(nama);
       try {
-        const existing = await getDoc(doc(db, COL_NAME, id));
-        if (existing.exists() && !existing.data().deleted) { skipped++; continue; }
-
-        const provinsiKode = Object.entries(provCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-        const data = normalizeInstansi({ instansiId: id, nama, provinsiKode });
-
+        const data = normalizeInstansi({ instansiId: id, nama, provinsiKode: row.provinsi || null });
         batch.set(doc(db, COL_NAME, id), {
           ...data,
-          kinerjaSource: 'import_alumni_historis',
+          kinerjaSource: 'kinerja_instansi',
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
           deleted: false, deletedAt: null
         });
@@ -142,8 +143,8 @@ export async function importInstansiFromHistoris() {
     await batch.commit();
   }
 
-  await logAudit({ action: 'import_instansi_from_historis', entityType: 'instansi', metadata: { created, skipped } });
-  return { created, skipped, errors };
+  await logAudit({ action: 'replace_instansi_from_kinerja', entityType: 'instansi', metadata: { deleted, created } });
+  return { deleted, created, errors };
 }
 
 export async function bulkImportInstansi(rows) {
