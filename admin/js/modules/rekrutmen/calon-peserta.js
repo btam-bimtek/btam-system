@@ -9,7 +9,8 @@ import { getState }       from '../../store.js';
 import { listSiklus, getSiklus } from './siklus-api.js';
 import {
   listCalonPeserta, getCalonPeserta,
-  setStatusAdmin, applyAdminRules, bulkSetStatusAdmin
+  setStatusAdmin, applyAdminRules, bulkSetStatusAdmin,
+  deleteCalonPeserta, bulkDeleteCalonPeserta
 } from './calon-api.js';
 import { SIKLUS_STATUS_LABEL } from '../../../../shared/constants.js';
 
@@ -45,6 +46,9 @@ export async function renderCalonPeserta() {
           </button>
           <button id="btn-bulk-gugur" class="px-3 py-1.5 rounded-lg text-xs bg-red-700 hover:bg-red-600 text-white transition-colors hidden">
             Gugur Terpilih
+          </button>
+          <button id="btn-bulk-delete" class="px-3 py-1.5 rounded-lg text-xs bg-red-900 hover:bg-red-800 text-red-200 border border-red-700 transition-colors hidden">
+            Hapus Terpilih
           </button>
         </div>
       </div>
@@ -153,6 +157,8 @@ function _renderRow(d) {
         <div class="flex gap-1">
           <button class="btn-detail text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
                   data-id="${_esc(d.id)}">Detail</button>
+          <button class="btn-delete-row text-xs px-2 py-1 rounded bg-gray-800 hover:bg-red-900 text-red-400 transition-colors"
+                  data-id="${_esc(d.id)}" data-nama="${_esc(d.nama)}">Hapus</button>
         </div>
       </td>
     </tr>`;
@@ -190,6 +196,7 @@ function _bindTopEvents() {
   document.getElementById('btn-apply-rules')?.addEventListener('click', _applyRules);
   document.getElementById('btn-bulk-lulus')?.addEventListener('click', () => _bulkAction('lulus'));
   document.getElementById('btn-bulk-gugur')?.addEventListener('click', () => _bulkAction('gugur'));
+  document.getElementById('btn-bulk-delete')?.addEventListener('click', _bulkDelete);
 }
 
 function _bindTableEvents() {
@@ -214,17 +221,24 @@ function _bindTableEvents() {
     btn.addEventListener('click', () => _openDetailModal(btn.dataset.id));
   });
 
+  document.querySelectorAll('.btn-delete-row').forEach(btn => {
+    btn.addEventListener('click', () => _deleteOne(btn.dataset.id, btn.dataset.nama));
+  });
+
   document.getElementById('btn-loadmore')?.addEventListener('click', () => _load(false));
 }
 
 function _updateBulkButtons() {
   const count   = _S.selected.size;
-  const btnLulus = document.getElementById('btn-bulk-lulus');
-  const btnGugur = document.getElementById('btn-bulk-gugur');
+  const btnLulus  = document.getElementById('btn-bulk-lulus');
+  const btnGugur  = document.getElementById('btn-bulk-gugur');
+  const btnDelete = document.getElementById('btn-bulk-delete');
   btnLulus?.classList.toggle('hidden', count === 0);
   btnGugur?.classList.toggle('hidden', count === 0);
-  if (btnLulus) btnLulus.textContent = `Lulus (${count})`;
-  if (btnGugur) btnGugur.textContent = `Gugur (${count})`;
+  btnDelete?.classList.toggle('hidden', count === 0);
+  if (btnLulus)  btnLulus.textContent  = `Lulus (${count})`;
+  if (btnGugur)  btnGugur.textContent  = `Gugur (${count})`;
+  if (btnDelete) btnDelete.textContent = `Hapus (${count})`;
 }
 
 // ─── Modal Detail ─────────────────────────────────────────────
@@ -291,6 +305,13 @@ async function _openDetailModal(docId) {
     actions: [
       { label: 'Tutup', type: 'secondary', onClick: () => modal.close() },
       {
+        label: 'Hapus', type: 'danger',
+        onClick: async () => {
+          modal.close();
+          await _deleteOne(docId, calon.nama);
+        }
+      },
+      {
         label: 'Simpan Keputusan', type: 'primary',
         onClick: async () => {
           const status = document.getElementById('sel-status-admin')?.value;
@@ -349,6 +370,45 @@ async function _bulkAction(status) {
   try {
     await bulkSetStatusAdmin(ids, status, null, email);
     showToast(`${ids.length} pendaftar di-set ${status}`, 'success');
+    await _load();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ─── Hapus ───────────────────────────────────────────────────
+
+async function _deleteOne(docId, nama) {
+  if (!requireWrite()) return;
+  const ok = await confirmDialog({
+    title: 'Hapus Pendaftar?',
+    message: `Data pendaftaran <strong>${_esc(nama)}</strong> akan dihapus permanen, termasuk riwayat status seleksinya. Tindakan ini tidak bisa dibatalkan.`,
+    confirmLabel: 'Hapus',
+    danger: true
+  });
+  if (!ok) return;
+
+  const email = getState('auth')?.user?.email;
+  try {
+    await deleteCalonPeserta(docId, email);
+    showToast('Pendaftar dihapus.', 'success');
+    await _load();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function _bulkDelete() {
+  if (!requireWrite()) return;
+  const ids = [..._S.selected];
+  const ok  = await confirmDialog({
+    title: `Hapus ${ids.length} Pendaftar?`,
+    message: `${ids.length} data pendaftaran yang dipilih akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`,
+    confirmLabel: 'Hapus',
+    danger: true
+  });
+  if (!ok) return;
+
+  const email = getState('auth')?.user?.email;
+  try {
+    await bulkDeleteCalonPeserta(ids, email);
+    showToast(`${ids.length} pendaftar dihapus.`, 'success');
     await _load();
   } catch (e) { showToast(e.message, 'error'); }
 }

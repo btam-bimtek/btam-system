@@ -2,7 +2,7 @@
 
 import { db } from '../../../../shared/firebase-config.js';
 import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, Timestamp
 } from '../../../../shared/db.js';
 import { snapToArray } from '../../../../shared/db.js';
@@ -144,6 +144,32 @@ export async function bulkSetStatusAdmin(docIds, status, alasan, adminEmail) {
     await _syncStatusLookup(id, { statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts });
   }));
   await logAudit('calon_peserta', 'bulk_seleksi_admin', 'batch', { count: docIds.length, status });
+}
+
+// ─── Hapus Calon Peserta ──────────────────────────────────────
+
+/**
+ * Hapus permanen 1 calon peserta (beserta status_lookup-nya).
+ * Hanya untuk pendaftar yang belum/tidak terpilih — gunakan dengan hati-hati,
+ * tidak ada cara membatalkan tindakan ini.
+ */
+export async function deleteCalonPeserta(docId, adminEmail) {
+  const snap = await getDoc(doc(db, COL.CALON_PESERTA, docId));
+  const pendaftarId = snap.exists() ? snap.data().pendaftarId : null;
+
+  await deleteDoc(doc(db, COL.CALON_PESERTA, docId));
+  if (pendaftarId) await deleteDoc(doc(db, COL.STATUS_LOOKUP, pendaftarId)).catch(() => {});
+
+  await logAudit('calon_peserta', 'delete', docId, { pendaftarId });
+}
+
+/**
+ * Hapus permanen beberapa calon peserta sekaligus.
+ */
+export async function bulkDeleteCalonPeserta(docIds, adminEmail) {
+  for (const id of docIds) {
+    await deleteCalonPeserta(id, adminEmail);
+  }
 }
 
 // ─── Nilai Tertulis ──────────────────────────────────────────
