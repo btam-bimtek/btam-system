@@ -168,6 +168,31 @@ function _registerRoutes() {
     if (!_guardRoute()) return;
     import('./modules/historis/index.js').then(m => m.renderHistoris());
   });
+
+  // ── Rekrutmen ──
+  route('/rekrutmen/siklus', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/rekrutmen/siklus.js').then(m => m.renderSiklusList());
+  });
+
+  route('/rekrutmen/calon', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/rekrutmen/calon-peserta.js').then(m => m.renderCalonPeserta());
+  });
+
+  route('/rekrutmen/tertulis', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/rekrutmen/seleksi-tertulis.js').then(m => m.renderSeleksiTertulis());
+  });
+
+  route('/rekrutmen/penentuan', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/rekrutmen/penentuan.js').then(m => m.renderPenentuan());
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────

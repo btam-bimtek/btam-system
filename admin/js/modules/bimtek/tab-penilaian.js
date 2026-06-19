@@ -9,6 +9,7 @@ import { renderSubNilaiManual } from './sub-nilai-manual.js';
 import { renderSubPrePost } from './sub-prepost.js';
 import { renderSubKelulusan } from './sub-kelulusan.js';
 import { renderSubPelanggaran } from './sub-pelanggaran.js';
+import { renderSubImportNilai } from './sub-import-nilai.js';
 
 // ─── STATE ──────────────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ let S = {
   bimtek: null,
   scores: [],
   sesis: [],
-  subTab: 'kehadiran', // kehadiran | nilai | prepost | kelulusan | pelanggaran
+  subTab: 'kehadiran', // kehadiran | nilai | prepost | kelulusan | pelanggaran | import
 };
 
 // ─── ENTRY POINT ────────────────────────────────────────────────────
@@ -64,6 +65,9 @@ function _render(container) {
       <button id="btn-sub-pelanggaran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'pelanggaran' ? 'text-red-400 border-red-400' : ''}">
         Pelanggaran
       </button>
+      <button id="btn-sub-import" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'import' ? 'text-yellow-400 border-yellow-400' : ''}">
+        Import CSV
+      </button>
     </div>
 
     <!-- Sub-tab content -->
@@ -94,6 +98,13 @@ function _render(container) {
     case 'pelanggaran':
       renderSubPelanggaran(contentDiv, S.bimtekId);
       break;
+    case 'import':
+      renderSubImportNilai(contentDiv, S.bimtekId, async () => {
+        S.scores = await listBimtekScores(S.bimtekId);
+        S.subTab = 'kelulusan';
+        _render(container);
+      });
+      break;
   }
 
   // Bind sub-tab buttons
@@ -119,6 +130,11 @@ function _render(container) {
 
   container.querySelector('#btn-sub-pelanggaran')?.addEventListener('click', () => {
     S.subTab = 'pelanggaran';
+    _render(container);
+  });
+
+  container.querySelector('#btn-sub-import')?.addEventListener('click', () => {
+    S.subTab = 'import';
     _render(container);
   });
 }

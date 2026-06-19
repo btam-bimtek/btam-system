@@ -304,6 +304,58 @@ export async function bulkUpdateKehadiran(bimtekId, matrixData) {
   });
 }
 
+/**
+ * Bulk import nilai dari CSV (pretest, posttest, kehadiran, keaktifan, respek).
+ * rows: [{ noPeserta, pretest, posttest, kehadiran, keaktifan, respek }]
+ * Hanya field yang tidak null/undefined yang di-update.
+ * Dokumen bimtek_scores dibuat jika belum ada.
+ */
+export async function bulkImportNilai(bimtekId, rows) {
+  const CHUNK = 400; // Firestore batch max 500 ops, ambil 400 untuk aman
+  const fields = ['pretest', 'posttest', 'kehadiran', 'keaktifan', 'respek'];
+
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    const chunk = rows.slice(i, i + CHUNK);
+
+    for (const row of chunk) {
+      const docId = `${bimtekId}__${row.noPeserta}`;
+      const docRef = doc(db, COL.BIMTEK_SCORES, docId);
+      const snap = await getDoc(docRef);
+
+      const payload = {};
+      for (const f of fields) {
+        if (row[f] !== null && row[f] !== undefined) payload[f] = row[f];
+      }
+      payload.updatedAt = serverTimestamp();
+
+      if (!snap.exists()) {
+        batch.set(docRef, {
+          bimtekId,
+          noPeserta: row.noPeserta,
+          pretest: null, posttest: null, pengajar: null,
+          kehadiran: null, keaktifan: null, respek: null,
+          tugas: null, presentasi: null,
+          pretest_src: null, posttest_src: null,
+          createdAt: serverTimestamp(),
+          ...payload
+        });
+      } else {
+        batch.update(docRef, payload);
+      }
+    }
+
+    await batch.commit();
+  }
+
+  await logAudit({
+    action: 'bulk_import_nilai',
+    entityType: 'bimtek_scores',
+    entityId: bimtekId,
+    metadata: { count: rows.length }
+  });
+}
+
 // ─── EXAM RESULTS (read-only, written by scorer.js) ──────────────
 
 /**

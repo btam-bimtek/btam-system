@@ -1,6 +1,6 @@
 # OPUSPLAN — Blueprint Sistem BTAM Terpadu
 
-**Tanggal:** 20 April 2026 (revisi: mapel 1-9 JP, ISHOMA Jumat 13:45, enum Bimtek diperluas, kinerja instansi, kode_daerah fixed)  
+**Tanggal:** 20 April 2026 (revisi: mapel 1-9 JP, ISHOMA Jumat 13:45, enum Bimtek diperluas, kinerja instansi, kode_daerah fixed, alumni terpadu + aturan 3 tahun)  
 **Status:** Final — siap jadi basis eksekusi  
 **Pengganti:** `STATUS_DISKUSI.md` (konsolidasi semua keputusan)  
 **Pelengkap:** `SCHEMA_HARMONIZATION.md`, `STRUKTUR_APLIKASI_v3.md`, `kode_daerah_fixed.xlsx`, `data_kinerja_1.xlsx`, `data_all.xlsx`
@@ -352,7 +352,8 @@ REKRUTMEN (Phase 2b):
   penentuan_peserta/{tahun}__{bimtekId}
 
 ALUMNI (Phase 2a):
-  alumni_historis/{alumniId}        ← import Excel lama
+  alumni_historis/{alumniId}        ← import Excel lama (data pra-sistem, live-editable)
+  alumni/{alumniId}                 ← materialized dari bimtek sistem baru (semua peserta, lulus/tidak)
   alumni_view_cache/{cacheKey}      ← opsional untuk speed up
 
 EVALUASI PENGAJAR (Phase 3):
@@ -1290,11 +1291,69 @@ Schema disesuaikan dengan kolom di `data_all.xlsx` (12.355 baris historis 1990-2
 ```
 
 **Catatan:** 
-- Alumni dari Bimtek yang dijalankan di sistem baru **tidak masuk collection ini**. Dashboard alumni mengagregasi dari **2 sumber**: (1) `alumni_historis` (data lama), (2) peserta yang lulus dari `bimtek_scores` di sistem baru.
+- Alumni dari Bimtek yang dijalankan di sistem baru **tidak masuk collection ini** — mereka masuk ke collection `alumni` (section 4.16b).
 - Field `provinsiKode` dan `kabKotaKode` pakai **kode BPS resmi** supaya match ke GeoJSON konsisten. Field `provinsi` dan `kabKota` adalah denormalized string untuk display cepat.
 - Admin bisa edit record individual atau bulk-edit (misal ubah `kabKota` untuk 50 record sekaligus) via UI.
 - `jenisLokasi = 'Pusat'` atau `'Regional'` adalah sinyal instansi tidak di 1 kab/kota tertentu — choropleth skip record ini tapi dashboard aggregate tetap menghitung.
 - `dataQuality` digunakan untuk filter dashboard: admin bisa toggle "hanya tampilkan data complete/partial" untuk analisis yang butuh kolom lengkap.
+
+---
+
+### 4.16b. Collection: `alumni/{alumniId}` *(BARU — rev. 17 Jun 2026)*
+
+**Materialized collection** untuk peserta bimtek dari sistem baru. Ditulis otomatis saat bimtek di-mark `completed`. Mencakup **semua peserta**, terlepas dari status kelulusan.
+
+Tujuan utama:
+1. Sumber data Tab Alumni (gabungan dengan `alumni_historis`)
+2. Sumber data Tab Korelasi — menggantikan `alumni_historis` saja agar analisis selalu up-to-date
+3. Sumber pengecekan aturan 3 tahun saat enrollment (by `noPeserta` — exact match)
+
+```js
+{
+  alumniId: string,                 // PK — format: "{bimtekId}__{noPeserta}"
+
+  // Identitas peserta (denormalized dari peserta_master saat bimtek completed)
+  noPeserta: string,                // FK ke peserta_master
+  nama: string,
+  jenisKelamin: 'L' | 'P' | null,
+  jabatan: string | null,
+  pendidikan: string | null,
+  instansi: string | null,          // denormalized
+  instansiId: string | null,        // FK ke instansi_master
+  provinsi: string | null,
+  provinsiKode: string | null,      // FK ke provinsi_master (kode BPS)
+  kabKota: string | null,
+  kabKotaKode: string | null,       // FK ke kabkota_master (kode BPS)
+
+  // Info bimtek yang diikuti (denormalized dari bimtek)
+  bimtekId: string,                 // FK ke bimtek
+  bimtekNama: string,               // untuk fuzzy match aturan 3 tahun
+  bimtekBidang: string[],           // bidangIds dari bimtek
+  bimtekTipe: 'reguler' | 'pnbp' | 'e_learning' | 'ojt' | 'lainnya',
+  bimtekMode: 'online' | 'offline',
+  bimtekTahun: number,              // tahun dari periode.mulai
+  bimtekStart: Timestamp | null,
+  bimtekEnd: Timestamp | null,
+
+  // Hasil
+  lulus: boolean | null,
+  nilaiAkhir: number | null,
+
+  // Source tracking
+  materializedAt: Timestamp,        // kapan record ini ditulis
+  materializedBy: string            // email admin yang trigger completed
+}
+```
+
+**Trigger penulisan:** Admin mengubah `bimtek.status` → `'completed'`. Sistem iterasi semua `pesertaIds` di bimtek tersebut dan menulis/update record `alumni` untuk setiap peserta.
+
+**Update:** Kalau nilai peserta di-update setelah bimtek completed (misal rescore), record `alumni` ikut di-update (field `lulus`, `nilaiAkhir`).
+
+**Index yang dibutuhkan:**
+- `noPeserta` + `bimtekTahun` desc — untuk pengecekan aturan 3 tahun
+- `instansiId` + `bimtekTahun` — untuk Tab Korelasi
+- `bimtekTahun` + `bimtekBidang` array-contains — untuk filter dashboard
+- `provinsiKode` + `bimtekTahun` — untuk peta choropleth
 
 ---
 
@@ -1995,15 +2054,35 @@ flowchart TD
 flowchart TD
     A[Admin buka Dashboard Alumni] --> B[Filter: tahun, bidang, mode, provinsi, JK]
     B --> C[Aggregate dari 2 sumber]
-    C --> D[alumni_historis]
-    C --> E[bimtek_scores<br/>where lulus=true]
-    D --> F[Merge + dedupe by noPeserta]
+    C --> D[alumni_historis<br/>data pra-sistem]
+    C --> E[alumni<br/>semua peserta bimtek sistem baru<br/>terlepas lulus atau tidak]
+    D --> F[Merge + dedupe by noPeserta / nama+instansi]
     E --> F
     F --> G[Compute aggregates]
     G --> H[Render charts:<br/>bar: alumni per provinsi<br/>pie: per bidang<br/>bar: per pendidikan<br/>bar: per JK<br/>trend: per tahun]
     H --> I[Show raw table dengan pagination]
     I --> J[Export Excel opsional]
 ```
+
+### 6.7. Workflow Enrollment Warning 3 Tahun
+
+Saat admin menambahkan peserta ke bimtek (Tab Peserta → modal enroll), sistem menjalankan pengecekan riwayat sebelum konfirmasi:
+
+```mermaid
+flowchart TD
+    A[Admin pilih peserta untuk di-enroll] --> B[Cek riwayat bimtek peserta]
+    B --> C[Query alumni by noPeserta<br/>3 tahun terakhir]
+    B --> D[Query alumni_historis by<br/>nama+instansi, fuzzy match<br/>3 tahun terakhir]
+    C --> E{Ada bimtek nama serupa?<br/>fuzzy match nama bimtek}
+    D --> E
+    E -->|Tidak ada| F[Lanjut enroll normal]
+    E -->|Ada| G[Tampilkan warning:<br/>Peserta kemungkinan pernah ikut<br/>bimtek serupa di tahun X]
+    G --> H{Admin keputusan}
+    H -->|Override, tetap enroll| F
+    H -->|Batalkan| I[Batal]
+```
+
+**Aturan matching nama bimtek:** fuzzy match berbasis Jaccard word similarity (threshold ≥ 0.5). Ini mengakomodasi typo dan singkatan nama bimtek yang umum terjadi di data historis.
 
 ---
 
@@ -2830,30 +2909,61 @@ Tracking di `bank_soal.correctRate`:
 ```
                     ┌─────────────────────────┐
                     │  Dashboard Alumni        │
-                    │  (aggregator view)       │
+                    │  Tab Alumni              │
+                    │  Tab Korelasi            │
                     └─────────┬───────────────┘
                               │
               ┌───────────────┴───────────────┐
               │                               │
    ┌──────────▼──────────┐         ┌─────────▼──────────┐
-   │  alumni_historis    │         │  bimtek_scores      │
-   │  (live-editable     │         │  (current system,   │
-   │   di Firestore)     │         │   filter lulus=true)│
-   └─────────────────────┘         └────────────────────┘
+   │  alumni_historis    │         │  alumni             │
+   │  (live-editable     │         │  (materialized dari │
+   │   di Firestore)     │         │   bimtek sistem baru│
+   │  data pra-sistem)   │         │   semua peserta,    │
+   └─────────────────────┘         │   lulus maupun tidak│
+                                   └────────────────────┘
 ```
 
-**Kunci perbedaan dari design sebelumnya:** `alumni_historis` sekarang bukan snapshot static dari import Excel, tapi **data living** yang bisa di-edit langsung oleh admin (inline edit, bulk edit, individual edit). Re-import tidak diperlukan untuk update data. Dashboard otomatis reflect perubahan.
+**Definisi alumni:** Semua orang yang **pernah terdaftar sebagai peserta bimtek**, terlepas dari status kelulusan. Ini mencakup data historis (1990-2025) maupun bimtek yang dijalankan via sistem baru.
+
+**Collection `alumni`** adalah **materialized collection** — saat bimtek ditandai `completed`, pesertanya otomatis ditulis ke collection ini dengan schema seragam. Ini menjaga query korelasi dan dashboard tetap ringan (tidak perlu join runtime berat).
+
+**Kunci perbedaan dari design sebelumnya:**
+- Sumber sistem baru: bukan `bimtek_scores where lulus=true`, tapi **collection `alumni` yang mencakup semua peserta** (lulus maupun tidak)
+- `alumni_historis` tetap live-editable oleh admin
+- Tab Korelasi (`getKorelasiData()`) membaca gabungan kedua sumber ini — bukan hanya `alumni_historis` — sehingga analisis selalu up-to-date seiring bimtek baru selesai
 
 ### 9.2. Deduplication Strategy
 
-Peserta yang pernah ikut Bimtek lama (di alumni_historis) **dan** ikut Bimtek baru (di bimtek_scores) mungkin muncul dua kali kalau tidak dedup.
+Peserta yang pernah ikut Bimtek lama (di `alumni_historis`) **dan** ikut Bimtek baru (di `alumni`) mungkin muncul dua kali kalau tidak dedup.
 
 Strategi dedup (prioritas dari kuat ke lemah):
-1. **Match by noPeserta** — kalau alumni_historis punya noPeserta yang sama dengan peserta_master
-2. **Match by nama + instansi + tahun** — fallback kalau noPeserta tidak tersedia di Excel lama
+1. **Match by noPeserta** — kalau `alumni_historis` punya noPeserta yang sama dengan `peserta_master`
+2. **Match by nama + instansi** — fallback kalau noPeserta tidak tersedia di Excel lama
 3. **Tidak dedup** — kalau keduanya gagal, terima duplikasi (admin flag manual)
 
-UI: tampilkan badge "Alumni historis" vs "Alumni sistem baru" untuk transparansi.
+UI: tampilkan badge "Historis" vs "Sistem" untuk transparansi sumber data.
+
+### 9.5. Aturan Enrollment 3 Tahun
+
+**Aturan bisnis:** Peserta yang pernah mengikuti suatu bimtek dalam **3 tahun terakhir** tidak boleh mendaftar bimtek yang sama pada tahun berjalan.
+
+**Implementasi:** Warning (bukan hard block) — admin tetap bisa override dan melanjutkan enrollment.
+
+**Pengecekan dilakukan di dua sumber:**
+
+| Sumber | Key matching peserta | Key matching bimtek |
+|---|---|---|
+| `alumni` (sistem baru) | `noPeserta` — exact match | `bimtekNama` — fuzzy match |
+| `alumni_historis` | `nama + instansi` — fuzzy match | `bimtekNama` — fuzzy match |
+
+**Fuzzy match nama bimtek:** Jaccard word similarity ≥ 0.5. Mengakomodasi typo dan singkatan yang umum di data historis.
+
+**UI warning:** Modal konfirmasi sebelum enroll, menampilkan:
+- Nama bimtek yang mirip
+- Tahun diikuti
+- Sumber data (historis / sistem)
+- Tombol "Tetap Daftarkan" dan "Batalkan"
 
 ### 9.3. Peta Choropleth Kab/Kota
 
