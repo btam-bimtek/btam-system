@@ -84,6 +84,7 @@ export async function createBimtek(data) {
 
   const payload = {
     nama: data.nama.trim(),
+    deskripsi: data.deskripsi?.trim() || '',
     kodeBimtek: data.kodeBimtek?.trim() || '',
     tipe: data.tipe,
     mode: data.mode,
@@ -123,7 +124,7 @@ export async function createBimtek(data) {
 
 export async function updateBimtek(bimtekId, data) {
   const allowed = [
-    'nama', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
+    'nama', 'deskripsi', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
     'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'ukIds', 'kkm', 'weights',
     'hasTugas', 'hasPresentasi', 'reportThresholds', 'status', 'cancelReason',
     'preTestExamId', 'postTestExamId', 'accessCode',

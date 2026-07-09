@@ -58,12 +58,8 @@ export async function createSiklus(data, adminEmail) {
       }
     },
 
-    // Kuota per bimtek: { bimtekId: number }
+    // Kuota dan aturan per bimtek (adminRules ada di dalam tiap item bimtekPilihan)
     kuotaBimtek: data.kuotaBimtek || {},
-
-    // Rule builder kriteria administrasi
-    adminRules: data.adminRules || [],
-    larangRepeatBimtek3Tahun: false,
 
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
@@ -104,18 +100,6 @@ export async function togglePendaftaran(tahun, published, adminEmail) {
     updatedAt: Timestamp.now()
   });
   await logAudit('siklus_seleksi', published ? 'buka_pendaftaran' : 'tutup_pendaftaran', String(tahun), {});
-}
-
-// ─── Admin Rules ─────────────────────────────────────────────
-
-export async function updateAdminRules(tahun, rules, larangRepeatBimtek3Tahun, adminEmail) {
-  const docRef = doc(db, COL.SIKLUS_SELEKSI, String(tahun));
-  await updateDoc(docRef, {
-    adminRules: rules,
-    larangRepeatBimtek3Tahun: !!larangRepeatBimtek3Tahun,
-    updatedAt: Timestamp.now()
-  });
-  await logAudit('siklus_seleksi', 'update_rules', String(tahun), { rulesCount: rules.length, larangRepeatBimtek3Tahun: !!larangRepeatBimtek3Tahun });
 }
 
 // ─── Kuota ───────────────────────────────────────────────────

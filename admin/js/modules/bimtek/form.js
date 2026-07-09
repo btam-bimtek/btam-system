@@ -68,6 +68,13 @@ export async function renderBimtekForm({ id } = {}) {
                 placeholder="cth: Bimtek Operator IPA Lanjutan Batch 3">
             </div>
 
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5">Deskripsi / Materi</label>
+              <textarea id="deskripsi" class="form-input w-full" rows="4"
+                placeholder="Ringkasan materi, tujuan pelatihan, atau kompetensi yang dicapai peserta…">${_esc(d?.deskripsi ?? '')}</textarea>
+              <p class="text-xs text-gray-600 mt-1">Ditampilkan ke calon peserta di halaman pendaftaran publik.</p>
+            </div>
+
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="block text-xs text-gray-400 mb-1.5">Tipe <span class="text-red-400">*</span></label>
@@ -331,6 +338,7 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
   errEl.classList.add('hidden');
 
   const nama     = app.querySelector('#nama').value.trim();
+  const deskripsi = app.querySelector('#deskripsi').value.trim();
   const tipe     = app.querySelector('#tipe').value;
   const mode     = app.querySelector('#mode').value;
   const kap      = Number(app.querySelector('#kapasitas').value) || null;
@@ -366,7 +374,7 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
 
   try {
     const payload = {
-      nama, tipe, mode, lokasi, kkm, weights,
+      nama, deskripsi, tipe, mode, lokasi, kkm, weights,
       hasTugas: ht, hasPresentasi: hp, bidangIds,
       kapasitas: kap || (mode === 'online' ? 25 : 17),
       periode: { mulai: pm, selesai: ps },

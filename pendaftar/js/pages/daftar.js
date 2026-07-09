@@ -191,18 +191,44 @@ function _step3() {
       ? `<p class="text-sm text-gray-500 py-4 text-center">Belum ada bimtek yang tersedia.</p>`
       : `<div class="space-y-2" id="bimtek-list">
           ${bimteks.map((b, i) => {
-            const rank = selected.indexOf(b.bimtekId) + 1;
+            const rank      = selected.indexOf(b.bimtekId) + 1;
+            const panelId   = `bimtek-detail-${i}`;
+            const hasDetail = b.deskripsi || (b.adminRules?.length) || b.larangRepeatBimtek3Tahun;
             return `
-              <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                            ${rank > 0 ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}">
-                <input type="checkbox" class="bimtek-cb mt-0.5 w-4 h-4 accent-blue-600"
-                       value="${_esc(b.bimtekId)}" ${rank > 0 ? 'checked' : ''} />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-800">${_esc(b.namaBimtek)}</p>
-                  <p class="text-xs text-gray-500">${_esc(b.bidang || '')} · ${b.mode === 'online' ? 'Online' : 'Tatap Muka'} · Kuota ${b.kuota}</p>
-                </div>
-                ${rank > 0 ? `<span class="text-xs font-bold text-blue-600 shrink-0">Pilihan ${rank}</span>` : ''}
-              </label>`;
+              <div class="rounded-lg border transition-colors ${rank > 0 ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}">
+                <label class="flex items-start gap-3 p-3 cursor-pointer">
+                  <input type="checkbox" class="bimtek-cb mt-0.5 w-4 h-4 accent-blue-600"
+                         value="${_esc(b.bimtekId)}" ${rank > 0 ? 'checked' : ''} />
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-800">${_esc(b.namaBimtek)}</p>
+                    <p class="text-xs text-gray-500">${_esc(b.bidang || '')} · ${b.mode === 'online' ? 'Online' : 'Tatap Muka'} · Kuota ${b.kuota}</p>
+                  </div>
+                  ${rank > 0 ? `<span class="text-xs font-bold text-blue-600 shrink-0">Pilihan ${rank}</span>` : ''}
+                </label>
+                ${hasDetail ? `
+                  <div class="px-3 pb-2 -mt-1">
+                    <button type="button" class="btn-toggle-detail text-xs text-blue-600 hover:underline flex items-center gap-1"
+                            data-target="${panelId}">
+                      <span class="detail-label">Lihat materi &amp; persyaratan</span>
+                      <svg class="w-3 h-3 detail-chevron transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </button>
+                    <div id="${panelId}" class="hidden mt-2 text-xs text-gray-700 space-y-2 border-t border-gray-200/60 pt-2">
+                      ${b.deskripsi ? `<p class="whitespace-pre-line">${_esc(b.deskripsi)}</p>` : ''}
+                      ${(b.adminRules?.length || b.larangRepeatBimtek3Tahun) ? `
+                        <div>
+                          <p class="font-semibold text-gray-600 mb-1">Persyaratan administrasi:</p>
+                          <ul class="space-y-1 list-none">
+                            ${(b.adminRules || []).map(r => `
+                              <li class="flex items-start gap-1"><span class="text-blue-500 shrink-0">•</span>${_ruleToText(r)}</li>`).join('')}
+                            ${b.larangRepeatBimtek3Tahun ? `
+                              <li class="flex items-start gap-1"><span class="text-blue-500 shrink-0">•</span>Belum pernah terpilih di bimtek ini dalam 3 tahun terakhir</li>` : ''}
+                          </ul>
+                        </div>` : ''}
+                    </div>
+                  </div>` : ''}
+              </div>`;
           }).join('')}
         </div>`}
     <div id="step-error" class="hidden text-xs text-red-600 pt-2"></div>
@@ -394,17 +420,17 @@ function _bindStep3(app) {
   const updateLabels = () => {
     const checked = [...document.querySelectorAll('.bimtek-cb:checked')].map(c => c.value);
     document.querySelectorAll('.bimtek-cb').forEach(cb => {
-      const label = cb.closest('label');
-      const rank  = checked.indexOf(cb.value) + 1;
-      const span  = label.querySelector('span.text-blue-600');
+      const card = cb.closest('.rounded-lg.border');
+      const rank = checked.indexOf(cb.value) + 1;
+      const span = card?.querySelector('label span.text-blue-600');
       if (rank > 0) {
-        label.classList.add('border-blue-400','bg-blue-50');
-        label.classList.remove('border-gray-200');
+        card?.classList.add('border-blue-400','bg-blue-50');
+        card?.classList.remove('border-gray-200');
         if (span) span.textContent = `Pilihan ${rank}`;
-        else label.insertAdjacentHTML('beforeend', `<span class="text-xs font-bold text-blue-600 shrink-0">Pilihan ${rank}</span>`);
+        else cb.closest('label')?.insertAdjacentHTML('beforeend', `<span class="text-xs font-bold text-blue-600 shrink-0">Pilihan ${rank}</span>`);
       } else {
-        label.classList.remove('border-blue-400','bg-blue-50');
-        label.classList.add('border-gray-200');
+        card?.classList.remove('border-blue-400','bg-blue-50');
+        card?.classList.add('border-gray-200');
         span?.remove();
       }
     });
@@ -415,6 +441,19 @@ function _bindStep3(app) {
       const checked = [...document.querySelectorAll('.bimtek-cb:checked')];
       if (checked.length > 3) { cb.checked = false; return; }
       updateLabels();
+    });
+  });
+
+  // Toggle detail panel per bimtek
+  document.querySelectorAll('.btn-toggle-detail').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel   = document.getElementById(btn.dataset.target);
+      const chevron = btn.querySelector('.detail-chevron');
+      const label   = btn.querySelector('.detail-label');
+      if (!panel) return;
+      const isOpen = !panel.classList.toggle('hidden');
+      chevron?.classList.toggle('rotate-180', isOpen);
+      if (label) label.textContent = isOpen ? 'Tutup' : 'Lihat materi & persyaratan';
     });
   });
 
@@ -503,6 +542,16 @@ function _bindStep5(app) {
 // ─── Helpers ─────────────────────────────────────────────────
 
 function _showErr(el, msg) { if (!el) return; el.textContent = msg; el.classList.remove('hidden'); }
+function _ruleToText(r) {
+  const FIELD = { pendidikan: 'Pendidikan minimal', pengalamanTahun: 'Pengalaman kerja di bidang' };
+  const OP    = { eq: '', not_eq: 'bukan', gte: 'minimal', lte: 'maksimal', in: 'salah satu dari' };
+  const field = FIELD[r.field] ?? r.field;
+  const op    = OP[r.operator] ?? r.operator;
+  const val   = Array.isArray(r.value) ? r.value.join(' / ') : r.value;
+  const unit  = r.field === 'pengalamanTahun' ? ' tahun' : '';
+  return `${field}${op ? ' ' + op : ''} <strong>${_esc(String(val))}${unit}</strong>`;
+}
+
 function _esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function _header() {

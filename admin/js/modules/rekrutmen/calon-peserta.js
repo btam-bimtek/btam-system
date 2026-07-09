@@ -113,7 +113,7 @@ function _renderTable() {
             <th>Provinsi</th>
             <th>Pilihan Bimtek</th>
             <th>Status Admin</th>
-            <th class="w-24">Aksi</th>
+            <th class="w-32">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -154,10 +154,10 @@ function _renderRow(d) {
       <td>${pilihan || '—'}</td>
       <td>${statusBadge}</td>
       <td>
-        <div class="flex gap-1">
-          <button class="btn-detail text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+        <div class="flex flex-wrap gap-1">
+          <button class="btn-detail text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors whitespace-nowrap"
                   data-id="${_esc(d.id)}">Detail</button>
-          <button class="btn-delete-row text-xs px-2 py-1 rounded bg-gray-800 hover:bg-red-900 text-red-400 transition-colors"
+          <button class="btn-delete-row text-xs px-2 py-1 rounded bg-gray-800 hover:bg-red-900 text-red-400 transition-colors whitespace-nowrap"
                   data-id="${_esc(d.id)}" data-nama="${_esc(d.nama)}">Hapus</button>
         </div>
       </td>
@@ -332,14 +332,15 @@ async function _openDetailModal(docId) {
 
 async function _applyRules() {
   if (!requireWrite()) return;
-  const rules    = _S.siklus?.adminRules || [];
-  const larangRepeat = !!_S.siklus?.larangRepeatBimtek3Tahun;
-  if (!rules.length && !larangRepeat) {
-    showToast('Tidak ada aturan administrasi yang dikonfigurasi di siklus ini.', 'error'); return;
+  const bimtekPilihan = _S.siklus?.bimtekPilihan || [];
+  const totalRules    = bimtekPilihan.reduce((n, b) => n + (b.adminRules?.length || 0), 0);
+  const adaLarang     = bimtekPilihan.some(b => b.larangRepeatBimtek3Tahun);
+  if (!totalRules && !adaLarang) {
+    showToast('Tidak ada aturan administrasi yang dikonfigurasi di siklus ini. Atur aturan per bimtek di tab Kuota & Aturan Bimtek.', 'error'); return;
   }
   const ok = await confirmDialog({
     title: 'Terapkan Rules Otomatis?',
-    message: `Sistem akan mengevaluasi ${rules.length} aturan${larangRepeat ? ' + larangan repeat-bimtek 3 tahun' : ''} ke semua pendaftar berstatus "Pending". Pendaftar yang tidak lolos akan di-set "Gugur Administrasi".`,
+    message: `Sistem akan mengevaluasi aturan administrasi dari ${bimtekPilihan.length} bimtek (${totalRules} total aturan${adaLarang ? ' + larangan repeat' : ''}) ke semua pendaftar berstatus "Pending". Pendaftar yang tidak lolos di semua pilihannya akan di-set "Gugur Administrasi".`,
     confirmLabel: 'Terapkan',
     danger: false
   });
@@ -347,7 +348,7 @@ async function _applyRules() {
 
   const email = getState('auth')?.user?.email;
   try {
-    const { lulus, gugur, errors } = await applyAdminRules(_S.tahun, rules, larangRepeat, email);
+    const { lulus, gugur, errors } = await applyAdminRules(_S.tahun, bimtekPilihan, email);
     showToast(`Selesai: ${lulus} lulus, ${gugur} gugur.${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
     await _load();
   } catch (e) { showToast(e.message, 'error'); }

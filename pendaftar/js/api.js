@@ -21,7 +21,21 @@ export async function getSiklusAktif() {
   // Ambil yang paling baru (tahun terbesar)
   const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   list.sort((a, b) => b.tahun - a.tahun);
-  return list[0];
+  const siklus = list[0];
+
+  // Merge deskripsi langsung dari bimtek docs agar selalu up-to-date
+  const bimtekPilihan = siklus.bimtekPilihan || [];
+  if (bimtekPilihan.length) {
+    const bimtekDocs = await Promise.all(
+      bimtekPilihan.map(b => getDoc(doc(db, COL.BIMTEK, b.bimtekId)))
+    );
+    siklus.bimtekPilihan = bimtekPilihan.map((b, i) => ({
+      ...b,
+      deskripsi: bimtekDocs[i].exists() ? (bimtekDocs[i].data().deskripsi || '') : (b.deskripsi || ''),
+    }));
+  }
+
+  return siklus;
 }
 
 // ─── Submit Pendaftaran ───────────────────────────────────────

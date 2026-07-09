@@ -64,31 +64,54 @@ export async function setStatusAdmin(docId, status, alasan, adminEmail) {
 }
 
 /**
- * Terapkan rules administrasi siklus ke semua calon yang masih pending.
- * @param {boolean} larangRepeatBimtek3Tahun - kalau true, gugurkan pendaftar yang
- *   pernah terpilih di salah satu bimtek pilihannya dalam 3 tahun terakhir (di sistem ini).
+ * Terapkan rules administrasi ke semua calon yang masih pending.
+ * Rules dievaluasi per bimtek pilihan calon — calon lulus jika memenuhi
+ * rules minimal satu bimtek yang ia pilih.
+ * @param {Array} bimtekPilihan - dari siklus.bimtekPilihan, masing-masing punya adminRules & larangRepeatBimtek3Tahun
  * @returns {{ lulus: number, gugur: number, errors: string[] }}
  */
-export async function applyAdminRules(tahun, rules, larangRepeatBimtek3Tahun, adminEmail) {
+export async function applyAdminRules(tahun, bimtekPilihan, adminEmail) {
   const snap = await getDocs(
     query(collection(db, COL.CALON_PESERTA),
       where('tahun', '==', tahun),
       where('statusAdmin', '==', 'pending'))
   );
 
+  // Buat map bimtekId → config aturan untuk lookup cepat
+  const bimtekMap = Object.fromEntries((bimtekPilihan || []).map(b => [b.bimtekId, b]));
+  const totalRules = (bimtekPilihan || []).reduce((n, b) => n + (b.adminRules?.length || 0), 0);
+
   let lulus = 0, gugur = 0;
   const errors = [];
 
   for (const d of snap.docs) {
-    const calon  = { id: d.id, ...d.data() };
-    let   passes = _evalRules(calon, rules);
-    let   reason = 'Tidak memenuhi kriteria administrasi';
+    const calon   = { id: d.id, ...d.data() };
+    const pilihan = calon.pilihanBimtekIds || [];
 
-    if (passes && larangRepeatBimtek3Tahun) {
-      const repeat = await _pernahTerpilihBimtekSerupa(calon, tahun);
-      if (repeat) {
-        passes = false;
-        reason = `Pernah terpilih di bimtek yang sama pada tahun ${repeat.tahun}`;
+    let passes = false;
+    let reason = 'Tidak memenuhi kriteria administrasi untuk semua pilihan bimtek';
+
+    // Jika tidak ada bimtek pilihan terkonfigurasi, semua lolos (tidak ada aturan)
+    if (!bimtekPilihan?.length) {
+      passes = true;
+    } else {
+      for (const bimtekId of pilihan) {
+        const bimtek = bimtekMap[bimtekId];
+        if (!bimtek) continue;
+
+        const rules = bimtek.adminRules || [];
+        if (!_evalRules(calon, rules)) continue;
+
+        if (bimtek.larangRepeatBimtek3Tahun) {
+          const repeat = await _pernahTerpilihDiBimtek(calon, bimtekId, tahun);
+          if (repeat) {
+            reason = `Pernah terpilih di ${bimtek.namaBimtek || bimtekId} pada tahun ${repeat.tahun}`;
+            continue;
+          }
+        }
+
+        passes = true;
+        break;
       }
     }
 
@@ -104,29 +127,28 @@ export async function applyAdminRules(tahun, rules, larangRepeatBimtek3Tahun, ad
     }
   }
 
-  await logAudit('siklus_seleksi', 'apply_admin_rules', String(tahun), { lulus, gugur, rules: rules.length, larangRepeatBimtek3Tahun: !!larangRepeatBimtek3Tahun });
+  await logAudit('siklus_seleksi', 'apply_admin_rules', String(tahun), { lulus, gugur, totalRules, bimtekCount: (bimtekPilihan||[]).length });
   return { lulus, gugur, errors };
 }
 
 /**
- * Cek apakah pendaftar pernah terpilih (statusFinal='terpilih') di salah satu
- * bimtekId pilihannya, pada siklus 3 tahun terakhir (tahun-3 s/d tahun-1).
- * Pencocokan orang berdasarkan email (data historis pra-sistem/legacy tidak tercakup).
+ * Cek apakah pendaftar pernah terpilih (statusFinal='terpilih') di bimtek tertentu
+ * dalam 3 tahun terakhir. Pencocokan orang berdasarkan email.
  */
-async function _pernahTerpilihBimtekSerupa(calon, tahun) {
-  const pilihan = calon.pilihanBimtekIds || [];
-  if (!pilihan.length || !calon.email) return null;
+async function _pernahTerpilihDiBimtek(calon, bimtekId, tahun) {
+  if (!calon.email) return null;
 
   const snap = await getDocs(
     query(collection(db, COL.CALON_PESERTA),
       where('email', '==', calon.email),
-      where('statusFinal', '==', 'terpilih'))
+      where('statusFinal', '==', 'terpilih'),
+      where('bimtekIdTerpilih', '==', bimtekId))
   );
 
   for (const d of snap.docs) {
     const prev = d.data();
-    if (prev.tahun >= tahun - 3 && prev.tahun < tahun && pilihan.includes(prev.bimtekIdTerpilih)) {
-      return { tahun: prev.tahun, bimtekId: prev.bimtekIdTerpilih };
+    if (prev.tahun >= tahun - 3 && prev.tahun < tahun) {
+      return { tahun: prev.tahun, bimtekId };
     }
   }
   return null;

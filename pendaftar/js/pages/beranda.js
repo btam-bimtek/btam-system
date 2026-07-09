@@ -9,6 +9,7 @@ export async function renderBeranda(app) {
   try { siklus = await getSiklusAktif(); } catch (e) {}
 
   app.innerHTML = siklus ? _renderAktif(siklus) : _renderTutup();
+  if (siklus) _bindBimtekToggles(app);
 }
 
 // ─── Layout aktif ────────────────────────────────────────────
@@ -35,7 +36,7 @@ function _renderAktif(s) {
         </div>
       </div>
 
-      <!-- Persyaratan -->
+      <!-- Persyaratan Umum -->
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="font-semibold text-gray-800 mb-3">Persyaratan Umum</h3>
         <ul class="space-y-2 text-sm text-gray-600">
@@ -51,29 +52,16 @@ function _renderAktif(s) {
             <span class="text-blue-500 mt-0.5">✓</span>
             Memiliki KTP yang masih berlaku
           </li>
-          <li class="flex items-start gap-2">
-            <span class="text-blue-500 mt-0.5">✓</span>
-            Belum pernah mengikuti bimtek yang sama dalam 3 tahun terakhir
-          </li>
         </ul>
-        ${s.adminRules?.length ? _renderRulesPublic(s.adminRules) : ''}
+        <p class="text-xs text-gray-400 mt-3">Persyaratan administrasi tambahan berbeda per bimtek — lihat detail masing-masing bimtek di bawah.</p>
       </div>
 
       <!-- Bimtek tersedia -->
       ${bimteks.length ? `
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <div>
           <h3 class="font-semibold text-gray-800 mb-3">Bimtek yang Dibuka</h3>
-          <div class="space-y-2">
-            ${bimteks.map(b => `
-              <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div>
-                  <p class="text-sm font-medium text-gray-800">${_esc(b.namaBimtek)}</p>
-                  <p class="text-xs text-gray-500">${_esc(b.bidang || '')} · ${b.mode === 'online' ? 'Online' : 'Tatap Muka'}</p>
-                </div>
-                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                  Kuota ${b.kuota}
-                </span>
-              </div>`).join('')}
+          <div class="space-y-3">
+            ${bimteks.map((b, i) => _renderBimtekCard(b, i)).join('')}
           </div>
         </div>` : ''}
 
@@ -110,21 +98,88 @@ function _renderTutup() {
     ${_footer()}`;
 }
 
-function _renderRulesPublic(rules) {
-  const fieldLabel = { pendidikan: 'Pendidikan', jenisKelamin: 'Jenis Kelamin', instansiKategori: 'Kategori Instansi' };
-  const opLabel = { eq: '=', not_eq: '≠', in: 'salah satu dari', gte: '≥', lte: '≤' };
+function _renderBimtekCard(b, i) {
+  const panelId = `bimtek-panel-${i}`;
+  const rules    = b.adminRules || [];
+  const hasExtra = b.deskripsi || rules.length || b.larangRepeatBimtek3Tahun;
+
   return `
-    <div class="mt-4 pt-4 border-t border-gray-100">
-      <p class="text-xs font-medium text-gray-500 mb-2">Kriteria Administrasi:</p>
-      <ul class="space-y-1">
-        ${rules.map(r => `
-          <li class="flex items-center gap-1.5 text-xs text-gray-600">
-            <span class="text-blue-400">•</span>
-            ${fieldLabel[r.field] ?? r.field} ${opLabel[r.operator] ?? r.operator}
-            <strong>${Array.isArray(r.value) ? r.value.join(' / ') : r.value}</strong>
-          </li>`).join('')}
-      </ul>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <!-- Header bimtek -->
+      <div class="flex items-center justify-between gap-3 p-4">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-800">${_esc(b.namaBimtek)}</p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            ${b.bidang ? _esc(b.bidang) + ' · ' : ''}${b.mode === 'online' ? 'Online' : 'Tatap Muka'}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+            Kuota ${b.kuota}
+          </span>
+          ${hasExtra ? `
+            <button class="btn-toggle-bimtek text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+                    data-target="${panelId}" aria-expanded="false">
+              <span class="toggle-label">Lihat detail</span>
+              <svg class="w-3.5 h-3.5 toggle-chevron transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>` : ''}
+        </div>
+      </div>
+
+      <!-- Panel detail (collapsed by default) -->
+      ${hasExtra ? `
+        <div id="${panelId}" class="hidden border-t border-gray-100 px-4 pb-4 pt-3 space-y-3">
+          ${b.deskripsi ? `
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Materi &amp; Deskripsi</p>
+              <p class="text-sm text-gray-700 whitespace-pre-line">${_esc(b.deskripsi)}</p>
+            </div>` : ''}
+
+          ${(rules.length || b.larangRepeatBimtek3Tahun) ? `
+            <div ${b.deskripsi ? 'class="border-t border-gray-100 pt-3"' : ''}>
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Persyaratan Administrasi</p>
+              <ul class="space-y-1.5">
+                ${rules.map(r => `
+                  <li class="flex items-start gap-1.5 text-sm text-gray-700">
+                    <span class="text-blue-500 mt-0.5 shrink-0">•</span>
+                    ${_ruleToText(r)}
+                  </li>`).join('')}
+                ${b.larangRepeatBimtek3Tahun ? `
+                  <li class="flex items-start gap-1.5 text-sm text-gray-700">
+                    <span class="text-blue-500 mt-0.5 shrink-0">•</span>
+                    Belum pernah terpilih di bimtek ini dalam 3 tahun terakhir
+                  </li>` : ''}
+              </ul>
+            </div>` : ''}
+        </div>` : ''}
     </div>`;
+}
+
+function _ruleToText(r) {
+  const FIELD = { pendidikan: 'Pendidikan minimal', pengalamanTahun: 'Pengalaman kerja di bidang' };
+  const OP    = { eq: '', not_eq: 'bukan', gte: 'minimal', lte: 'maksimal', in: 'salah satu dari' };
+  const field = FIELD[r.field] ?? r.field;
+  const op    = OP[r.operator] ?? r.operator;
+  const val   = Array.isArray(r.value) ? r.value.join(' / ') : r.value;
+  const unit  = r.field === 'pengalamanTahun' ? ' tahun' : '';
+  return `${field}${op ? ' ' + op : ''} <strong>${_esc(String(val))}${unit}</strong>`;
+}
+
+function _bindBimtekToggles(app) {
+  app.querySelectorAll('.btn-toggle-bimtek').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel   = document.getElementById(btn.dataset.target);
+      const chevron = btn.querySelector('.toggle-chevron');
+      const label   = btn.querySelector('.toggle-label');
+      if (!panel) return;
+      const isOpen = !panel.classList.toggle('hidden');
+      chevron?.classList.toggle('rotate-180', isOpen);
+      if (label) label.textContent = isOpen ? 'Tutup' : 'Lihat detail';
+      btn.setAttribute('aria-expanded', String(isOpen));
+    });
+  });
 }
 
 // ─── Shared layout parts ─────────────────────────────────────

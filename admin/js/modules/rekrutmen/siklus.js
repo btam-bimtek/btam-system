@@ -8,7 +8,7 @@ import { requireWrite } from '../../auth-guard.js';
 import { getState } from '../../store.js';
 import {
   listSiklus, getSiklus, createSiklus, updateSiklus,
-  setSiklusStatus, togglePendaftaran, updateAdminRules, updateKuota
+  setSiklusStatus, togglePendaftaran, updateKuota
 } from './siklus-api.js';
 import { listBimtek } from '../bimtek/api.js';
 import {
@@ -94,7 +94,7 @@ function _renderSiklusCard(s) {
 
   const isPublished = s.phases?.pendaftaran?.published;
   const kuotaCount  = (s.bimtekPilihan || []).length;
-  const rulesCount  = (s.adminRules || []).length;
+  const rulesCount  = (s.bimtekPilihan || []).reduce((n, b) => n + (b.adminRules?.length || 0), 0);
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-5" data-id="${s.id}">
@@ -339,8 +339,7 @@ async function _openDetailModal(siklus) {
       <div class="border-b border-gray-800">
         <div class="flex gap-1" id="detail-tabs">
           <button class="detail-tab px-3 py-2 text-xs font-medium text-blue-400 border-b-2 border-blue-500" data-tab="periode">Periode</button>
-          <button class="detail-tab px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-300" data-tab="rules">Aturan Administrasi</button>
-          <button class="detail-tab px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-300" data-tab="kuota">Kuota Bimtek</button>
+          <button class="detail-tab px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-300" data-tab="kuota">Kuota &amp; Aturan Bimtek</button>
         </div>
       </div>
 
@@ -369,7 +368,6 @@ async function _openDetailModal(siklus) {
       const content = document.getElementById('detail-tab-content');
       if (!content) return;
       if (tab.dataset.tab === 'periode') content.innerHTML = _renderTabPeriode(siklus);
-      if (tab.dataset.tab === 'rules')   content.innerHTML = _renderTabRules(siklus);
       if (tab.dataset.tab === 'kuota')   content.innerHTML = _renderTabKuota(siklus);
       _bindTabEvents(siklus, modal);
     });
@@ -450,44 +448,6 @@ function _renderTabPeriode(s) {
     </div>`;
 }
 
-// ─── Tab: Aturan Administrasi ─────────────────────────────────
-
-function _renderTabRules(s) {
-  const rules = s.adminRules || [];
-  return `
-    <div class="space-y-4">
-      <p class="text-xs text-gray-500">
-        Aturan ini diterapkan otomatis saat admin menjalankan seleksi administrasi.
-        Pendaftar yang tidak memenuhi semua aturan akan di-set "Gugur Administrasi".
-      </p>
-      <div id="rules-list" class="space-y-2">
-        ${rules.length ? rules.map((r, i) => _renderRuleRow(r, i)).join('') : '<p class="text-xs text-gray-600">Belum ada aturan.</p>'}
-      </div>
-      <button id="btn-add-rule" class="px-3 py-1.5 rounded-lg text-xs border border-gray-700
-                                        text-gray-400 hover:bg-gray-800 transition-colors flex items-center gap-1.5">
-        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-        Tambah Aturan
-      </button>
-
-      <div class="border-t border-gray-800 pt-3">
-        <label class="flex items-start gap-2 cursor-pointer">
-          <input id="chk-larang-repeat" type="checkbox" class="mt-0.5 w-4 h-4 accent-blue-600"
-                 ${s.larangRepeatBimtek3Tahun ? 'checked' : ''} />
-          <span class="text-xs text-gray-400">
-            Gugurkan pendaftar yang pernah <strong>terpilih</strong> di bimtek yang sama (salah satu pilihannya)
-            dalam <strong>3 tahun terakhir</strong> di sistem ini.
-          </span>
-        </label>
-      </div>
-
-      <button id="btn-save-rules" class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
-        Simpan Aturan
-      </button>
-    </div>`;
-}
-
 function _renderRuleRow(rule, idx) {
   const fieldOpts = ADMIN_RULE_FIELDS.map(f =>
     `<option value="${f.value}" ${rule.field === f.value ? 'selected' : ''}>${f.label}</option>`
@@ -546,11 +506,17 @@ function _renderKuotaRow(b = {}) {
                   data-nama="${_esc(o.nama ?? '')}"
                   data-bidang="${_esc(bidangNama)}"
                   data-mode="${o.mode === 'online' ? 'online' : 'tatap_muka'}"
+                  data-deskripsi="${_esc(o.deskripsi ?? '')}"
                   ${b.bimtekId === o.id ? 'selected' : ''}>
                   ${_esc(o.nama ?? '(tanpa nama)')}${o.kodeBimtek ? ' — ' + _esc(o.kodeBimtek) : ''}
                 </option>`;
       }).join('')
     : '';
+
+  const existingRules = b.adminRules || [];
+  const rulesLabel = existingRules.length
+    ? `${existingRules.length} aturan${b.larangRepeatBimtek3Tahun ? ' + larangan repeat' : ''}`
+    : 'Belum ada aturan';
 
   return `
     <div class="kuota-row bg-gray-800/50 rounded-lg p-3 space-y-2">
@@ -576,6 +542,42 @@ function _renderKuotaRow(b = {}) {
                  value="${b.kuota ?? ''}" placeholder="30" />
         </div>
       </div>
+
+      <!-- Aturan administrasi per bimtek -->
+      <div class="border-t border-gray-700/50 pt-2">
+        <button type="button" class="btn-toggle-bimtek-rules text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1.5 transition-colors w-full text-left">
+          <svg class="w-3 h-3 chevron-icon transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+          <span class="rules-summary">Aturan Administrasi — <span class="rules-count-label">${rulesLabel}</span></span>
+        </button>
+        <div class="bimtek-rules-panel hidden mt-2 space-y-2 pl-1">
+          <p class="text-xs text-gray-600">
+            Aturan ini dievaluasi khusus untuk bimtek ini. Pendaftar lulus administrasi jika memenuhi
+            aturan minimal satu bimtek pilihannya.
+          </p>
+          <div class="bimtek-rules-list space-y-1.5">
+            ${existingRules.length
+              ? existingRules.map((r, i) => _renderRuleRow(r, i)).join('')
+              : '<p class="empty-rules-msg text-xs text-gray-600">Belum ada aturan.</p>'}
+          </div>
+          <button type="button" class="btn-add-bimtek-rule px-2 py-1 rounded text-xs border border-gray-700
+                                        text-gray-500 hover:bg-gray-800 transition-colors flex items-center gap-1.5">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            Tambah Aturan
+          </button>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" class="chk-larang-repeat-bimtek mt-0.5 w-3.5 h-3.5 accent-blue-600"
+                   ${b.larangRepeatBimtek3Tahun ? 'checked' : ''} />
+            <span class="text-xs text-gray-500">
+              Larang pendaftar yang pernah <strong>terpilih</strong> di bimtek ini dalam 3 tahun terakhir.
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div class="flex justify-end">
         <button class="btn-remove-kuota text-xs text-gray-600 hover:text-red-400 transition-colors flex items-center gap-1">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -611,45 +613,8 @@ function _bindTabEvents(siklus, modal) {
     } catch (err) { showToast(err.message, 'error'); }
   });
 
-  // Add rule row
-  document.getElementById('btn-add-rule')?.addEventListener('click', () => {
-    const list = document.getElementById('rules-list');
-    if (!list) return;
-    const existing = list.querySelectorAll('.rule-row');
-    const newRow = document.createElement('div');
-    newRow.innerHTML = _renderRuleRow({ field: 'pendidikan', operator: 'gte', value: '' }, existing.length);
-    list.appendChild(newRow.firstElementChild);
-    _bindRemoveRules();
-    _bindRuleFieldChange();
-  });
-
-  // Remove rule
-  _bindRemoveRules();
-
-  // Saat field rule diganti, sesuaikan opsi operator yang relevan
-  _bindRuleFieldChange();
-
-  // Save rules
-  document.getElementById('btn-save-rules')?.addEventListener('click', async () => {
-    const rules = [];
-    document.querySelectorAll('.rule-row').forEach(row => {
-      const field    = row.querySelector('.rule-field')?.value;
-      const operator = row.querySelector('.rule-op')?.value;
-      const rawVal   = row.querySelector('.rule-value')?.value.trim();
-      if (!field || !rawVal) return;
-      const value = operator === 'in'
-        ? rawVal.split(',').map(v => v.trim()).filter(Boolean)
-        : rawVal;
-      rules.push({ field, operator, value });
-    });
-    const larangRepeatBimtek3Tahun = document.getElementById('chk-larang-repeat')?.checked ?? false;
-    try {
-      await updateAdminRules(siklus.tahun, rules, larangRepeatBimtek3Tahun, email);
-      showToast('Aturan disimpan', 'success');
-      modal.close();
-      await _loadList();
-    } catch (err) { showToast(err.message, 'error'); }
-  });
+  // Bind per-bimtek rules for existing kuota rows
+  document.querySelectorAll('.kuota-row').forEach(row => _bindKuotaRules(row));
 
   // Add kuota row
   document.getElementById('btn-add-kuota')?.addEventListener('click', () => {
@@ -657,9 +622,11 @@ function _bindTabEvents(siklus, modal) {
     if (!list) return;
     const newRow = document.createElement('div');
     newRow.innerHTML = _renderKuotaRow({});
-    list.appendChild(newRow.firstElementChild);
+    const el = newRow.firstElementChild;
+    list.appendChild(el);
     _bindRemoveKuota();
     _bindKuotaSelect();
+    _bindKuotaRules(el);
   });
 
   // Remove kuota
@@ -668,7 +635,7 @@ function _bindTabEvents(siklus, modal) {
   // Auto-isi mode saat bimtek dipilih
   _bindKuotaSelect();
 
-  // Save kuota
+  // Save kuota (termasuk adminRules per bimtek)
   document.getElementById('btn-save-kuota')?.addEventListener('click', async () => {
     const bimtekPilihan = [];
     const seen = new Set();
@@ -678,16 +645,34 @@ function _bindTabEvents(siklus, modal) {
       const bimtekId  = sel?.value;
       const opt       = sel?.selectedOptions?.[0];
       const kuota     = parseInt(row.querySelector('.kuota-qty')?.value);
-      if (!bimtekId && !kuota) return; // baris kosong, lewati
+      if (!bimtekId && !kuota) return;
       if (!bimtekId || !(kuota > 0)) { hasInvalid = true; return; }
       if (seen.has(bimtekId)) { hasInvalid = true; return; }
       seen.add(bimtekId);
+
+      // Kumpulkan adminRules dari bimtek-rules-list dalam row ini
+      const adminRules = [];
+      row.querySelectorAll('.bimtek-rules-list .rule-row').forEach(ruleRow => {
+        const field    = ruleRow.querySelector('.rule-field')?.value;
+        const operator = ruleRow.querySelector('.rule-op')?.value;
+        const rawVal   = ruleRow.querySelector('.rule-value')?.value.trim();
+        if (!field || !rawVal) return;
+        const value = operator === 'in'
+          ? rawVal.split(',').map(v => v.trim()).filter(Boolean)
+          : rawVal;
+        adminRules.push({ field, operator, value });
+      });
+      const larangRepeatBimtek3Tahun = row.querySelector('.chk-larang-repeat-bimtek')?.checked ?? false;
+
       bimtekPilihan.push({
         bimtekId,
         namaBimtek: opt?.dataset.nama || '',
+        deskripsi: opt?.dataset.deskripsi || '',
         bidang: opt?.dataset.bidang || null,
         mode: opt?.dataset.mode || 'tatap_muka',
-        kuota
+        kuota,
+        adminRules,
+        larangRepeatBimtek3Tahun
       });
     });
     if (hasInvalid) { showToast('Pastikan setiap baris punya Bimtek (tidak duplikat) dan kuota > 0', 'error'); return; }
@@ -710,10 +695,36 @@ function _bindKuotaSelect() {
   });
 }
 
-function _bindRemoveRules() {
-  document.querySelectorAll('.btn-remove-rule').forEach(btn => {
+function _bindRemoveRules(container = document) {
+  container.querySelectorAll('.btn-remove-rule').forEach(btn => {
     btn.addEventListener('click', () => btn.closest('.rule-row')?.remove());
   });
+}
+
+function _bindKuotaRules(kuotaRow) {
+  const toggleBtn = kuotaRow.querySelector('.btn-toggle-bimtek-rules');
+  const panel     = kuotaRow.querySelector('.bimtek-rules-panel');
+  const chevron   = kuotaRow.querySelector('.chevron-icon');
+
+  toggleBtn?.addEventListener('click', () => {
+    const isHidden = panel.classList.toggle('hidden');
+    chevron?.classList.toggle('rotate-90', !isHidden);
+  });
+
+  kuotaRow.querySelector('.btn-add-bimtek-rule')?.addEventListener('click', () => {
+    const list = kuotaRow.querySelector('.bimtek-rules-list');
+    if (!list) return;
+    list.querySelector('.empty-rules-msg')?.remove();
+    const idx = list.querySelectorAll('.rule-row').length;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = _renderRuleRow({ field: 'pendidikan', operator: 'gte', value: '' }, idx);
+    list.appendChild(tmp.firstElementChild);
+    _bindRemoveRules(list);
+    _bindRuleFieldChange(list);
+  });
+
+  _bindRemoveRules(kuotaRow);
+  _bindRuleFieldChange(kuotaRow);
 }
 
 function _renderRuleValueInput(fieldDef, value) {
@@ -731,8 +742,8 @@ function _renderRuleValueInput(fieldDef, value) {
                  placeholder="nilai…" />`;
 }
 
-function _bindRuleFieldChange() {
-  document.querySelectorAll('.rule-field').forEach(sel => {
+function _bindRuleFieldChange(container = document) {
+  container.querySelectorAll('.rule-field').forEach(sel => {
     sel.addEventListener('change', () => {
       const row      = sel.closest('.rule-row');
       const opSel    = row?.querySelector('.rule-op');
