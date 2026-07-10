@@ -114,28 +114,28 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
  */
 export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
   // Fetch peserta master, skor, dan sesis secara parallel
-  const [scoreSnap, pesertaSnap, exams, sesis] = await Promise.all([
+  const [scoreSnap, pesertaSnap, exams, sesis, attendanceSnap] = await Promise.all([
     getDoc(doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`)),
     getDoc(doc(db, COL.PESERTA_MASTER, noPeserta)),
     listExams(bimtekId),
-    listSesi(bimtekId)
+    listSesi(bimtekId),
+    getDoc(doc(db, COL.BIMTEK_ATTENDANCE, `${bimtekId}__${noPeserta}`))
   ]);
 
   const rawScores = scoreSnap.exists() ? { id: scoreSnap.id, ...scoreSnap.data() } : null;
   const peserta   = pesertaSnap.exists() ? { id: pesertaSnap.id, ...pesertaSnap.data() } : { nama: noPeserta };
 
-  // Hitung nilai akhir
-  const nilaiAkhir = rawScores ? hitungNilaiAkhir(rawScores, bimtek) : 0;
-  const lulus      = cekKelulusan(nilaiAkhir, bimtek.kkm, rawScores?.kehadiran ?? null);
-  const scores     = rawScores ? { ...rawScores, nilaiAkhir, lulus } : null;
-
-  // Hitung detail kehadiran (hadir/total sesi)
+  // Hitung detail kehadiran dulu (% hadir sesi) — dipakai untuk gate kelulusan
   let kehadiranDetail = null;
-  const attendanceSnap = await getDoc(doc(db, COL.BIMTEK_ATTENDANCE, `${bimtekId}__${noPeserta}`));
   if (attendanceSnap.exists()) {
     const attendance = { id: attendanceSnap.id, ...attendanceSnap.data() };
     kehadiranDetail = hitungKehadiran(attendance, sesis);
   }
+
+  // Hitung nilai akhir — gate kehadiran pakai % hadir sesi, bukan nilai komponen
+  const nilaiAkhir = rawScores ? hitungNilaiAkhir(rawScores, bimtek) : 0;
+  const lulus      = cekKelulusan(nilaiAkhir, bimtek.kkm, kehadiranDetail?.persentase ?? null);
+  const scores     = rawScores ? { ...rawScores, nilaiAkhir, lulus } : null;
 
   // Cari hasil exam pretest & posttest untuk peserta ini
   let pretestResult  = null;

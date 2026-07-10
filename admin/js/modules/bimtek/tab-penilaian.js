@@ -79,7 +79,11 @@ function _render(container) {
   // Render active sub-tab
   switch (S.subTab) {
     case 'kehadiran':
-      renderSubKehadiran(contentDiv, S.bimtekId, S.bimtek, S.scores, S.sesis);
+      renderSubKehadiran(contentDiv, S.bimtekId, S.bimtek, S.scores, S.sesis, async () => {
+        S.scores = await listBimtekScores(S.bimtekId);
+        S.subTab = 'kelulusan';
+        _render(container);
+      });
       break;
     case 'nilai':
       renderSubNilaiManual(contentDiv, S.bimtekId, S.bimtek, S.scores);

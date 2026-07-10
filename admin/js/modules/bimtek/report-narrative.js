@@ -58,7 +58,7 @@ export function mapToLabel(value, thresholds) {
 
  */
 
-export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, lulus, nilaiAkhir) {
+export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, lulus, nilaiAkhir, kkm = 60) {
 
   const subjek = pesertaNama ? `Peserta ${_esc(pesertaNama)}` : 'Peserta';
 
@@ -70,7 +70,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
   if (!ekComparison || ekComparison.length === 0) {
 
-    return p(`${subjek} telah mengikuti seluruh rangkaian kegiatan bimbingan teknis. Data perbandingan kompetensi per elemen belum tersedia untuk dianalisis lebih lanjut.`);
+    return p(`${subjek} telah mengikuti seluruh rangkaian kegiatan bimbingan teknis ini. Data perbandingan penguasaan kompetensi per unit belum tersedia sehingga analisis lebih lanjut tidak dapat dilakukan pada saat ini.`);
 
   }
 
@@ -84,7 +84,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
   if (!hasPredata && !hasPostdata) {
 
-    return p(`${subjek} telah menyelesaikan kegiatan bimbingan teknis. Data evaluasi kompetensi belum tersedia untuk dianalisis.`);
+    return p(`${subjek} telah menyelesaikan kegiatan bimbingan teknis. Data hasil penilaian kompetensi belum tersedia sehingga analisis capaian tidak dapat disajikan pada saat ini.`);
 
   }
 
@@ -104,17 +104,17 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-    let isi = `Berdasarkan hasil pre test terhadap ${jml} Unit Kompetensi, ${subjek} menunjukkan profil kompetensi awal sebelum mengikuti kegiatan bimbingan teknis.`;
+    let isi = `Berdasarkan hasil pre test pada ${jml} Unit Kompetensi, ${subjek} memperlihatkan profil penguasaan kompetensi awal sebelum mengikuti kegiatan bimbingan teknis.`;
 
     if (kuat.length > 0) {
 
-      isi += ` Penguasaan yang sudah baik (≥70%) terlihat pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}.`;
+      isi += ` Penguasaan yang telah memadai (≥70%) terlihat pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}.`;
 
     }
 
     if (lemah.length > 0) {
 
-      isi += ` Unit kompetensi yang masih memerlukan penguatan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}, dan menjadi fokus utama kegiatan bimbingan teknis yang akan diikuti.`;
+      isi += ` Adapun unit kompetensi yang masih memerlukan penguatan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}, yang menjadi fokus utama pembelajaran dalam kegiatan bimbingan teknis ini.`;
 
     }
 
@@ -136,25 +136,25 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-    let isi = `Berdasarkan hasil post test, ${subjek} menunjukkan profil penguasaan kompetensi akhir setelah mengikuti kegiatan bimbingan teknis.`;
+    let isi = `Berdasarkan hasil post test, ${subjek} memperlihatkan profil penguasaan kompetensi akhir setelah mengikuti seluruh rangkaian kegiatan bimbingan teknis.`;
 
     if (kuat.length > 0) {
 
-      isi += ` Penguasaan yang baik (≥70%) dicapai pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
+      isi += ` Penguasaan yang memadai (≥70%) berhasil dicapai pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
 
     }
 
     if (lemah.length > 0) {
 
-      isi += ` Unit kompetensi yang masih perlu ditingkatkan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
+      isi += ` Sementara itu, unit kompetensi yang masih perlu ditingkatkan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
 
     }
 
     const rekStr = lemah.length > 0
 
-      ? ` Pendalaman mandiri pada unit-unit tersebut sangat dianjurkan.`
+      ? ` Pendalaman secara mandiri pada unit-unit tersebut sangat dianjurkan guna memperkuat penguasaan kompetensi.`
 
-      : ` Seluruh kompetensi yang telah dicapai diharapkan dapat diterapkan dalam pelaksanaan tugas sehari-hari.`;
+      : ` Seluruh kompetensi yang telah dicapai diharapkan dapat segera diterapkan dalam pelaksanaan tugas dan tanggung jawab sehari-hari.`;
 
     return p(isi + rekStr);
 
@@ -184,7 +184,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     const jml = withDelta.length;
 
-    let isi = `Evaluasi kompetensi dilakukan terhadap ${jml} Unit Kompetensi melalui mekanisme pre test dan post test.`;
+    let isi = `Evaluasi kompetensi dilakukan terhadap ${jml} Unit Kompetensi menggunakan instrumen pre test dan post test.`;
 
 
 
@@ -204,7 +204,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
           : `relatif stabil`;
 
-      isi += ` Secara keseluruhan, ${subjek} memperoleh nilai post test sebesar <strong>${totalPost}</strong> dari sebelumnya <strong>${totalPre}</strong> pada saat pre test, ${arahStr}.`;
+      isi += ` Secara keseluruhan, ${subjek} memperoleh nilai post test sebesar <strong>${totalPost}</strong>, dibandingkan nilai pre test sebelumnya sebesar <strong>${totalPre}</strong>, dengan perubahan yang ${arahStr}.`;
 
     }
 
@@ -216,15 +216,15 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (jmlNaik === withDelta.length) {
 
-      isi += ` Seluruh elemen kompetensi menunjukkan perkembangan positif, mengindikasikan efektivitas proses pembelajaran selama kegiatan berlangsung.`;
+      isi += ` Seluruh unit kompetensi menunjukkan perkembangan yang positif, mencerminkan efektivitas proses pembelajaran selama kegiatan berlangsung.`;
 
     } else if (jmlTurun === withDelta.length) {
 
-      isi += ` Hasil evaluasi menunjukkan adanya penurunan pada seluruh elemen kompetensi, yang perlu mendapat perhatian dan tindak lanjut yang tepat.`;
+      isi += ` Hasil penilaian menunjukkan adanya penurunan pada seluruh unit kompetensi, sehingga diperlukan perhatian dan tindak lanjut yang tepat.`;
 
     } else {
 
-      isi += ` Dari ${withDelta.length} elemen yang dievaluasi, ${jmlNaik} elemen menunjukkan peningkatan${jmlTurun > 0 ? `, ${jmlTurun} elemen mengalami penurunan` : ''}${stabil.length > 0 ? `, dan ${stabil.length} elemen menunjukkan nilai yang stabil` : ''}.`;
+      isi += ` Dari ${withDelta.length} unit yang dinilai, ${jmlNaik} unit menunjukkan peningkatan${jmlTurun > 0 ? `, ${jmlTurun} unit mengalami penurunan` : ''}${stabil.length > 0 ? `, dan ${stabil.length} unit menunjukkan nilai yang stabil` : ''}.`;
 
     }
 
@@ -248,21 +248,21 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (sorted.length > 0) {
 
-      let isi = `Pada tahap awal sebelum kegiatan bimbingan teknis (pre test), `;
+      let isi = `Berdasarkan hasil pre test yang dilaksanakan sebelum kegiatan bimbingan teknis, `;
 
       if (kuat.length > 0 && lemah.length > 0) {
 
-        isi += `${subjek} telah menunjukkan penguasaan yang baik (≥70%) pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. `;
+        isi += `${subjek} telah memperlihatkan penguasaan yang memadai (≥70%) pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. `;
 
-        isi += `Adapun ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')} teridentifikasi sebagai area yang masih memerlukan penguatan, sehingga menjadi sasaran utama pembelajaran dalam kegiatan bimbingan teknis.`;
+        isi += `Sementara itu, ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')} teridentifikasi sebagai materi yang masih memerlukan penguatan, sehingga menjadi sasaran utama pembelajaran dalam kegiatan ini.`;
 
       } else if (kuat.length > 0) {
 
-        isi += `${subjek} telah menunjukkan penguasaan yang baik pada seluruh unit kompetensi: ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Kegiatan bimbingan teknis berperan dalam memperdalam dan memperkuat kompetensi yang telah dimiliki.`;
+        isi += `${subjek} telah memperlihatkan penguasaan yang memadai pada seluruh unit kompetensi, yaitu ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Kegiatan bimbingan teknis berperan dalam memperdalam dan memperkuat kompetensi yang telah dimiliki tersebut.`;
 
       } else {
 
-        isi += `seluruh unit kompetensi masih memerlukan penguatan, yaitu ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Kondisi ini menjadikan kegiatan bimbingan teknis sebagai sarana yang sangat penting bagi ${subjek} untuk membangun fondasi kompetensi yang diperlukan.`;
+        isi += `seluruh unit kompetensi masih memerlukan penguatan, yaitu ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Hal ini menjadikan kegiatan bimbingan teknis sebagai sarana yang sangat penting bagi ${subjek} untuk membangun fondasi kompetensi yang diperlukan.`;
 
       }
 
@@ -288,23 +288,21 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     let isi = meningkat.length === withDelta.length
 
-      ? `Setelah mengikuti kegiatan bimbingan teknis, ${subjek} berhasil menunjukkan peningkatan pada seluruh ${withDelta.length} elemen kompetensi yang dievaluasi.`
+      ? `Setelah mengikuti kegiatan bimbingan teknis, ${subjek} berhasil menunjukkan peningkatan pada seluruh ${withDelta.length} unit kompetensi yang dinilai.`
 
-      : `Setelah mengikuti kegiatan bimbingan teknis, ${subjek} menunjukkan peningkatan pada ${meningkat.length} dari ${withDelta.length} elemen kompetensi.`;
+      : `Setelah mengikuti kegiatan bimbingan teknis, ${subjek} menunjukkan peningkatan pada ${meningkat.length} dari ${withDelta.length} unit kompetensi yang dinilai.`;
 
 
 
     if (signifikan.length > 0) {
 
-      isi += ` Peningkatan yang sangat signifikan (≥15 poin) terjadi pada ${signifikan.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, dari ${ek.prePct}% menjadi ${ek.postPct}%)`).join('; ')}.`;
-
-      // Interpretasi kualitatif
+      isi += ` Peningkatan yang signifikan (≥15 poin) tercatat pada ${signifikan.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, dari ${ek.prePct}% menjadi ${ek.postPct}%)`).join('; ')}.`;
 
       const dariLemah = signifikan.filter(ek => ek.prePct < 70);
 
       if (dariLemah.length > 0) {
 
-        isi += ` Peningkatan signifikan pada elemen yang sebelumnya masih lemah ini mengindikasikan keberhasilan proses pembelajaran dalam memperkuat fondasi kompetensi peserta.`;
+        isi += ` Peningkatan pada unit yang sebelumnya berada di bawah standar ini mencerminkan keberhasilan proses pembelajaran dalam membangun dan memperkuat fondasi kompetensi peserta.`;
 
       }
 
@@ -312,13 +310,13 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (moderat.length > 0) {
 
-      isi += ` Peningkatan moderat (5–14 poin) tercatat pada ${moderat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}.`;
+      isi += ` Peningkatan yang cukup berarti (5–14 poin) tercatat pada ${moderat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}.`;
 
     }
 
     if (kecil.length > 0) {
 
-      isi += ` Peningkatan kecil (<5 poin) terjadi pada ${kecil.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}, yang menunjukkan adanya perkembangan meskipun masih perlu diperkuat lebih lanjut.`;
+      isi += ` Peningkatan yang relatif kecil (kurang dari 5 poin) tercatat pada ${kecil.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}, yang menunjukkan adanya perkembangan positif meskipun masih diperlukan penguatan lebih lanjut.`;
 
     }
 
@@ -340,33 +338,38 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
+    const adaBagus = stabilTinggi.length > 0;
+    const adaMasalah = stabilRendah.length > 0 || menurun.length > 0;
+
+    if (adaBagus && adaMasalah) {
+      isi += `Hasil penilaian menunjukkan gambaran yang beragam di antara unit-unit kompetensi yang diukur.`;
+    } else if (adaMasalah) {
+      isi += `Terdapat beberapa unit kompetensi yang masih memerlukan perhatian dan penguatan lebih lanjut.`;
+    } else {
+      isi += `Beberapa unit kompetensi menunjukkan penguasaan yang stabil dan perlu terus dipertahankan.`;
+    }
+
     if (stabilTinggi.length > 0) {
 
-      isi += `${stabilTinggi.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')} menunjukkan nilai yang konsisten dan sudah berada pada level yang baik. `;
-
-      isi += `Penguasaan yang telah dicapai pada elemen ini perlu terus dipertahankan melalui penerapan langsung di lapangan.`;
+      isi += ` Unit kompetensi ${stabilTinggi.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(' dan ')} menunjukkan nilai yang konsisten dan telah berada pada tingkat yang baik. Penguasaan pada unit-unit tersebut perlu terus dipertahankan dan diperkuat melalui penerapan langsung di lapangan.`;
 
     }
 
     if (stabilRendah.length > 0) {
 
-      if (isi) isi += ` `;
-
-      isi += `${stabilRendah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(', ')} menunjukkan nilai yang belum berkembang dan masih memerlukan pendalaman lebih lanjut.`;
+      isi += ` Adapun unit kompetensi ${stabilRendah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} belum menunjukkan perkembangan yang berarti sehingga masih memerlukan pendalaman lebih lanjut.`;
 
     }
 
     if (menurun.length > 0) {
 
-      if (isi) isi += ` `;
-
-      isi += `Di sisi lain, ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%, ${ek.delta} poin)`).join('; ')} menunjukkan penurunan nilai dari pre test ke post test. `;
+      isi += ` Sementara itu, unit kompetensi ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} mengalami penurunan nilai dari pre test ke post test. `;
 
       isi += menurun.length === 1
 
-        ? `Kondisi ini perlu mendapat perhatian khusus dan pendalaman mandiri agar penguasaan elemen kompetensi tersebut dapat ditingkatkan kembali.`
+        ? `Unit ini perlu mendapat perhatian khusus dan pendalaman secara mandiri agar penguasaannya dapat ditingkatkan kembali.`
 
-        : `Kondisi ini perlu mendapat perhatian lebih lanjut melalui pendalaman mandiri yang lebih intensif.`;
+        : `Unit-unit ini perlu mendapat perhatian serius dan ditindaklanjuti dengan pendalaman secara mandiri yang lebih terstruktur.`;
 
     }
 
@@ -400,7 +403,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
  */
 
-export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama) {
+export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama, kkm = 60) {
 
   const subjek = pesertaNama ? `Peserta ${_esc(pesertaNama)}` : 'Peserta';
 
@@ -440,7 +443,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     p1 += nilaiAkhir != null ? ` dengan nilai akhir <strong>${nilaiAkhir}</strong> dan dinyatakan <strong>LULUS</strong>.` : ` dan dinyatakan lulus.`;
 
-    p1 += ` Pencapaian ini merupakan bukti nyata dari kesungguhan, komitmen, dan kerja keras yang ditunjukkan selama mengikuti seluruh rangkaian kegiatan. Penyelenggara mengucapkan apresiasi yang setinggi-tingginya atas dedikasi yang telah diperlihatkan.`;
+    p1 += ` Capaian ini merupakan cerminan dari kesungguhan, komitmen, dan kerja keras yang ditunjukkan selama mengikuti seluruh rangkaian kegiatan. Penyelenggara menyampaikan apresiasi yang sebesar-besarnya atas dedikasi yang telah diperlihatkan.`;
 
     paragraphs.push(p(p1));
 
@@ -448,15 +451,15 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     // Â¶2 — Penerapan kompetensi di tempat kerja
 
-    let p2 = `Kompetensi yang telah dikuasai melalui kegiatan ini diharapkan dapat segera diimplementasikan secara nyata dalam pelaksanaan tugas dan tanggung jawab sehari-hari di instansi masing-masing.`;
+    let p2 = `Kompetensi yang telah diperoleh melalui kegiatan ini diharapkan dapat segera diterapkan dalam pelaksanaan tugas dan tanggung jawab sehari-hari di instansi masing-masing.`;
 
     if (ekTerbaik.length > 0) {
 
-      p2 += ` Khususnya pada ${ekTerbaik.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct}%)`).join(' dan ')}, penguasaan yang telah dicapai perlu dikonsolidasikan melalui penerapan langsung di lapangan.`;
+      p2 += ` Khususnya pada ${ekTerbaik.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct}%)`).join(' dan ')}, penguasaan yang telah dicapai perlu terus diperkuat melalui praktik langsung di lapangan.`;
 
     }
 
-    p2 += ` Penerapan langsung merupakan cara paling efektif untuk mengukuhkan pemahaman teoretis yang telah diperoleh selama kegiatan bimbingan teknis menjadi keterampilan teknis yang melekat dan dapat diandalkan.`;
+    p2 += ` Penerapan secara langsung merupakan cara yang paling efektif untuk memperkuat pemahaman yang telah diperoleh selama kegiatan bimbingan teknis sehingga menjadi keterampilan teknis yang melekat dan dapat diandalkan.`;
 
     paragraphs.push(p(p2));
 
@@ -472,19 +475,19 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
       ).join('; ');
 
-      let p3 = `Meskipun telah dinyatakan lulus, terdapat beberapa elemen kompetensi yang masih memerlukan perhatian dan pendalaman lebih lanjut, yaitu ${ekList}. `;
+      let p3 = `Meskipun telah dinyatakan lulus, terdapat beberapa unit kompetensi yang masih memerlukan perhatian dan pendalaman lebih lanjut, yaitu ${ekList}. `;
 
-      p3 += `Beberapa langkah yang dapat dilakukan untuk memperkuat penguasaan pada elemen-elemen tersebut antara lain: `;
+      p3 += `Beberapa langkah yang dapat ditempuh untuk memperkuat penguasaan pada unit-unit tersebut antara lain: `;
 
       p3 += `<ol style="margin:8px 0 0 0; padding-left:20px;">`;
 
-      p3 += li(`Mempelajari kembali materi dan modul bimbingan teknis yang berkaitan dengan elemen kompetensi tersebut secara mandiri.`);
+      p3 += li(`Mempelajari kembali materi dan modul bimbingan teknis yang berkaitan dengan unit kompetensi tersebut secara mandiri dan terstruktur.`);
 
-      p3 += li(`Berdiskusi dan berkonsultasi dengan rekan kerja atau atasan yang memiliki pengalaman dan keahlian di bidang terkait.`);
+      p3 += li(`Berdiskusi dan berkonsultasi dengan rekan kerja atau atasan yang memiliki pengalaman dan keahlian di bidang yang relevan.`);
 
-      p3 += li(`Mengidentifikasi kasus atau permasalahan nyata di tempat kerja yang berkaitan dengan elemen kompetensi tersebut, dan berupaya menyelesaikannya dengan mengacu pada materi yang telah dipelajari.`);
+      p3 += li(`Mengidentifikasi permasalahan nyata di tempat kerja yang berkaitan dengan unit kompetensi tersebut, dan berupaya menyelesaikannya dengan merujuk pada materi yang telah dipelajari.`);
 
-      p3 += li(`Mengikuti kegiatan peningkatan kompetensi lanjutan, seminar teknis, atau forum diskusi yang relevan.`);
+      p3 += li(`Mengikuti kegiatan pengembangan kompetensi lanjutan, seminar teknis, atau forum diskusi yang relevan dengan bidang yang perlu diperkuat.`);
 
       p3 += `</ol>`;
 
@@ -496,11 +499,11 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     // Â¶4 — Pengembangan profesional berkelanjutan
 
-    let p4 = `Sebagai bagian dari upaya pengembangan profesionalisme yang berkelanjutan, ${subjek} didorong untuk senantiasa memperbarui pengetahuan dan keterampilan teknis di bidang air minum, `;
+    let p4 = `Sebagai bagian dari upaya pengembangan kompetensi yang berkesinambungan, ${subjek} didorong untuk senantiasa memperbarui pengetahuan dan keterampilan teknis di bidang air minum, `;
 
-    p4 += `seiring dengan perkembangan regulasi, standar teknis, teknologi, dan praktik terbaik yang terus berkembang. `;
+    p4 += `seiring dengan perkembangan regulasi, standar teknis, teknologi, dan praktik terbaik yang terus mengalami kemajuan. `;
 
-    p4 += `Komitmen terhadap pembelajaran sepanjang hayat merupakan fondasi penting bagi setiap insan teknis yang ingin memberikan kontribusi terbaik bagi pelayanan air minum yang berkualitas di Indonesia.`;
+    p4 += `Komitmen terhadap pembelajaran sepanjang hayat merupakan landasan penting bagi setiap tenaga teknis yang ingin memberikan kontribusi terbaik bagi penyelenggaraan pelayanan air minum yang berkualitas di Indonesia.`;
 
     paragraphs.push(p(p4));
 
@@ -512,15 +515,21 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     // Â¶1 — Kondisi & non-judgmental
 
-    let p1 = `Berdasarkan hasil evaluasi, ${subjek} memperoleh nilai akhir`;
+    const tidakLulusKarenaKehadiran = nilaiAkhir != null && nilaiAkhir >= kkm;
+
+    let p1 = `Berdasarkan hasil penilaian, ${subjek} memperoleh nilai akhir`;
 
     p1 += nilaiAkhir != null ? ` <strong>${nilaiAkhir}</strong>` : '';
 
-    p1 += ` dan dinyatakan belum memenuhi standar kelulusan yang ditetapkan. `;
+    if (tidakLulusKarenaKehadiran) {
+      p1 += ` yang telah memenuhi nilai minimum kelulusan (${kkm}), namun dinyatakan belum memenuhi standar kelulusan yang ditetapkan dikarenakan persentase kehadiran tidak mencapai syarat minimum 90%. `;
+    } else {
+      p1 += ` dan dinyatakan belum memenuhi standar kelulusan yang ditetapkan. `;
+    }
 
-    p1 += `Kondisi ini bukan merupakan hambatan yang bersifat final, melainkan merupakan petunjuk yang sangat berharga mengenai area-area kompetensi yang masih dapat dan perlu ditingkatkan. `;
+    p1 += `Kondisi ini bukan merupakan hambatan yang bersifat final, melainkan menjadi petunjuk yang berharga mengenai materi yang masih perlu dipelajari dan ditingkatkan lebih lanjut. `;
 
-    p1 += `Penyelenggara meyakini bahwa dengan upaya pendalaman yang lebih intensif dan terstruktur, ${subjek} memiliki potensi yang sangat baik untuk mencapai standar kompetensi yang ditetapkan.`;
+    p1 += `Penyelenggara meyakini bahwa dengan upaya yang lebih terstruktur dan sungguh-sungguh, ${subjek} memiliki potensi yang sangat baik untuk mencapai standar kelulusan yang ditetapkan.`;
 
     paragraphs.push(p(p1));
 
@@ -532,7 +541,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
       const sorted = ekPerlu.slice(0, 4);
 
-      let p2 = `Berdasarkan profil hasil evaluasi, elemen kompetensi yang perlu mendapatkan perhatian lebih lanjut adalah: `;
+      let p2 = `Berdasarkan hasil penilaian, unit kompetensi yang perlu mendapat perhatian dan penguatan lebih lanjut adalah sebagai berikut: `;
 
       p2 += `<ul style="margin:8px 0 0 0; padding-left:20px;">`;
 
@@ -542,7 +551,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
           ? `mengalami penurunan dari ${ek.prePct}% menjadi ${ek.postPct}%`
 
-          : `masih berada di angka ${ek.postPct}% dan memerlukan penguatan`;
+          : `masih berada pada tingkat ${ek.postPct}% dan memerlukan penguatan lebih lanjut`;
 
         return li(`<strong>${_esc(ek.ekNama)}</strong> — ${kondisi}.`);
 
@@ -556,7 +565,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
       // Semua UK nilainya sudah baik — kegagalan dari komponen penilaian lain
 
-      const p2 = `Penguasaan elemen kompetensi ${subjek} secara keseluruhan sudah menunjukkan hasil yang baik. Peningkatan nilai akhir pada kegiatan berikutnya dapat difokuskan pada komponen penilaian lainnya seperti kehadiran, keaktifan, tugas, dan presentasi selama kegiatan berlangsung.`;
+      const p2 = `Penguasaan unit kompetensi ${subjek} secara keseluruhan telah menunjukkan hasil yang baik. Peningkatan nilai akhir pada kegiatan berikutnya dapat difokuskan pada komponen penilaian lainnya, seperti kehadiran, keaktifan, tugas, dan presentasi.`;
 
       paragraphs.push(p(p2));
 
@@ -566,17 +575,17 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     // Â¶3 — Langkah konkret
 
-    let p3 = `Berikut adalah langkah-langkah konkret yang disarankan untuk meningkatkan penguasaan kompetensi: `;
+    let p3 = `Berikut adalah langkah-langkah yang disarankan untuk meningkatkan penguasaan kompetensi pada kegiatan berikutnya: `;
 
     p3 += `<ol style="margin:8px 0 0 0; padding-left:20px;">`;
 
-    p3 += li(`<strong>Pendalaman mandiri:</strong> Pelajari kembali seluruh modul dan materi bimbingan teknis yang telah diberikan, dengan memberikan penekanan khusus pada elemen-elemen kompetensi yang nilainya masih di bawah standar.`);
+    p3 += li(`<strong>Pendalaman secara mandiri:</strong> Pelajari kembali seluruh modul dan materi bimbingan teknis yang telah diberikan, dengan memberikan perhatian lebih pada unit-unit kompetensi yang masih berada di bawah standar.`);
 
-    p3 += li(`<strong>Konsultasi dan diskusi:</strong> Manfaatkan kesempatan untuk berdiskusi dengan rekan kerja, atasan, atau tenaga ahli yang berpengalaman di bidang yang relevan guna mendapatkan pemahaman yang lebih mendalam dan praktis.`);
+    p3 += li(`<strong>Konsultasi dan diskusi:</strong> Manfaatkan kesempatan untuk berdiskusi dengan rekan kerja, atasan, atau tenaga ahli yang berpengalaman di bidang terkait guna memperoleh pemahaman yang lebih mendalam dan aplikatif.`);
 
-    p3 += li(`<strong>Praktik di lapangan:</strong> Coba terapkan konsep dan materi yang telah dipelajari dalam pekerjaan sehari-hari. Pengalaman praktis langsung akan sangat membantu memperkuat pemahaman yang diperoleh secara teoretis.`);
+    p3 += li(`<strong>Penerapan di lapangan:</strong> Terapkan konsep dan materi yang telah dipelajari dalam pelaksanaan pekerjaan sehari-hari. Pengalaman langsung di lapangan akan sangat membantu dalam mengukuhkan pemahaman yang telah diperoleh secara teoretis.`);
 
-    p3 += li(`<strong>Referensi tambahan:</strong> Pelajari regulasi, standar nasional (SNI), dan pedoman teknis terkait bidang air minum yang berlaku sebagai referensi tambahan untuk memperluas wawasan dan penguasaan teknis.`);
+    p3 += li(`<strong>Pengayaan referensi:</strong> Pelajari regulasi, standar nasional (SNI), dan pedoman teknis terkait bidang air minum yang berlaku sebagai referensi tambahan guna memperluas wawasan dan memperkuat penguasaan teknis.`);
 
     p3 += `</ol>`;
 
@@ -586,11 +595,11 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     // Â¶4 — Motivasi & harapan
 
-    let p4 = `Penyelenggara sangat mengapresiasi kesediaan dan semangat ${subjek} dalam mengikuti kegiatan bimbingan teknis ini. `;
+    let p4 = `Penyelenggara mengapresiasi kesediaan dan semangat ${subjek} dalam mengikuti kegiatan bimbingan teknis ini. `;
 
-    p4 += `Setiap proses pembelajaran memiliki dinamikanya masing-masing, dan kegigihan untuk terus berkembang merupakan kualitas yang paling menentukan dalam perjalanan peningkatan kompetensi. `;
+    p4 += `Setiap proses pembelajaran memiliki dinamikanya masing-masing, dan keteguhan untuk terus berupaya meningkatkan diri merupakan kualitas yang paling menentukan dalam perjalanan pengembangan kompetensi. `;
 
-    p4 += `Penyelenggara berharap ${subjek} tidak berkecil hati, dan menyambut keikutsertaan kembali pada kesempatan berikutnya dengan persiapan yang lebih matang demi mencapai standar kompetensi yang ditetapkan.`;
+    p4 += `Penyelenggara berharap ${subjek} tidak berkecil hati dan dapat menyambut keikutsertaan kembali pada kesempatan berikutnya dengan persiapan yang lebih matang, demi mencapai standar kelulusan yang ditetapkan.`;
 
     paragraphs.push(p(p4));
 
@@ -636,19 +645,19 @@ export function generateNarasiDeskriptif(komponen, label, nilaiRaw, fakta) {
 
     if (v >= 90) {
 
-      elaborasi = 'Konsistensi kehadiran yang sangat tinggi ini mencerminkan komitmen penuh peserta terhadap kegiatan bimbingan teknis dan mendukung penyerapan materi secara optimal.';
+      elaborasi = 'Konsistensi kehadiran yang tinggi ini mencerminkan komitmen penuh peserta terhadap kegiatan bimbingan teknis dan mendukung penyerapan materi secara optimal.';
 
-    } else if (v >= 75) {
+    } else if (v >= 80) {
 
-      elaborasi = 'Kehadiran yang baik ini berkontribusi positif terhadap penyerapan materi dan pencapaian kompetensi selama kegiatan berlangsung.';
+      elaborasi = 'Kehadiran yang cukup baik ini memberikan kontribusi positif terhadap penyerapan materi. Namun demikian, tingkat kehadiran ini belum memenuhi syarat minimum 90% yang ditetapkan, sehingga peningkatan kehadiran pada kegiatan berikutnya sangat dianjurkan.';
 
     } else if (v >= 60) {
 
-      elaborasi = 'Meskipun beberapa sesi tidak dapat diikuti, peserta telah memenuhi persyaratan kehadiran minimum yang ditetapkan. Peningkatan kehadiran pada kegiatan berikutnya sangat dianjurkan.';
+      elaborasi = 'Tingkat kehadiran ini belum memenuhi syarat minimum 90% yang ditetapkan sehingga berdampak pada status kelulusan. Diharapkan peserta dapat lebih konsisten mengikuti seluruh rangkaian kegiatan pada kesempatan berikutnya.';
 
     } else {
 
-      elaborasi = 'Tingkat kehadiran yang masih perlu ditingkatkan ini dapat mempengaruhi penyerapan materi secara keseluruhan. Diharapkan pada kegiatan bimbingan teknis berikutnya peserta dapat lebih konsisten mengikuti seluruh rangkaian kegiatan.';
+      elaborasi = 'Tingkat kehadiran yang rendah ini tidak memenuhi syarat minimum 90% yang ditetapkan dan berdampak langsung terhadap penyerapan materi serta status kelulusan. Pada kegiatan bimbingan teknis berikutnya, diharapkan peserta dapat mengikuti seluruh rangkaian kegiatan secara penuh dan konsisten.';
 
     }
 
@@ -664,19 +673,19 @@ export function generateNarasiDeskriptif(komponen, label, nilaiRaw, fakta) {
 
     if (v >= 85) {
 
-      elaborasi = 'Peserta secara aktif berpartisipasi dalam sesi diskusi, tanya jawab, dan kegiatan kelompok yang diselenggarakan. Keaktifan yang tinggi ini berkontribusi positif terhadap dinamika pembelajaran di kelas dan mencerminkan antusiasme yang kuat terhadap materi yang disampaikan.';
+      elaborasi = 'Peserta secara aktif berpartisipasi dalam sesi diskusi, tanya jawab, dan kegiatan kelompok yang diselenggarakan. Keaktifan yang tinggi ini memberikan kontribusi positif terhadap dinamika pembelajaran di kelas dan mencerminkan antusiasme yang kuat terhadap materi yang disampaikan.';
 
     } else if (v >= 70) {
 
-      elaborasi = 'Peserta menunjukkan partisipasi yang baik dalam kegiatan diskusi dan tanya jawab, serta berkontribusi dalam kegiatan kelompok yang dilaksanakan selama bimbingan teknis berlangsung.';
+      elaborasi = 'Peserta menunjukkan partisipasi yang baik dalam kegiatan diskusi dan tanya jawab, serta turut berkontribusi dalam kegiatan kelompok yang dilaksanakan selama bimbingan teknis berlangsung.';
 
     } else if (v >= 55) {
 
-      elaborasi = 'Peserta cukup terlibat dalam kegiatan pembelajaran. Peningkatan partisipasi aktif dalam sesi diskusi dan tanya jawab diharapkan dapat memperdalam pemahaman dan penguasaan materi pada kegiatan mendatang.';
+      elaborasi = 'Peserta cukup terlibat dalam kegiatan pembelajaran yang diselenggarakan. Peningkatan partisipasi aktif dalam sesi diskusi dan tanya jawab diharapkan dapat memperdalam pemahaman serta penguasaan materi pada kegiatan yang akan datang.';
 
     } else {
 
-      elaborasi = 'Partisipasi aktif peserta dalam kegiatan diskusi dan tanya jawab masih perlu ditingkatkan guna memaksimalkan manfaat yang dapat diperoleh dari kegiatan bimbingan teknis.';
+      elaborasi = 'Partisipasi aktif peserta dalam kegiatan diskusi dan tanya jawab masih perlu ditingkatkan agar manfaat yang diperoleh dari kegiatan bimbingan teknis dapat dirasakan secara optimal.';
 
     }
 
@@ -692,23 +701,23 @@ export function generateNarasiDeskriptif(komponen, label, nilaiRaw, fakta) {
 
     if (v >= 85) {
 
-      elaborasi = 'Peserta senantiasa memperlihatkan etika komunikasi yang baik, menghargai pendapat pengajar dan panitia maupun sesama peserta, serta menjaga ketertiban dan kekondusifan suasana pembelajaran sepanjang kegiatan berlangsung.';
+      elaborasi = 'Peserta senantiasa memperlihatkan etika komunikasi yang baik, menghargai pendapat pengajar, panitia, maupun sesama peserta, serta menjaga ketertiban dan kondusivitas suasana pembelajaran sepanjang kegiatan berlangsung.';
 
     } else if (v >= 70) {
 
-      elaborasi = 'Peserta memperlihatkan sikap yang baik dalam berinteraksi dengan pengajar dan panitia dan sesama peserta, serta menjaga kekondusifan suasana selama kegiatan bimbingan teknis berlangsung.';
+      elaborasi = 'Peserta memperlihatkan sikap yang baik dalam berinteraksi dengan pengajar, panitia, maupun sesama peserta, serta turut menjaga kondusivitas suasana selama kegiatan bimbingan teknis berlangsung.';
 
     } else if (v >= 55) {
 
-      elaborasi = 'Peserta cukup menjaga etika dan sikap selama kegiatan. Peningkatan dalam hal menghargai sesi dan menjaga ketertiban diharapkan dapat mendukung suasana pembelajaran yang lebih kondusif bagi seluruh peserta.';
+      elaborasi = 'Peserta cukup mampu menjaga etika dan sikap selama kegiatan berlangsung. Peningkatan dalam hal penghargaan terhadap jalannya sesi dan ketertiban diharapkan dapat mendukung terciptanya suasana pembelajaran yang lebih kondusif bagi seluruh peserta.';
 
     } else {
 
-      elaborasi = 'Terdapat beberapa aspek terkait sikap dan respek yang perlu mendapatkan perhatian lebih lanjut guna menciptakan suasana pembelajaran yang kondusif dan produktif bagi seluruh peserta kegiatan.';
+      elaborasi = 'Terdapat beberapa aspek terkait sikap dan penghargaan terhadap sesama yang masih perlu mendapat perhatian lebih lanjut, guna menciptakan suasana pembelajaran yang kondusif dan produktif bagi seluruh peserta kegiatan.';
 
     }
 
-    return `Selama kegiatan bimbingan teknis berlangsung, peserta menunjukkan sikap dan respek yang tergolong <strong>${_esc(label)}</strong> terhadap pengajar dan panitia maupun sesama peserta. ${elaborasi}`;
+    return `Selama kegiatan bimbingan teknis berlangsung, peserta menunjukkan sikap dan respek yang tergolong <strong>${_esc(label)}</strong> terhadap pengajar, panitia, maupun sesama peserta. ${elaborasi}`;
 
   }
 

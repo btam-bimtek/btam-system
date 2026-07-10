@@ -234,14 +234,16 @@ export async function updateKehadiran(bimtekId, noPeserta, sesiId, kehadiran, ke
 export function hitungKehadiran(attendance, sesis) {
   // Filter sesi yang tipe 'mapel' saja (bukan break/ISHOMA)
   const mapelSesis = sesis.filter(s => s.tipe === 'mapel');
-  const total = mapelSesis.length;
+
+  // Total dan hadir dihitung dalam JP, bukan jumlah sesi
+  const total = mapelSesis.reduce((sum, s) => sum + (s.jp || 1), 0);
 
   if (total === 0) return { hadir: 0, total: 0, persentase: 0 };
 
-  const hadir = mapelSesis.filter(s => {
+  const hadir = mapelSesis.reduce((sum, s) => {
     const status = attendance.sessions?.[s.id];
-    return status?.kehadiran === true;
-  }).length;
+    return sum + (status?.kehadiran === true ? (s.jp || 1) : 0);
+  }, 0);
 
   const persentase = Math.round((hadir / total) * 100);
 

@@ -11,7 +11,7 @@ import { showToast } from '../../components/toast.js';
 
 // ─── ENTRY POINT ────────────────────────────────────────────────────
 
-export async function renderSubKehadiran(container, bimtekId, bimtek, scores, sesis) {
+export async function renderSubKehadiran(container, bimtekId, bimtek, scores, sesis, onSuccess) {
   try {
     const mapelSesis = sesis.filter(s => s.tipe === 'mapel');
 
@@ -99,21 +99,11 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
         <button id="btn-save-kehadiran" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
           Simpan Kehadiran
         </button>
-        <button id="btn-hitung-kehadiran" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors">
-          Hitung % Kehadiran
-        </button>
       </div>
-
-      <!-- Summary -->
-      <div id="summary-kehadiran" class="mt-6 text-xs text-gray-400 space-y-1"></div>
     `;
 
     container.querySelector('#btn-save-kehadiran')?.addEventListener('click', async () => {
-      await _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel);
-    });
-
-    container.querySelector('#btn-hitung-kehadiran')?.addEventListener('click', async () => {
-      await _hitungKehadiran(bimtekId, scores, sesis, container);
+      await _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel, sesis, onSuccess);
     });
   } catch (err) {
     container.innerHTML = `<div class="text-red-400 text-sm">${err.message}</div>`;
@@ -179,7 +169,9 @@ function _groupSesiPerHariPerMapel(sesis) {
 
 // ─── SAVE KEHADIRAN ─────────────────────────────────────────────────
 
-async function _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel) {
+async function _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel, sesis, onSuccess) {
+  const btn = container.querySelector('#btn-save-kehadiran');
+  const origText = btn.textContent;
   try {
     const matrixData = {};
 
@@ -189,69 +181,38 @@ async function _saveKehadiran(bimtekId, scores, container, sesiPerHariPerMapel) 
         const mapelId = check.dataset.mapel;
         const hari = check.dataset.hari;
         const sesiList = sesiPerHariPerMapel[hari]?.[mapelId] || [];
-        // Satu checkbox mapel → apply ke semua segmen sesi mapel tersebut
         sesiList.forEach(s => {
           matrixData[score.noPeserta][s.id] = check.checked;
         });
       });
     });
 
-    const btn = container.querySelector('#btn-save-kehadiran');
-    const origText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Menyimpan...';
 
     await bulkUpdateKehadiran(bimtekId, matrixData);
 
+    // Hitung % kehadiran per JP dan simpan ke bimtek_scores.kehadiran
+    btn.textContent = 'Menghitung kehadiran...';
+    for (const score of scores) {
+      const att = await getAttendance(bimtekId, score.noPeserta);
+      const { persentase } = hitungKehadiran(att, sesis);
+      await updateNilai(bimtekId, score.noPeserta, { kehadiran: persentase });
+    }
+
     showToast(`Kehadiran ${scores.length} peserta berhasil disimpan`, 'ok');
     btn.disabled = false;
     btn.textContent = origText;
+
+    onSuccess?.();
   } catch (err) {
     showToast(`Gagal simpan: ${err.message}`, 'error');
-    console.error(err);
-  }
-}
-
-// ─── HITUNG KEHADIRAN (update percentage) ──────────────────────────
-
-async function _hitungKehadiran(bimtekId, scores, sesis, container) {
-  try {
-    const mapelSesis = sesis.filter(s => s.tipe === 'mapel');
-    const total = mapelSesis.length;
-
-    if (total === 0) {
-      showToast('Tidak ada sesi mapel', 'error');
-      return;
-    }
-
-    const btn = container.querySelector('#btn-hitung-kehadiran');
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Menghitung...';
-
-    const summaryDiv = container.querySelector('#summary-kehadiran');
-    const updates = {};
-
-    for (const score of scores) {
-      const att = await getAttendance(bimtekId, score.noPeserta);
-      const { hadir, persentase } = hitungKehadiran(att, mapelSesis);
-
-      summaryDiv.innerHTML += `<div>${_esc(score.noPeserta)}: ${hadir}/${total} (${persentase}%)</div>`;
-      updates[score.noPeserta] = persentase;
-    }
-
-    for (const [noPeserta, pct] of Object.entries(updates)) {
-      await updateNilai(bimtekId, noPeserta, { kehadiran: pct });
-    }
-
-    showToast(`Kehadiran ${scores.length} peserta berhasil dihitung`, 'ok');
     btn.disabled = false;
     btn.textContent = origText;
-  } catch (err) {
-    showToast(`Gagal hitung: ${err.message}`, 'error');
     console.error(err);
   }
 }
+
 
 // ─── HELPER: Format date ───────────────────────────────────────────
 

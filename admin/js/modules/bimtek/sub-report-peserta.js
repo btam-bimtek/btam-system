@@ -224,7 +224,7 @@ function _buildReportHTML(data) {
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
       <!-- SECTION C: PERUBAHAN KOMPETENSI -->
-      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline)}
+      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, b.kkm ?? 60)}
 
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
@@ -318,7 +318,8 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
 
   // B.2 — Deskriptif
   const kehadiranPct  = scores?.kehadiran ?? null;
-  const kehadiran_label = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
+  const kehadiranAttPct = kehadiranDetail?.persentase ?? kehadiranPct;
+  const kehadiran_label = kehadiranAttPct != null ? mapToLabel(kehadiranAttPct, thresholds.kehadiran) : null;
   const kehadiranFakta = kehadiranDetail
     ? `${kehadiranDetail.hadir} dari ${kehadiranDetail.total} sesi (${kehadiranDetail.persentase}%)`
     : (kehadiranPct != null ? `${kehadiranPct}%` : null);
@@ -342,9 +343,15 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
       </div>`;
   };
 
-  const tidakLulusMsg = !lulus && na != null ? `
+  const tidakLulusAlasan = !lulus && na != null
+    ? (na >= kkm ? 'kehadiran' : 'nilai')
+    : null;
+  const tidakLulusMsg = tidakLulusAlasan ? `
     <div style="background:#fef3c7; border-left:4px solid #f59e0b; border-radius:0 4px 4px 0; padding:12px 16px; margin-top:16px; font-size:12px; color:#78350f; line-height:1.6;">
-      Nilai akhir yang diperoleh (${na}) belum mencapai nilai minimum kelulusan yang ditetapkan (${kkm}).
+      ${tidakLulusAlasan === 'kehadiran'
+        ? `Nilai akhir yang diperoleh (${na}) telah memenuhi nilai minimum kelulusan (${kkm}), namun kehadiran peserta tidak memenuhi syarat minimum 90% yang ditetapkan.`
+        : `Nilai akhir yang diperoleh (${na}) belum mencapai nilai minimum kelulusan yang ditetapkan (${kkm}).`
+      }
     </div>` : '';
 
   return `
@@ -377,7 +384,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
       B.2 Komponen Deskriptif
     </div>
     <div style="background:#f8f9fa; border-radius:8px; padding:12px 16px;">
-      ${deskriptifItem('📅', 'Kehadiran',     'kehadiran', kehadiran_label, scores?.kehadiran ?? null, kehadiranFakta)}
+      ${deskriptifItem('📅', 'Kehadiran',     'kehadiran', kehadiran_label, kehadiranAttPct, kehadiranFakta)}
       ${deskriptifItem('💬', 'Keaktifan',     'keaktifan', keaktifanLabel,  scores?.keaktifan ?? null, null)}
       ${deskriptifItem('🤝', 'Sikap & Respek','respek',    respekLabel,     scores?.respek    ?? null, null)}
       ${!kehadiran_label && !keaktifanLabel && !respekLabel
@@ -388,7 +395,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
 
 // ── Section C ─────────────────────────────────────────────────────────────────
 
-function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline) {
+function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, kkm = 60) {
   const pre  = scores?.pretest  ?? null;
   const post = scores?.posttest ?? null;
 
@@ -467,7 +474,7 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
   }
 
   // C.4 — Analisis Kompetensi
-  const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null);
+  const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, kkm);
   const narasiSection = `
     <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
       C.4 Analisis Kompetensi
@@ -477,7 +484,7 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
     </div>`;
 
   // C.5 — Rekomendasi Tindak Lanjut
-  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, peserta?.nama);
+  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, peserta?.nama, kkm);
   const rekomendasiSection = `
     <div style="font-size:13px; font-weight:600; color:#444; margin-bottom:8px; font-family:sans-serif;">
       C.5 Rekomendasi Tindak Lanjut
