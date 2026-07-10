@@ -952,14 +952,17 @@ function _buildCertHTML(data) {
         <!-- Background image (Canva export) -->
         <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
 
-        <!-- Foto placeholder (kiri) -->
-        <div style="position:absolute;top:80mm;left:50mm;width:30mm;height:40mm;z-index:10;
-          border:1.5px dashed #888;background:rgba(240,240,240,0.5);
-          display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
-            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-          </svg>
-          <span style="font-size:11px;color:#aaa;font-family:'Open Sans',sans-serif;">FOTO</span>
+        <!-- Foto peserta (kiri) -->
+        <div style="position:absolute;top:80mm;left:50mm;width:30mm;height:40mm;z-index:10;overflow:hidden;
+          border:1px solid #ccc;background:rgba(240,240,240,0.5);">
+          ${peserta?.fotoUrl
+            ? `<img src="${_esc(peserta.fotoUrl)}" alt="Foto" style="width:100%;height:100%;object-fit:cover;">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+                  <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+                <span style="font-size:11px;color:#aaa;font-family:'Open Sans',sans-serif;">FOTO</span>
+              </div>`}
         </div>
 
         <!-- Diberikan Kepada -->

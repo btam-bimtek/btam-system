@@ -146,6 +146,21 @@ export async function updatePeserta(noPeserta, rawData) {
   });
 }
 
+// ─── Upload Foto ──────────────────────────────────────────────
+
+export async function uploadFotoPeserta(noPeserta, file) {
+  const { storage } = await import('../../../../shared/firebase-config.js');
+  const { ref, uploadBytes, getDownloadURL } = await import(
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js'
+  );
+  const ext     = file.name.split('.').pop().toLowerCase();
+  const fileRef = ref(storage, `peserta/${noPeserta}/foto.${ext}`);
+  await uploadBytes(fileRef, file);
+  const url = await getDownloadURL(fileRef);
+  await updateDoc(doc(db, COL_NAME, noPeserta), { fotoUrl: url, updatedAt: serverTimestamp() });
+  return url;
+}
+
 // ─── Soft delete ──────────────────────────────────────────────
 
 export async function deletePeserta(noPeserta) {

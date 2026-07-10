@@ -3,7 +3,7 @@
 
 import { openModal } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
-import { createPeserta, updatePeserta } from './api.js';
+import { createPeserta, updatePeserta, uploadFotoPeserta } from './api.js';
 import { PENDIDIKAN_OPTIONS, JENIS_KELAMIN } from '../../../../shared/constants.js';
 
 /**
@@ -17,6 +17,34 @@ export function openPesertaForm(existing = null, onSaved) {
 
   const body = `
     <form id="peserta-form" novalidate class="space-y-4">
+
+      ${isEdit ? `
+      <!-- Upload Foto (edit mode only) -->
+      <div class="flex items-center gap-4 pb-4 border-b border-gray-800">
+        <div id="foto-preview-wrap"
+          class="w-20 h-24 rounded-lg border-2 border-dashed border-gray-700 bg-gray-800
+                 flex items-center justify-center overflow-hidden flex-shrink-0">
+          ${existing.fotoUrl
+            ? `<img id="foto-preview" src="${_esc(existing.fotoUrl)}" class="w-full h-full object-cover">`
+            : `<svg id="foto-preview" class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+               </svg>`}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-medium text-gray-400 mb-1.5">Foto Peserta</p>
+          <p class="text-xs text-gray-600 mb-2">Format JPG/PNG, maks 2 MB. Akan tampil di sertifikat.</p>
+          <label class="cursor-pointer inline-flex items-center gap-2 text-xs bg-gray-700 hover:bg-gray-600
+                         text-gray-200 px-3 py-1.5 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 0l-3 3m3-3l3 3"/>
+            </svg>
+            <span id="foto-btn-label">Pilih Foto</span>
+            <input id="foto-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden">
+          </label>
+          <p id="foto-status" class="text-xs text-gray-600 mt-1.5"></p>
+        </div>
+      </div>` : ''}
+
       <div class="grid grid-cols-2 gap-4">
         <!-- Nomor Peserta -->
         <div class="${isEdit ? 'col-span-2' : ''}">
@@ -145,15 +173,59 @@ export function openPesertaForm(existing = null, onSaved) {
     </form>
   `;
 
-  const { close } = openModal({
+  openModal({
     title,
     body,
-    size: 'lg',
+    size: 'xl',
     actions: [
       { label: 'Batal', type: 'secondary', onClick: ({ close }) => close() },
       { label: isEdit ? 'Simpan Perubahan' : 'Tambah Peserta', type: 'primary', onClick: ({ close }) => _submit(close, existing, onSaved) }
     ]
   });
+
+  // Bind foto upload (hanya mode edit karena butuh noPeserta yang sudah ada)
+  if (isEdit) {
+    const input    = document.getElementById('foto-input');
+    const status   = document.getElementById('foto-status');
+    const preview  = document.getElementById('foto-preview');
+    const wrap     = document.getElementById('foto-preview-wrap');
+    const btnLabel = document.getElementById('foto-btn-label');
+
+    input?.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        status.textContent = 'File terlalu besar (maks 2 MB).';
+        status.className = 'text-xs text-red-400 mt-1.5';
+        return;
+      }
+      // Preview lokal dulu
+      const reader = new FileReader();
+      reader.onload = e => {
+        wrap.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+      };
+      reader.readAsDataURL(file);
+
+      status.textContent = 'Mengunggah…';
+      status.className = 'text-xs text-gray-400 mt-1.5';
+      btnLabel.textContent = 'Mengunggah…';
+      input.disabled = true;
+
+      try {
+        await uploadFotoPeserta(existing.noPeserta, file);
+        status.textContent = 'Foto berhasil diunggah.';
+        status.className = 'text-xs text-teal-400 mt-1.5';
+        btnLabel.textContent = 'Ganti Foto';
+        onSaved?.();
+      } catch (err) {
+        status.textContent = `Gagal: ${err.message}`;
+        status.className = 'text-xs text-red-400 mt-1.5';
+        btnLabel.textContent = 'Coba Lagi';
+      } finally {
+        input.disabled = false;
+      }
+    });
+  }
 }
 
 async function _submit(close, existing, onSaved) {

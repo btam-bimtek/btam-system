@@ -615,8 +615,7 @@ async function _renderMapProvinsi(provinsiCount) {
     }
   }
 
-  const values = Object.values(provinsiCount).map(v => v.count ?? v);
-  const maxVal = Math.max(...values, 1);
+  // maxVal dihitung setelah normCount selesai (di bawah) agar merge alias sudah diterapkan
 
   // Multi-stop gradient dengan skala sqrt supaya distribusi skewed tetap kontras
   // Stop: merah gelap → oranye → kuning → hijau → tosca → biru tua
@@ -646,21 +645,75 @@ async function _renderMapProvinsi(provinsiCount) {
     return `rgb(249,115,22)`;
   }
 
+  // Alias: nama tidak baku / singkatan → nama baku (setelah lowercase & trim)
+  const _ALIAS = {
+    'jabar':'jawa barat','jawa bar.':'jawa barat',
+    'jateng':'jawa tengah','jawa teng.':'jawa tengah',
+    'jatim':'jawa timur','jawa tim.':'jawa timur',
+    'diy':'yogyakarta','d.i. yogyakarta':'yogyakarta','d.i.yogyakarta':'yogyakarta',
+    'di yogyakarta':'yogyakarta',
+    'sumut':'sumatera utara','sumbar':'sumatera barat',
+    'sumsel':'sumatera selatan','sumteng':'sumatera tengah',
+    'kalbar':'kalimantan barat','kalteng':'kalimantan tengah',
+    'kalsel':'kalimantan selatan','kaltim':'kalimantan timur',
+    'kaltara':'kalimantan utara','kalut':'kalimantan utara',
+    'sulut':'sulawesi utara','sulteng':'sulawesi tengah',
+    'sulsel':'sulawesi selatan','sultra':'sulawesi tenggara',
+    'sulbar':'sulawesi barat',
+    'malut':'maluku utara',
+    'ntb':'nusa tenggara barat','ntt':'nusa tenggara timur',
+    'babel':'kepulauan bangka belitung','bangka belitung':'kepulauan bangka belitung',
+    'kepri':'kepulauan riau',
+    'jakarta':'jakarta',
+    'dki':'jakarta',
+    'papua bar.':'papua barat',
+  };
+
   // Normalisasi nama provinsi — berlaku untuk data alumni maupun nama di GeoJSON
   function _norm(s) {
-    return (s || '').toLowerCase()
-      .replace(/^(provinsi|prov\.?|daerah istimewa|dki|di)\s+/gi, '')
+    let v = (s || '').toLowerCase()
+      .replace(/^(provinsi|prov\.?|daerah istimewa|dki|d\.i\.)\s*/gi, '')
+      .replace(/\bkep\.\s*/gi, 'kepulauan ')   // "Kep. Riau" → "Kepulauan Riau"
       .replace(/\s+/g, ' ')
       .trim();
+    return _ALIAS[v] ?? v;
   }
 
   const normCount = {};
-  Object.entries(provinsiCount).forEach(([k, v]) => { normCount[_norm(k)] = { orig: k, count: v }; });
+  // Merge: jika dua nama berbeda normalize ke key sama, jumlahkan (jangan timpa)
+  Object.entries(provinsiCount).forEach(([k, v]) => {
+    const nk = _norm(k);
+    if (normCount[nk]) {
+      normCount[nk] = { orig: normCount[nk].orig, count: normCount[nk].count + v };
+    } else {
+      normCount[nk] = { orig: k, count: v };
+    }
+  });
 
-  // Debug: tampilkan di console agar bisa dicek mismatch
+  // maxVal dari normCount (sudah di-merge), bukan dari raw provinsiCount
+  const values = Object.values(normCount).map(v => v.count);
+  const maxVal = Math.max(...values, 1);
+
+  // Debug: normCount dari data
   console.group('[Map Debug] normCount keys (dari data alumni/peserta):');
-  Object.entries(normCount).forEach(([k, v]) => console.log(`  "${k}" ← "${v.orig}" (${v.count})`));
+  Object.entries(normCount).sort((a,b) => b[1].count - a[1].count)
+    .forEach(([k, v]) => console.log(`  "${k}" ← "${v.orig}" (${v.count})`));
   console.groupEnd();
+
+  // Debug: GeoJSON state → norm → hasil match (tampilkan setelah GeoJSON siap)
+  const geoDebug = {};
+  _geoJsonData.features.forEach(f => {
+    const raw   = f.properties.state || '';
+    const normd = _norm(raw);
+    const match = normCount[normd];
+    geoDebug[raw] = { normd, count: match?.count ?? 0, matched: !!match };
+  });
+  console.group('[Map Debug] GeoJSON state → norm → count:');
+  Object.entries(geoDebug).sort((a,b) => b[1].count - a[1].count)
+    .forEach(([raw, d]) => console.log(`  ${d.matched ? '✓' : '✗'} "${raw}" → "${d.normd}" = ${d.count}`));
+  console.groupEnd();
+  const unmatched = Object.entries(geoDebug).filter(([,d]) => !d.matched).map(([r]) => r);
+  if (unmatched.length) console.warn('[Map Debug] Provinsi GeoJSON tanpa match data:', unmatched);
 
   // Init Leaflet — gunakan requestAnimationFrame agar container sudah di-render browser
   await new Promise(r => requestAnimationFrame(r));
@@ -714,17 +767,19 @@ async function _renderMapProvinsi(provinsiCount) {
     },
   }).addTo(_leafletMap);
 
-  // Legenda
+  // Legenda stepped — sesuai skala sqrt yang dipakai _getColor
+  // Legenda: gradient bar dengan posisi warna akurat sesuai skala sqrt
+  // Posisi CSS (%) = t² × 100, sehingkan warna di bar sesuai nilai count di peta
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = () => {
+    const fmt = n => n.toLocaleString('id-ID');
+    // t² × 100 → posisi CSS gradient: 0%, 4%, 16%, 36%, 64%, 100%
+    const grad = '#991b1b 0%,#ea580c 4%,#eab308 16%,#22c55e 36%,#14b8a6 64%,#1d4ed8 100%';
     const div = L.DomUtil.create('div');
-    div.style.cssText = 'background:#1f2937;padding:8px 12px;border-radius:6px;border:1px solid #374151;font-size:11px;color:#9ca3af;line-height:1.6';
+    div.style.cssText = 'background:#1f2937;padding:6px 10px;border-radius:6px;border:1px solid #374151;font-size:11px;color:#9ca3af';
     div.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <div style="width:120px;height:10px;border-radius:3px;background:linear-gradient(to right,#991b1b,#ea580c,#eab308,#22c55e,#14b8a6,#1d4ed8)"></div>
-        <span>Peserta</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;width:120px"><span>0</span><span>${Math.max(...values).toLocaleString('id-ID')}</span></div>`;
+      <div style="width:130px;height:8px;border-radius:3px;background:linear-gradient(to right,${grad});margin-bottom:3px"></div>
+      <div style="display:flex;justify-content:space-between;width:130px"><span>0</span><span>${fmt(maxVal)}</span></div>`;
     return div;
   };
   legend.addTo(_leafletMap);

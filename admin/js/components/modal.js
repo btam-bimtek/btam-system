@@ -33,11 +33,11 @@ export function openModal({ title, body, actions = [], size = 'md', closable = t
 
   const el = document.createElement('div');
   el.id = id;
-  el.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+  el.className = 'fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto';
   el.innerHTML = `
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="${id}-backdrop"></div>
-    <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full ${sizeClass}"
-         style="display:flex;flex-direction:column;max-height:90vh">
+    <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full ${sizeClass} mb-8"
+         style="display:flex;flex-direction:column">
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800" style="flex-shrink:0">
         <h3 class="text-base font-semibold text-white">${title}</h3>
@@ -48,7 +48,7 @@ export function openModal({ title, body, actions = [], size = 'md', closable = t
         </button>` : ''}
       </div>
       <!-- Body -->
-      <div class="px-6 py-5" style="overflow-y:auto;flex:1 1 0;min-height:0" id="${id}-body">
+      <div class="px-6 py-5" id="${id}-body">
         ${body}
       </div>
       <!-- Footer -->
