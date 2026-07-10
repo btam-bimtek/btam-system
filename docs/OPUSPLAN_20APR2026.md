@@ -3083,6 +3083,53 @@ Tim lain di lingkungan BTAM (yang tidak familiar Firestore tapi terbiasa Excel/G
 
 ---
 
+### 9.8. Tab Alumni di Master Data *(BARU — rev. 10 Jul 2026)*
+
+**Konsep:** Tambah item navigasi "Alumni" di bawah Master Data. Berisi semua orang yang pernah mengikuti bimtek BTAM — gabungan data historis (`alumni_historis`) dan sistem baru (peserta dari bimtek `completed`).
+
+**Dua sub-tab:**
+
+#### Sub-tab "Riwayat" ✅ *Disetujui — akan dikerjakan*
+
+Satu baris per keikutsertaan. Tidak ada deduplication.
+
+| Kolom | Sumber |
+|---|---|
+| Nama | `alumni_historis.nama_peserta` / `peserta_master.nama` |
+| Instansi | `alumni_historis.instansi` / `peserta_master.instansi` |
+| Provinsi | `alumni_historis.provinsi` / `peserta_master.provinsi` |
+| Tahun | `alumni_historis.tahun` / `bimtek.periode.mulai` (year) |
+| Nama Bimtek | `alumni_historis.nama_bimtek` / `bimtek.nama` |
+| Bidang | `alumni_historis.bidang` / `bimtek.bidangIds[0]` |
+| Tipe | `alumni_historis.tipe` / `bimtek.tipe` |
+| Lulus | — (tidak ada di historis) / `bimtek_scores.lulus` |
+| Sumber | `Historis` / `Sistem` |
+
+Fitur UI:
+- Search by nama / instansi
+- Filter: tahun range, bidang, tipe, sumber
+- Pagination (data bisa 12k+ baris)
+- Export Excel
+
+#### Sub-tab "Direktori" ⏳ *Masih dalam pembahasan*
+
+Konsep: satu baris per orang unik. Dedup strategy menggunakan NIK sebagai primary key, dengan fallback ke `nama + instansi` untuk record yang tidak punya NIK.
+
+Catatan: NIK di `alumni_historis` masuk Grup C (opsional, tidak wajib bersih) — kualitas dedup bergantung kelengkapan NIK di data historis. Detail implementasi belum diputuskan.
+
+**Navigasi:** Tambah `alumni` ke hash router admin di bawah grup Master Data (`/alumni`).
+
+**File baru yang diperlukan:**
+```
+admin/js/modules/alumni/
+  index.js       ← entry point + router sub-tab
+  api.js         ← query alumni_historis + bimtek completed
+  sub-riwayat.js ← Sub-tab Riwayat
+  sub-direktori.js ← Sub-tab Direktori (belum dikerjakan)
+```
+
+---
+
 ## 10. Risk Register
 
 | ID | Risiko | Probabilitas | Impact | Mitigasi |
