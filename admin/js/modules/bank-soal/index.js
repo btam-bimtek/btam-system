@@ -15,7 +15,7 @@ const PER_PAGE = 25;
 
 let _state = {
   data: [], total: 0, page: 1, search: '',
-  bidangId: '', bloomLevel: '', activeOnly: true,
+  bidangId: '', bloomLevel: '', activeOnly: true, noUkOnly: false,
   loading: false, lastDocs: [null]
 };
 
@@ -80,6 +80,12 @@ export async function renderBankSoalList({ query = {} } = {}) {
           Sembunyikan nonaktif
         </label>
 
+        <!-- Toggle belum ada UK -->
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
+          <input type="checkbox" id="filter-no-uk" ${_state.noUkOnly ? 'checked' : ''} class="w-4 h-4 rounded" />
+          Belum ada UK
+        </label>
+
         <!-- Stats -->
         <span id="total-badge" class="ml-auto text-xs text-gray-500"></span>
       </div>
@@ -103,6 +109,7 @@ async function _load() {
         bidangId:   _state.bidangId,
         bloomLevel: _state.bloomLevel,
         activeOnly: _state.activeOnly,
+        noUkOnly:   _state.noUkOnly,
         pageSize:   PER_PAGE,
         lastDoc:    _state.lastDocs[_state.page - 1]
       }),
@@ -206,8 +213,11 @@ function _bindEvents() {
   });
 
   document.getElementById('filter-active')?.addEventListener('change', e => {
-    // Checkbox "Sembunyikan nonaktif": checked = activeOnly true, unchecked = tampil semua
     _state.activeOnly = e.target.checked; _reload();
+  });
+
+  document.getElementById('filter-no-uk')?.addEventListener('change', e => {
+    _state.noUkOnly = e.target.checked; _reload();
   });
 
   document.getElementById('btn-add')?.addEventListener('click', () => {

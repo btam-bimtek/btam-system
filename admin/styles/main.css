@@ -17,6 +17,16 @@
 * { transition-property: color, background-color, border-color, opacity;
     transition-duration: 150ms; }
 
+/* ─── Leaflet dark tooltip ────────────────────────────────── */
+.leaflet-tooltip-dark {
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #f3f4f6;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.leaflet-tooltip-dark::before { border-top-color: #374151; }
+
 /* ─── Table ───────────────────────────────────────────────── */
 .btam-table {
   width: 100%;

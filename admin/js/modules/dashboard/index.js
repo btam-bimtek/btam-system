@@ -12,14 +12,17 @@ import {
 import { COL, BIDANG_LIST } from '../../../../shared/constants.js';
 import { getAlumniStats } from '../historis/api.js';
 
-// Simpan instance Chart agar bisa di-destroy saat re-render
 let _charts = {};
+let _leafletMap  = null;
+let _geoJsonData = null; // cache GeoJSON peta Indonesia
+let _sebaranRaw  = null; // cache data sebaran untuk filter tahun
 
 export async function renderDashboard() {
   setPageTitle('Dashboard');
 
   Object.values(_charts).forEach(c => { try { c.destroy(); } catch (_) {} });
   _charts = {};
+  if (_leafletMap) { try { _leafletMap.remove(); } catch (_) {} _leafletMap = null; }
 
   const profile = getState('auth.profile');
   const nama    = profile?.nama ?? profile?.email ?? 'Admin';
@@ -72,10 +75,49 @@ export async function renderDashboard() {
         </div>
       </div>
 
-      <!-- Historis: Sebaran Provinsi & Top Instansi -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" id="sebaran-grid">
+      <!-- Sebaran Provinsi: Map -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 class="text-sm font-semibold text-gray-200">Peta Sebaran Provinsi Peserta</h2>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-400">
+            <!-- Filter tipe -->
+            <div class="flex items-center gap-2">
+              <span>Tipe</span>
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="map-tipe" value="all"     checked class="accent-teal-500"> Semua
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="map-tipe" value="reguler"       class="accent-teal-500"> Reguler
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="map-tipe" value="pnbp"          class="accent-teal-500"> PNBP
+              </label>
+            </div>
+            <!-- Filter periode -->
+            <div class="flex items-center gap-2">
+              <span>Periode</span>
+              <select id="map-year-from"
+                class="bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-teal-500">
+                <option value="">Semua</option>
+              </select>
+              <span>–</span>
+              <select id="map-year-to"
+                class="bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-teal-500">
+                <option value="">Semua</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="map-provinsi" style="height:420px;border-radius:8px;">
+          <div class="flex items-center justify-center h-full text-xs text-gray-500 animate-pulse">Memuat peta…</div>
+        </div>
+        <p id="map-total" class="text-xs text-gray-600 mt-2 text-right"></p>
+      </div>
+
+      <!-- Sebaran Provinsi (bar) & Top Instansi -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h2 class="text-sm font-semibold text-gray-200 mb-4">Sebaran Provinsi Peserta</h2>
+          <h2 class="text-sm font-semibold text-gray-200 mb-4">Sebaran Provinsi (Top 10)</h2>
           <div id="chart-provinsi-wrap" style="height:260px;position:relative;">
             <div class="text-xs text-gray-500 py-6 text-center animate-pulse">Memuat data provinsi…</div>
           </div>
@@ -408,19 +450,28 @@ function _renderChartTrenPeserta(allBimtek, alumniStats) {
 // ─── Sebaran Provinsi & Instansi ──────────────────────────────────────────────
 
 async function _loadSebaranData(allBimtek, alumniStats) {
-  const provinsiCount = {};
-  const instansiCount = {};
-
-  // Seed dari alumni_historis
-  Object.entries(alumniStats?.provinsiCount ?? {}).forEach(([k, v]) => {
-    provinsiCount[k] = (provinsiCount[k] || 0) + v;
+  // Map pesertaId → { years: Set, tipe: string } (dari bimtek sistem baru)
+  const metaByPeserta = {}; // { [pesertaId]: { years: Set<number>, tipe: 'reguler'|'pnbp' } }
+  allBimtek.forEach(b => {
+    if (!b.periode?.mulai) return;
+    const d    = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
+    const yr   = d.getFullYear();
+    const tipe = b.tipe === 'pnbp' ? 'pnbp' : 'reguler';
+    (b.pesertaIds || []).forEach(id => {
+      if (!metaByPeserta[id]) metaByPeserta[id] = { years: new Set(), tipe };
+      metaByPeserta[id].years.add(yr);
+    });
   });
+
+  // provinsiByYearTipe untuk sistem baru + instansiCount
+  const provinsiByYearTipeNew = { all: {}, reguler: {}, pnbp: {} };
+  const instansiCount         = {};
+
   Object.entries(alumniStats?.instansiCount ?? {}).forEach(([k, v]) => {
     instansiCount[k] = (instansiCount[k] || 0) + v;
   });
 
-  // Tambah data peserta sistem baru dari peserta_master
-  const allIds = [...new Set(allBimtek.flatMap(b => b.pesertaIds || []))];
+  const allIds = Object.keys(metaByPeserta);
   if (allIds.length > 0) {
     try {
       const CHUNK = 30;
@@ -431,8 +482,16 @@ async function _loadSebaranData(allBimtek, alumniStats) {
       );
       snaps.forEach(snap => {
         if (!snap.exists()) return;
-        const d = snap.data();
-        if (d.provinsi) provinsiCount[d.provinsi] = (provinsiCount[d.provinsi] || 0) + 1;
+        const d    = snap.data();
+        const meta = metaByPeserta[snap.id];
+        if (d.provinsi && meta) {
+          meta.years.forEach(yr => {
+            for (const key of ['all', meta.tipe]) {
+              if (!provinsiByYearTipeNew[key][yr]) provinsiByYearTipeNew[key][yr] = {};
+              provinsiByYearTipeNew[key][yr][d.provinsi] = (provinsiByYearTipeNew[key][yr][d.provinsi] || 0) + 1;
+            }
+          });
+        }
         if (d.instansi) instansiCount[d.instansi] = (instansiCount[d.instansi] || 0) + 1;
       });
     } catch (err) {
@@ -440,16 +499,244 @@ async function _loadSebaranData(allBimtek, alumniStats) {
     }
   }
 
-  if (Object.keys(provinsiCount).length === 0 && Object.keys(instansiCount).length === 0) {
-    document.getElementById('chart-provinsi-wrap').innerHTML =
-      `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
-    document.getElementById('chart-instansi-wrap').innerHTML =
-      `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
+  // Gabungkan provinsiByYearTipe historis + sistem baru
+  const provinsiByYearTipe = { all: {}, reguler: {}, pnbp: {} };
+  for (const key of ['all', 'reguler', 'pnbp']) {
+    const srcH = alumniStats?.provinsiByYearTipe?.[key] ?? {};
+    const srcN = provinsiByYearTipeNew[key];
+    for (const [yr, map] of [...Object.entries(srcH), ...Object.entries(srcN)]) {
+      if (!provinsiByYearTipe[key][yr]) provinsiByYearTipe[key][yr] = {};
+      Object.entries(map).forEach(([p, c]) => {
+        provinsiByYearTipe[key][yr][p] = (provinsiByYearTipe[key][yr][p] || 0) + c;
+      });
+    }
+  }
+
+  // Aggregate semua tahun untuk tipe 'all' sebagai default
+  const provinsiCountAll = {};
+  Object.values(provinsiByYearTipe.all).forEach(map => {
+    Object.entries(map).forEach(([p, c]) => {
+      provinsiCountAll[p] = (provinsiCountAll[p] || 0) + c;
+    });
+  });
+
+  const allYears = Object.keys(provinsiByYearTipe.all).map(Number).sort();
+  _sebaranRaw = { provinsiByYearTipe, provinsiCountAll, instansiCount, allYears };
+
+  // Isi dropdown filter tahun (dari & sampai)
+  const selFrom = document.getElementById('map-year-from');
+  const selTo   = document.getElementById('map-year-to');
+  if (selFrom && selTo) {
+    allYears.forEach(yr => {
+      const o1 = document.createElement('option'); o1.value = yr; o1.textContent = yr;
+      const o2 = document.createElement('option'); o2.value = yr; o2.textContent = yr;
+      selFrom.appendChild(o1);
+      selTo.appendChild(o2);
+    });
+    if (allYears.length) selTo.value = allYears[allYears.length - 1];
+  }
+
+  const _applyFilter = () => {
+    if (!_sebaranRaw) return;
+    const from    = selFrom?.value ? Number(selFrom.value) : null;
+    const to      = selTo?.value   ? Number(selTo.value)   : null;
+    const tipeKey = document.querySelector('input[name="map-tipe"]:checked')?.value ?? 'all';
+    const byYear  = _sebaranRaw.provinsiByYearTipe[tipeKey] ?? _sebaranRaw.provinsiByYearTipe.all;
+    const count   = _aggregateProvinsiRange(byYear, from, to);
+    _renderMapProvinsi(count);
+    _renderChartProvinsi(count);
+  };
+
+  selFrom?.addEventListener('change', _applyFilter);
+  selTo?.addEventListener('change', _applyFilter);
+  document.querySelectorAll('input[name="map-tipe"]').forEach(r => r.addEventListener('change', _applyFilter));
+
+  if (Object.keys(provinsiCountAll).length === 0 && Object.keys(instansiCount).length === 0) {
+    const mp = document.getElementById('map-provinsi');
+    if (mp) mp.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
+    const pw = document.getElementById('chart-provinsi-wrap');
+    if (pw) pw.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
+    const iw = document.getElementById('chart-instansi-wrap');
+    if (iw) iw.innerHTML = `<p class="text-xs text-gray-500 text-center py-8">Belum ada data peserta.</p>`;
     return;
   }
 
-  _renderChartProvinsi(provinsiCount);
+  _renderMapProvinsi(provinsiCountAll);
+  _renderChartProvinsi(provinsiCountAll);
   _renderChartInstansi(instansiCount);
+}
+
+function _aggregateProvinsiRange(provinsiByYear, from, to) {
+  const result = {};
+  Object.entries(provinsiByYear).forEach(([yr, map]) => {
+    const y = Number(yr);
+    if (from && y < from) return;
+    if (to   && y > to)   return;
+    Object.entries(map).forEach(([p, c]) => {
+      result[p] = (result[p] || 0) + c;
+    });
+  });
+  return result;
+}
+
+// URL GeoJSON peta Indonesia (superpikar, nama provinsi dalam Bahasa Indonesia, property: state)
+const _GEOJSON_URL = 'https://cdn.jsdelivr.net/gh/superpikar/indonesia-geojson@master/indonesia.geojson';
+
+// GeoJSON peta Leaflet yang sedang aktif (untuk resetStyle)
+let _geoLayer = null;
+
+async function _renderMapProvinsi(provinsiCount) {
+  const container = document.getElementById('map-provinsi');
+  if (!container) return;
+
+  // Hapus instance Leaflet sebelumnya
+  if (_leafletMap) {
+    try { _leafletMap.remove(); } catch (_) {}
+    _leafletMap = null;
+    _geoLayer   = null;
+  }
+  // Reset container — penting agar Leaflet tidak menemukan elemen lama
+  container.innerHTML = '';
+
+  if (Object.keys(provinsiCount).length === 0) {
+    container.innerHTML = `<p class="text-xs text-gray-500 text-center py-16">Data provinsi belum tersedia.</p>`;
+    return;
+  }
+
+  // Fetch GeoJSON sekali, cache di module scope
+  if (!_geoJsonData) {
+    try {
+      const res = await fetch(_GEOJSON_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      _geoJsonData = await res.json();
+    } catch (err) {
+      container.innerHTML = `<p class="text-xs text-red-400 p-4 text-center">Gagal memuat data peta: ${_esc(err.message)}</p>`;
+      return;
+    }
+  }
+
+  const values = Object.values(provinsiCount).map(v => v.count ?? v);
+  const maxVal = Math.max(...values, 1);
+
+  // Multi-stop gradient dengan skala sqrt supaya distribusi skewed tetap kontras
+  // Stop: merah gelap → oranye → kuning → hijau → tosca → biru tua
+  const _STOPS = [
+    [0.00, [153,  27,  27]],  // merah-800     (nilai sangat kecil)
+    [0.20, [234,  88,  12]],  // oranye-600    (nilai kecil)
+    [0.40, [234, 179,   8]],  // kuning-500    (nilai sedang-bawah)
+    [0.60, [ 34, 197,  94]],  // hijau-500     (nilai sedang-atas)
+    [0.80, [ 20, 184, 166]],  // tosca-500     (nilai besar)
+    [1.00, [ 29,  78, 216]],  // biru-700      (nilai sangat besar)
+  ];
+
+  function _getColor(count) {
+    if (!count) return '#1e293b'; // abu gelap untuk provinsi tanpa data
+    const t = Math.sqrt(count / maxVal); // sqrt → kontras lebih merata
+    for (let i = 1; i < _STOPS.length; i++) {
+      const [p0, c0] = _STOPS[i - 1];
+      const [p1, c1] = _STOPS[i];
+      if (t <= p1) {
+        const u = (t - p0) / (p1 - p0);
+        const r = Math.round(c0[0] + (c1[0] - c0[0]) * u);
+        const g = Math.round(c0[1] + (c1[1] - c0[1]) * u);
+        const b = Math.round(c0[2] + (c1[2] - c0[2]) * u);
+        return `rgb(${r},${g},${b})`;
+      }
+    }
+    return `rgb(249,115,22)`;
+  }
+
+  // Normalisasi nama provinsi — berlaku untuk data alumni maupun nama di GeoJSON
+  function _norm(s) {
+    return (s || '').toLowerCase()
+      .replace(/^(provinsi|prov\.?|daerah istimewa|dki|di)\s+/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  const normCount = {};
+  Object.entries(provinsiCount).forEach(([k, v]) => { normCount[_norm(k)] = { orig: k, count: v }; });
+
+  // Debug: tampilkan di console agar bisa dicek mismatch
+  console.group('[Map Debug] normCount keys (dari data alumni/peserta):');
+  Object.entries(normCount).forEach(([k, v]) => console.log(`  "${k}" ← "${v.orig}" (${v.count})`));
+  console.groupEnd();
+
+  // Init Leaflet — gunakan requestAnimationFrame agar container sudah di-render browser
+  await new Promise(r => requestAnimationFrame(r));
+
+  _leafletMap = L.map(container, {
+    center: [-2, 118],
+    zoom: 4,
+    zoomControl: true,
+    attributionControl: false,
+    preferCanvas: true,
+  });
+
+  // Tile layer gelap tanpa label (sesuai dark theme)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 14,
+  }).addTo(_leafletMap);
+
+  // Debug: tampilkan GeoJSON names vs match result
+  console.group('[Map Debug] GeoJSON state → norm → match:');
+  (_geoJsonData.features || []).forEach(f => {
+    const raw   = f.properties.state || '';
+    const normd = _norm(raw);
+    const hit   = normCount[normd];
+    console.log(`  "${raw}" → "${normd}" → ${hit ? `✅ ${hit.count}` : '❌ tidak match'}`);
+  });
+  console.groupEnd();
+
+  _geoLayer = L.geoJSON(_geoJsonData, {
+    style: feature => {
+      const rawName = feature.properties.state || '';
+      const count   = normCount[_norm(rawName)]?.count || 0;
+      return {
+        fillColor:   _getColor(count),
+        fillOpacity: 1,
+        color:       '#374151',
+        weight:      0.5,
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const rawName = feature.properties.state || '?';
+      const count   = normCount[_norm(rawName)]?.count || 0;
+      layer.bindTooltip(
+        `<div style="font-size:12px;padding:4px 8px"><b>${rawName}</b><br>${count.toLocaleString('id-ID')} peserta</div>`,
+        { sticky: true, className: 'leaflet-tooltip-dark' }
+      );
+      layer.on({
+        mouseover(e) { e.target.setStyle({ weight: 1.5, color: '#14b8a6' }); },
+        mouseout(e)  { _geoLayer?.resetStyle(e.target); },
+      });
+    },
+  }).addTo(_leafletMap);
+
+  // Legenda
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = () => {
+    const div = L.DomUtil.create('div');
+    div.style.cssText = 'background:#1f2937;padding:8px 12px;border-radius:6px;border:1px solid #374151;font-size:11px;color:#9ca3af;line-height:1.6';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <div style="width:120px;height:10px;border-radius:3px;background:linear-gradient(to right,#991b1b,#ea580c,#eab308,#22c55e,#14b8a6,#1d4ed8)"></div>
+        <span>Peserta</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;width:120px"><span>0</span><span>${Math.max(...values).toLocaleString('id-ID')}</span></div>`;
+    return div;
+  };
+  legend.addTo(_leafletMap);
+
+  // Paksa recalculate ukuran (penting jika container baru saja di-render)
+  setTimeout(() => _leafletMap?.invalidateSize(), 150);
+
+  const total = values.reduce((s, v) => s + v, 0);
+  const el    = document.getElementById('map-total');
+  if (el) el.textContent = `Total: ${total.toLocaleString('id-ID')} peserta dari ${values.length} provinsi`;
+
+  console.log('[Map Debug] provinsiCount raw:', provinsiCount);
 }
 
 function _renderChartProvinsi(provinsiCount) {

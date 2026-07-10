@@ -20,6 +20,7 @@ export async function listSoal({
   bidangId    = '',
   bloomLevel  = '',
   activeOnly  = true,
+  noUkOnly    = false,
   pageSize    = 25,
   lastDoc     = null
 } = {}) {
@@ -36,7 +37,6 @@ export async function listSoal({
   const snap = await getDocs(q);
   let data   = snapToArray(snap);
 
-  // Client-side search (pertanyaan substring)
   if (search) {
     const s = search.toLowerCase();
     data = data.filter(s2 =>
@@ -45,6 +45,7 @@ export async function listSoal({
       s2.tags?.some(t => t.toLowerCase().includes(s))
     );
   }
+  if (noUkOnly) data = data.filter(s2 => !s2.unitKompetensi);
 
   return { data, lastDoc: snap.docs[snap.docs.length - 1] ?? null };
 }

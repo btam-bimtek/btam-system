@@ -96,11 +96,13 @@ export async function getAlumniStats() {
 
   const rows = snapToArray(snap);
 
-  const pesertaByYear  = {};  // { tahun: jumlah_baris }
-  const bimtekByYear   = {};  // { tahun: Set<nama_bimtek> } → unique bimtek per tahun
-  const bidangCount    = {};  // { bidang: count }
-  const provinsiCount  = {};  // { provinsi: count }
-  const instansiCount  = {};  // { instansi: count }
+  const pesertaByYear     = {};  // { tahun: jumlah_baris }
+  const bimtekByYear      = {};  // { tahun: Set<nama_bimtek> } → unique bimtek per tahun
+  const bidangCount       = {};  // { bidang: count }
+  const provinsiCount     = {};  // { provinsi: count }
+  const provinsiByYear    = {};  // { tahun: { provinsi: count } }
+  const provinsiByYearTipe = { all: {}, reguler: {}, pnbp: {} }; // { tipe: { tahun: { provinsi: count } } }
+  const instansiCount     = {};  // { instansi: count }
 
   rows.forEach(r => {
     const yr = r.tahun;
@@ -118,8 +120,18 @@ export async function getAlumniStats() {
     // Bidang
     if (r.bidang) bidangCount[r.bidang] = (bidangCount[r.bidang] || 0) + 1;
 
-    // Provinsi
-    if (r.provinsi) provinsiCount[r.provinsi] = (provinsiCount[r.provinsi] || 0) + 1;
+    // Provinsi (aggregate + per-tahun + per-tipe)
+    if (r.provinsi) {
+      provinsiCount[r.provinsi] = (provinsiCount[r.provinsi] || 0) + 1;
+      if (!provinsiByYear[yr]) provinsiByYear[yr] = {};
+      provinsiByYear[yr][r.provinsi] = (provinsiByYear[yr][r.provinsi] || 0) + 1;
+
+      const tipeKey = r.tipe === 'pnbp' ? 'pnbp' : 'reguler';
+      for (const key of ['all', tipeKey]) {
+        if (!provinsiByYearTipe[key][yr]) provinsiByYearTipe[key][yr] = {};
+        provinsiByYearTipe[key][yr][r.provinsi] = (provinsiByYearTipe[key][yr][r.provinsi] || 0) + 1;
+      }
+    }
 
     // Instansi
     if (r.instansi) instansiCount[r.instansi] = (instansiCount[r.instansi] || 0) + 1;
@@ -139,6 +151,8 @@ export async function getAlumniStats() {
     bimtekCountByYear,
     bidangCount,
     provinsiCount,
+    provinsiByYear,
+    provinsiByYearTipe,
     instansiCount,
   };
 }

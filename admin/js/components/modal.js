@@ -36,10 +36,10 @@ export function openModal({ title, body, actions = [], size = 'md', closable = t
   el.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
   el.innerHTML = `
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="${id}-backdrop"></div>
-    <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full ${sizeClass}
-                flex flex-col max-h-[90vh]">
+    <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full ${sizeClass}"
+         style="display:flex;flex-direction:column;max-height:90vh">
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 shrink-0">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800" style="flex-shrink:0">
         <h3 class="text-base font-semibold text-white">${title}</h3>
         ${closable ? `<button id="${id}-close" class="text-gray-500 hover:text-gray-300 transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -48,11 +48,11 @@ export function openModal({ title, body, actions = [], size = 'md', closable = t
         </button>` : ''}
       </div>
       <!-- Body -->
-      <div class="px-6 py-5 overflow-y-auto flex-1" id="${id}-body">
+      <div class="px-6 py-5" style="overflow-y:auto;flex:1 1 0;min-height:0" id="${id}-body">
         ${body}
       </div>
       <!-- Footer -->
-      ${actionsHTML ? `<div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3 shrink-0">
+      ${actionsHTML ? `<div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3" style="flex-shrink:0">
         ${actionsHTML}
       </div>` : ''}
     </div>

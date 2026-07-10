@@ -86,13 +86,13 @@ export async function openSoalForm(soalId = null, onSaved) {
                     class="form-input w-full text-left flex items-center justify-between gap-2 pr-2">
               <span id="uk-display" class="truncate text-gray-500 text-sm">Pilih Unit Kompetensi…</span>
               <div class="flex items-center gap-1 shrink-0">
-                <button type="button" id="btn-uk-clear"
-                        class="hidden text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded"
-                        title="Hapus pilihan">
+                <span id="btn-uk-clear"
+                      class="hidden text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
+                      title="Hapus pilihan">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
-                </button>
+                </span>
                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -221,7 +221,7 @@ export async function openSoalForm(soalId = null, onSaved) {
     </form>
   `;
 
-  openModal({
+  const modal = openModal({
     title:  isEdit ? 'Edit Soal' : 'Tambah Soal',
     body,
     size:   'xl',
@@ -234,6 +234,7 @@ export async function openSoalForm(soalId = null, onSaved) {
   _bindOpsiEvents();
   _bindImageEvents();
   _initUKPicker(existing);
+
 }
 
 // ─── Opsi row HTML ────────────────────────────────────────────
