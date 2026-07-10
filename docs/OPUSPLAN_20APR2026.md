@@ -3093,23 +3093,40 @@ Tim lain di lingkungan BTAM (yang tidak familiar Firestore tapi terbiasa Excel/G
 
 Satu baris per keikutsertaan. Tidak ada deduplication.
 
+**Kolom tabel utama:**
+
 | Kolom | Sumber |
 |---|---|
 | Nama | `alumni_historis.nama_peserta` / `peserta_master.nama` |
+| NIK | `alumni_historis.NIK` / `peserta_master.NIK` |
 | Instansi | `alumni_historis.instansi` / `peserta_master.instansi` |
+| Kab/Kota | `alumni_historis.kab_kota` / `peserta_master.kabKota` |
 | Provinsi | `alumni_historis.provinsi` / `peserta_master.provinsi` |
 | Tahun | `alumni_historis.tahun` / `bimtek.periode.mulai` (year) |
 | Nama Bimtek | `alumni_historis.nama_bimtek` / `bimtek.nama` |
-| Bidang | `alumni_historis.bidang` / `bimtek.bidangIds[0]` |
 | Tipe | `alumni_historis.tipe` / `bimtek.tipe` |
-| Lulus | — (tidak ada di historis) / `bimtek_scores.lulus` |
 | Sumber | `Historis` / `Sistem` |
 
+**Expandable row** (klik baris untuk expand):
+
+| Field | Sumber |
+|---|---|
+| Jabatan / Kelas Jabatan | `alumni_historis.kelas_jabatan` / `peserta_master.jabatan` |
+| Pendidikan | `alumni_historis.pendidikan` / `peserta_master.pendidikan` |
+| Jenis Kelamin | `alumni_historis.jenis_kelamin` / `peserta_master.jenisKelamin` |
+| Mode | `alumni_historis.mode` / `bimtek.mode` |
+| Jenis Lokasi | `alumni_historis.jenis_lokasi` / — |
+| Tanggal Mulai | `alumni_historis.tanggal_mulai` / `bimtek.periode.mulai` |
+| Tanggal Selesai | `alumni_historis.tanggal_selesai` / `bimtek.periode.selesai` |
+| Lulus | — (tidak ada di historis) / `bimtek_scores.lulus` |
+| Email | `alumni_historis.email` / `peserta_master.email` |
+| No HP | `alumni_historis.noHP` / `peserta_master.noHp` |
+
 Fitur UI:
-- Search by nama / instansi
+- Search by nama / instansi / NIK
 - Filter: tahun range, bidang, tipe, sumber
 - Pagination (data bisa 12k+ baris)
-- Export Excel
+- Export Excel (semua kolom, termasuk field expandable)
 
 #### Sub-tab "Direktori" ⏳ *Masih dalam pembahasan*
 
