@@ -8,7 +8,6 @@ import {
 import { COL } from '../../../../shared/constants.js';
 import { hitungNilaiAkhir, cekKelulusan } from '../bimtek/scorer.js';
 import { calcEKComparison } from '../bimtek/report-api.js';
-import { getUKByKodes } from '../master-uk/api.js';
 
 // ─── RIWAYAT BIMTEK ───────────────────────────────────────────────────────────
 
@@ -99,42 +98,18 @@ export async function getPesertaEKHistory(noPeserta) {
     });
   }
 
-  // 6. Batch load UK master (sekali untuk semua ukIds di semua bimtek)
-  const allUkIds = [...new Set(bimtekIds.flatMap(id => bimtekMap[id]?.ukIds || []))];
-  const ukMasterMap = allUkIds.length > 0 ? await getUKByKodes(allUkIds) : {};
-
-  // 7. Per bimtek: hitung UK comparison + merge baseline
+  // 6. Per bimtek: hitung UK comparison dari soal ujian
   const bimtekEKMap = {}; // bimtekId → ekComparison[]
 
   for (const [bimtekId, { pretest, posttest }] of Object.entries(byBimtek)) {
     const bimtek = bimtekMap[bimtekId];
     if (!bimtek) continue;
 
-    let ekComp = calcEKComparison(
+    bimtekEKMap[bimtekId] = calcEKComparison(
       pretest?.detail  ?? {},
       posttest?.detail ?? {},
       soalMap
     );
-
-    // Merge baseline ukIds jika ada
-    const baselineIds = bimtek.ukIds || [];
-    if (baselineIds.length > 0) {
-      const existingKeys = new Set(ekComp.map(e => e.ekKey?.toLowerCase()));
-      const missing = baselineIds
-        .filter(id => !existingKeys.has(id.toLowerCase()))
-        .map(id => {
-          const master = ukMasterMap[id.toLowerCase()];
-          return { ekKey: master?.kode ?? id, ekNama: master?.nama ?? id, prePct: null, postPct: null, delta: null };
-        });
-      // Perbarui nama UK dari master
-      ekComp = ekComp.map(e => {
-        const master = ukMasterMap[e.ekKey?.toLowerCase()];
-        return master ? { ...e, ekNama: master.nama } : e;
-      });
-      ekComp = [...ekComp, ...missing];
-    }
-
-    bimtekEKMap[bimtekId] = ekComp;
   }
 
   // 8. Aggregate per UK key

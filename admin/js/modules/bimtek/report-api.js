@@ -237,7 +237,7 @@ export function calcEKComparison(pretestDetail, posttestDetail, soalMap) {
     for (const [soalId, d] of Object.entries(detail ?? {})) {
       const soal  = soalMap[soalId];
       if (!soal) continue;
-      const ekKey  = soal.unitKompetensi || soal.bloomLevel || 'unknown';
+      const ekKey  = (soal.unitKompetensi?.toUpperCase()) || soal.bloomLevel || 'unknown';
       const ekNama = soal.ekNama || ekKey;
       if (!ekMap[ekKey]) {
         ekMap[ekKey] = { ekKey, ekNama, preSkor: 0, preBobot: 0, postSkor: 0, postBobot: 0 };
@@ -325,7 +325,7 @@ async function _calcEKDataAll(examResults, exams) {
       for (const [soalId, d] of Object.entries(detail)) {
         const soal = soalMap[soalId];
         if (!soal) continue;
-        const ekKey = soal.unitKompetensi || soal.bloomLevel || 'unknown';
+        const ekKey = (soal.unitKompetensi?.toUpperCase()) || soal.bloomLevel || 'unknown';
         if (!agg[ekKey]) agg[ekKey] = { ekNama: soal.ekNama || ekKey, totalSkor: 0, totalBobot: 0, pesertaSet: new Set() };
         agg[ekKey].totalSkor  += d.skor  ?? 0;
         agg[ekKey].totalBobot += d.bobot ?? 1;
@@ -413,9 +413,10 @@ async function _buildSoalErrorData(examResults, exams) {
     const soal = soalMap[s.soalId];
     return {
       ...s,
-      pertanyaan:       soal?.pertanyaan       ?? s.soalId,
-      unitKompetensi: soal?.unitKompetensi ?? '—',
-      bloomLevel:       soal?.bloomLevel       ?? '—',
+      pertanyaan:       soal?.pertanyaan                              ?? s.soalId,
+      unitKompetensi: soal?.unitKompetensi?.toUpperCase()          ?? '—',
+      ekNama:           soal?.ekNama                                  ?? null,
+      bloomLevel:       soal?.bloomLevel                              ?? '—',
       persenSalah: s.totalAttempts > 0
         ? Math.round((s.salahCount / s.totalAttempts) * 100)
         : 0

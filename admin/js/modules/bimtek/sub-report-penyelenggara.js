@@ -322,8 +322,9 @@ function _renderPerSoal(el) {
         <td class="text-center text-gray-500 text-xs">${i + 1}</td>
         <td class="text-sm text-gray-200 max-w-xs">
           <div class="line-clamp-2">${_esc(s.pertanyaan)}</div>
-          <div class="flex gap-1 mt-1">
-            <span class="badge badge-blue text-xs">${_esc(s.unitKompetensi)}</span>
+          <div class="flex gap-1 mt-1 flex-wrap">
+            ${s.unitKompetensi !== '—' ? `<span class="badge badge-blue text-xs font-mono">${_esc(s.unitKompetensi)}</span>` : ''}
+            ${s.ekNama ? `<span class="text-xs text-gray-500 self-center">${_esc(s.ekNama)}</span>` : ''}
             <span class="badge badge-gray text-xs">${_esc(s.bloomLevel)}</span>
           </div>
         </td>
@@ -553,7 +554,12 @@ function _initSoalErrorChart(top10) {
 
   _destroyChart('soal-error');
   // Label disingkat: nomor urut + UK agar tidak terlalu panjang
-  const labels = top10.map((s, i) => `#${i + 1} ${s.unitKompetensi !== '—' ? s.unitKompetensi : ''}`);
+  const labels = top10.map((s, i) => {
+    const uk = s.unitKompetensi !== '—' ? s.unitKompetensi : '';
+    const line1 = `#${i + 1} ${uk}`.trim();
+    const line2 = s.ekNama ?? '';
+    return line2 ? [line1, line2] : line1;
+  });
   const colors = top10.map(s =>
     s.persenSalah >= 70 ? '#ef4444' : s.persenSalah >= 40 ? '#f59e0b' : '#22c55e'
   );

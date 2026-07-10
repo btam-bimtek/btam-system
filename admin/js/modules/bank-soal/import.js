@@ -253,7 +253,7 @@ function _mapRowToSoal(row) {
     pertanyaan:              row.pertanyaan,
     bidangId,
     bloomLevel,
-    unitKompetensi:        row.unitKompetensi ?? '',
+    unitKompetensi:        row.unitKompetensi?.toUpperCase() ?? '',
     opsi,
     kunci,
     pembahasan:              row.pembahasan ?? '',
