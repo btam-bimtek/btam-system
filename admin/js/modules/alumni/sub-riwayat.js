@@ -225,8 +225,8 @@ function _buildRows(r, idx) {
           ${_detailCell('Jenis Kelamin', r.jenisKelamin === 'L' ? 'Laki-laki' : r.jenisKelamin === 'P' ? 'Perempuan' : r.jenisKelamin)}
           ${_detailCell('Mode',          r.mode)}
           ${_detailCell('Jenis Lokasi',  r.jenisLokasi)}
-          ${_detailCell('Tgl Mulai',     r.tglMulai)}
-          ${_detailCell('Tgl Selesai',   r.tglSelesai)}
+          <div><p class="text-gray-600 mb-0.5">Tgl Mulai</p><p class="text-gray-300">${_fmtTgl(r.tglMulai)}</p></div>
+          <div><p class="text-gray-600 mb-0.5">Tgl Selesai</p><p class="text-gray-300">${_fmtTgl(r.tglSelesai)}</p></div>
           <div><p class="text-gray-600 mb-0.5">Lulus</p><p class="text-gray-300">${lulusCell}</p></div>
           ${_detailCell('Email',         r.email)}
           ${_detailCell('No HP',         r.noHp)}
@@ -255,4 +255,17 @@ function _skeleton() {
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Tangani serial date Excel (angka) maupun string tanggal biasa
+function _fmtTgl(val) {
+  if (!val && val !== 0) return '—';
+  if (typeof val === 'number') {
+    // Excel serial date: hari sejak 1 Jan 1900 (dengan koreksi bug leap year 1900)
+    const ms = (val - 25569) * 86400 * 1000;
+    const d  = new Date(ms);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  return String(val);
 }
