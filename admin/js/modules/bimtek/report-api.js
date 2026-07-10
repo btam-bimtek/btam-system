@@ -354,24 +354,22 @@ async function _calcEKDataAll(examResults, exams) {
 }
 
 function _buildPengajarData(scores, mapels, pengajars) {
-  // Buat map pengajar → mapel yang diajar
+  // Buat map pengajar → mapel yang diajar (nama + jp)
   const pengajarMapelMap = {};
   mapels.forEach(m => {
     (m.pengajarIds ?? []).forEach(pgId => {
       if (!pengajarMapelMap[pgId]) pengajarMapelMap[pgId] = [];
-      pengajarMapelMap[pgId].push(m.nama);
+      pengajarMapelMap[pgId].push({ nama: m.nama, jp: m.totalJp ?? 0 });
     });
   });
 
-  const avgNilaiPengajar = _avg(scores.map(s => s.pengajar).filter(v => v != null));
-
-  return pengajars.map(pg => ({
-    id: pg.id,
-    nama: pg.nama,
-    bidang: pg.bidang ?? [],
-    mapels: pengajarMapelMap[pg.id] ?? [],
-    avgNilai: avgNilaiPengajar
-  }));
+  return pengajars
+    .map(pg => {
+      const mapelList = pengajarMapelMap[pg.id] ?? [];
+      const totalJp   = mapelList.reduce((s, m) => s + m.jp, 0);
+      return { id: pg.id, nama: pg.nama, bidang: pg.bidang ?? [], mapels: mapelList, totalJp };
+    })
+    .filter(pg => pg.mapels.length > 0);
 }
 
 async function _buildSoalErrorData(examResults, exams) {

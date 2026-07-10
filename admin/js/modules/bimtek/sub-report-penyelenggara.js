@@ -389,37 +389,43 @@ function _renderPerPengajar(el) {
     return;
   }
 
-  const rows = pengajarData.map(pg => {
+  const rows = pengajarData.map((pg, i) => {
     const bidangStr = (pg.bidang ?? []).map(b => {
       const found = BIDANG_LIST.find(x => x.bidangId === b);
-      return found ? `<span class="badge badge-blue text-xs mr-1">${_esc(found.nama)}</span>` : '';
-    }).join('');
-    const mapelStr = pg.mapels.length > 0 ? pg.mapels.map(_esc).join(', ') : '—';
+      return found ? `<span class="badge badge-blue text-xs">${_esc(found.nama)}</span>` : '';
+    }).join(' ');
+
+    const mapelRows = pg.mapels.length > 0
+      ? pg.mapels.map(m => `
+          <div class="flex items-center gap-2 py-0.5">
+            <span class="text-sm text-gray-300">${_esc(m.nama)}</span>
+            <span class="text-xs text-gray-500">${m.jp} JP</span>
+          </div>`).join('')
+      : '<span class="text-sm text-gray-600">—</span>';
 
     return `
       <tr>
+        <td class="text-center text-gray-500 w-8">${i + 1}</td>
         <td>
           <div class="font-medium text-white text-sm">${_esc(pg.nama)}</div>
-          <div class="mt-0.5">${bidangStr}</div>
+          <div class="flex gap-1 mt-1 flex-wrap">${bidangStr}</div>
         </td>
-        <td class="text-sm text-gray-300">${mapelStr}</td>
-        <td class="text-center text-sm">
-          ${stats.avgNilaiAkhir != null ? stats.avgNilaiAkhir : '—'}
+        <td>${mapelRows}</td>
+        <td class="text-center text-sm ${pg.totalJp > 0 ? 'text-gray-300' : 'text-gray-600'}">
+          ${pg.totalJp > 0 ? `${pg.totalJp} JP` : '—'}
         </td>
       </tr>`;
   }).join('');
 
   el.innerHTML = `
-    <div class="text-xs text-gray-400 mb-3">
-      Nilai pengajar yang ditampilkan adalah rata-rata nilai akhir seluruh peserta bimtek ini.
-    </div>
     <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       <table class="btam-table">
         <thead>
           <tr>
+            <th class="w-8 text-center">#</th>
             <th>Pengajar</th>
             <th>Mata Pelajaran Diampu</th>
-            <th class="text-center">Avg Nilai Akhir Kelas</th>
+            <th class="w-24 text-center">Total JP</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
