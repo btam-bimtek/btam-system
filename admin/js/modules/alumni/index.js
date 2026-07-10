@@ -12,7 +12,7 @@ const TABS = [
 export function renderAlumni({ tab = 'riwayat' } = {}) {
   setPageTitle('Alumni');
 
-  const app = document.getElementById('app-content');
+  const app = document.getElementById('app');
   if (!app) return;
 
   app.innerHTML = `
