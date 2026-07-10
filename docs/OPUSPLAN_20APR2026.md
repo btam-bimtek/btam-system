@@ -3104,6 +3104,7 @@ Satu baris per keikutsertaan. Tidak ada deduplication.
 | Provinsi | `alumni_historis.provinsi` / `peserta_master.provinsi` |
 | Tahun | `alumni_historis.tahun` / `bimtek.periode.mulai` (year) |
 | Nama Bimtek | `alumni_historis.nama_bimtek` / `bimtek.nama` |
+| Bidang | `alumni_historis.bidang` / `bimtek.bidangIds[0]` |
 | Tipe | `alumni_historis.tipe` / `bimtek.tipe` |
 | Sumber | `Historis` / `Sistem` |
 
