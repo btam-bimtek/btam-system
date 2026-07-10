@@ -169,6 +169,12 @@ function _registerRoutes() {
     import('./modules/historis/index.js').then(m => m.renderHistoris());
   });
 
+  route('/alumni', ({ query }) => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/alumni/index.js').then(m => m.renderAlumni({ tab: query.tab ?? 'riwayat' }));
+  });
+
   // ── Rekrutmen ──
   route('/rekrutmen/siklus', () => {
     _setLoginMode(false);
