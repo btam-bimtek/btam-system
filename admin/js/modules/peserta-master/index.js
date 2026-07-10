@@ -89,20 +89,19 @@ async function _load() {
   _renderTable();
 
   try {
-    const [{ data, lastDoc }, total] = await Promise.all([
-      listPeserta({
-        search:   _state.search,
-        pageSize: PER_PAGE,
-        lastDoc:  _state.lastDocs[_state.page - 1] ?? null
-      }),
-      countPeserta()
-    ]);
-
-    _state.data  = data;
-    _state.total = total;
-
-    // Store cursor untuk halaman berikutnya
-    if (lastDoc) _state.lastDocs[_state.page] = lastDoc;
+    if (_state.search) {
+      const { data } = await listPeserta({ search: _state.search });
+      _state.data  = data;
+      _state.total = data.length;
+    } else {
+      const [{ data, lastDoc }, total] = await Promise.all([
+        listPeserta({ pageSize: PER_PAGE, lastDoc: _state.lastDocs[_state.page - 1] ?? null }),
+        countPeserta()
+      ]);
+      _state.data  = data;
+      _state.total = total;
+      if (lastDoc) _state.lastDocs[_state.page] = lastDoc;
+    }
 
   } catch (err) {
     showToast('Gagal memuat data: ' + err.message, 'error');

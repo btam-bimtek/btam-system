@@ -27,31 +27,46 @@ const COL_NAME = COL.PESERTA_MASTER;
  * @returns {Promise<{data: object[], lastDoc: object|null}>}
  */
 export async function listPeserta({ search = '', instansiId = '', pageSize = 25, lastDoc = null } = {}) {
+  // Saat ada search: fetch semua tanpa limit lalu filter client-side
+  // (Firestore tidak support substring search)
+  if (search) {
+    let q = query(
+      collection(db, COL_NAME),
+      where('deleted', '==', false),
+      orderBy('nama')
+    );
+    if (instansiId) q = query(q, where('instansiId', '==', instansiId));
+
+    const snap = await getDocs(q);
+    const s    = search.toLowerCase();
+    const data = snapToArray(snap).filter(p =>
+      p.nama?.toLowerCase().includes(s)       ||
+      p.noPeserta?.toLowerCase().includes(s)  ||
+      p.instansi?.toLowerCase().includes(s)   ||
+      p.jabatan?.toLowerCase().includes(s)    ||
+      p.unitKerja?.toLowerCase().includes(s)  ||
+      p.provinsi?.toLowerCase().includes(s)   ||
+      p.kabKota?.toLowerCase().includes(s)    ||
+      p.pendidikan?.toLowerCase().includes(s) ||
+      p.email?.toLowerCase().includes(s)      ||
+      p.noHp?.toLowerCase().includes(s)
+    );
+    return { data, lastDoc: null };
+  }
+
+  // Tanpa search: cursor pagination normal
   let q = query(
     collection(db, COL_NAME),
     where('deleted', '==', false),
     orderBy('nama'),
     limit(pageSize)
   );
-
   if (instansiId) q = query(q, where('instansiId', '==', instansiId));
   if (lastDoc)    q = query(q, startAfter(lastDoc));
 
   const snap = await getDocs(q);
-  let data = snapToArray(snap);
-
-  // Client-side search (Firestore tidak support full substring search)
-  if (search) {
-    const s = search.toLowerCase();
-    data = data.filter(p =>
-      p.nama?.toLowerCase().includes(s) ||
-      p.noPeserta?.toLowerCase().includes(s) ||
-      p.instansi?.toLowerCase().includes(s)
-    );
-  }
-
   return {
-    data,
+    data:    snapToArray(snap),
     lastDoc: snap.docs[snap.docs.length - 1] ?? null
   };
 }
