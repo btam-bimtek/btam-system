@@ -257,15 +257,17 @@ function _esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Tangani serial date Excel (angka) maupun string tanggal biasa
+// Tangani serial date Excel (number atau string angka) maupun string tanggal biasa
 function _fmtTgl(val) {
-  if (!val && val !== 0) return '—';
-  if (typeof val === 'number') {
-    // Excel serial date: hari sejak 1 Jan 1900 (dengan koreksi bug leap year 1900)
-    const ms = (val - 25569) * 86400 * 1000;
+  if (val === null || val === undefined || val === '') return '—';
+  const num = Number(val);
+  if (!isNaN(num) && num > 1000) {
+    // Excel serial date: hari sejak 1 Jan 1900
+    const ms = (num - 25569) * 86400 * 1000;
     const d  = new Date(ms);
-    if (isNaN(d.getTime())) return String(val);
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
   }
   return String(val);
 }
