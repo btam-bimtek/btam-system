@@ -149,71 +149,95 @@ export async function updateUK(id, rawData) {
   await updateDoc(doc(db, COL_NAME, id), { ...data, updatedAt: serverTimestamp() });
   await logAudit({ action: 'update_ek', entityType: 'unit_kompetensi', entityId: id, metadata: { nama: data.nama } });
 
-  // Sync ekNama di bank_soal yang mereferensikan UK ini
-  if (data.nama) await _syncSoalEkNama(id, data.nama);
+  // Sync unitKompetensi + ekNama di bank_soal yang mereferensikan UK ini
+  // Ambil kode canonical dari doc yang baru diupdate
+  if (data.nama) {
+    const ukSnap = await getDoc(doc(db, COL_NAME, id));
+    const kode   = ukSnap.exists() ? ukSnap.data().kode : null;
+    await _syncSoalEkNama(id, kode, data.nama);
+  }
 }
 
 /**
  * Sync ekNama di bank_soal untuk satu UK (dipanggil setelah updateUK).
+ * Query dua kali: lowercase dan uppercase, karena data lama mungkin tidak konsisten.
  * @param {string} ukId  - doc ID UK (= kode.toLowerCase())
+ * @param {string} kode  - kode canonical uppercase dari master
  * @param {string} nama  - nama terbaru dari master
  */
-async function _syncSoalEkNama(ukId, nama) {
-  const snap = await getDocs(
-    query(collection(db, COL.BANK_SOAL),
-      where('deleted', '==', false),
-      where('unitKompetensi', '==', ukId)
-    )
-  );
-  if (snap.empty) return;
+async function _syncSoalEkNama(ukId, kode, nama) {
+  // Query dengan kedua kemungkinan nilai yang tersimpan
+  const variants = [...new Set([ukId, kode, ukId.toUpperCase(), kode?.toLowerCase()].filter(Boolean))];
+  const allDocs = [];
+  for (const v of variants) {
+    const snap = await getDocs(
+      query(collection(db, COL.BANK_SOAL),
+        where('deleted', '==', false),
+        where('unitKompetensi', '==', v)
+      )
+    );
+    snap.docs.forEach(d => {
+      if (!allDocs.find(x => x.id === d.id)) allDocs.push(d);
+    });
+  }
+  if (!allDocs.length) return;
 
   const CHUNK = 500;
-  const docs  = snap.docs;
-  for (let i = 0; i < docs.length; i += CHUNK) {
+  for (let i = 0; i < allDocs.length; i += CHUNK) {
     const batch = writeBatch(db);
-    docs.slice(i, i + CHUNK).forEach(d => {
-      batch.update(d.ref, { ekNama: nama, updatedAt: serverTimestamp() });
+    allDocs.slice(i, i + CHUNK).forEach(d => {
+      batch.update(d.ref, {
+        unitKompetensi: kode ?? ukId.toUpperCase(),
+        ekNama:         nama,
+        updatedAt:      serverTimestamp()
+      });
     });
     await batch.commit();
   }
 }
 
 /**
- * Sync massal ekNama di seluruh bank_soal berdasarkan master UK.
- * Soal yang unitKompetensi-nya match dengan kode master → ekNama diupdate.
+ * Sync massal unitKompetensi + ekNama di seluruh bank_soal berdasarkan master UK.
+ * Soal yang match → unitKompetensi dinormalisasi ke kode canonical + ekNama diupdate.
  * Soal yang tidak match → dibiarkan.
  * @returns {{ updated: number, skipped: number }}
  */
 export async function syncBankSoalUK() {
-  // 1. Load semua UK master (kode → nama)
+  // 1. Load semua UK master → map lowercase key → { kode canonical, nama }
   const ukSnap = await getDocs(
     query(collection(db, COL_NAME), where('deleted', '==', false))
   );
-  const ukMap = {}; // kode.toLowerCase() → nama
+  const ukMap = {}; // key lowercase → { kode, nama }
   ukSnap.docs.forEach(d => {
     const data = d.data();
-    if (data.kode) ukMap[data.kode.toLowerCase()] = data.nama;
-    ukMap[d.id.toLowerCase()] = data.nama; // doc ID alias
+    const entry = { kode: data.kode ?? d.id.toUpperCase(), nama: data.nama };
+    if (data.kode) ukMap[data.kode.toLowerCase()] = entry;
+    ukMap[d.id.toLowerCase()] = entry;
   });
 
-  // 2. Load semua soal yang punya unitKompetensi
+  // 2. Load semua soal aktif
   const soalSnap = await getDocs(
     query(collection(db, COL.BANK_SOAL), where('deleted', '==', false))
   );
+
   const toUpdate = soalSnap.docs.filter(d => {
     const uk = d.data().unitKompetensi;
     return uk && ukMap[uk.toLowerCase()] !== undefined;
   });
 
-  // 3. Batch update ekNama
+  // 3. Batch update unitKompetensi (canonical) + ekNama
   let updated = 0;
   const CHUNK = 500;
   for (let i = 0; i < toUpdate.length; i += CHUNK) {
     const batch = writeBatch(db);
     toUpdate.slice(i, i + CHUNK).forEach(d => {
-      const uk   = d.data().unitKompetensi;
-      const nama = ukMap[uk.toLowerCase()];
-      batch.update(d.ref, { ekNama: nama, updatedAt: serverTimestamp() });
+      const uk    = d.data().unitKompetensi;
+      const entry = ukMap[uk.toLowerCase()];
+      batch.update(d.ref, {
+        unitKompetensi: entry.kode,
+        ekNama:         entry.nama,
+        updatedAt:      serverTimestamp()
+      });
       updated++;
     });
     await batch.commit();
