@@ -4,7 +4,7 @@
 import {
   db, doc, getDoc, getDocs, addDoc, setDoc, updateDoc,
   collection, query, where, orderBy, limit, startAfter,
-  serverTimestamp, getCountFromServer,
+  serverTimestamp, getCountFromServer, writeBatch,
   snapToArray, snapToDoc
 } from '../../../../shared/db.js';
 import { logAudit } from '../../../../shared/logger.js';
@@ -148,6 +148,79 @@ export async function updateUK(id, rawData) {
 
   await updateDoc(doc(db, COL_NAME, id), { ...data, updatedAt: serverTimestamp() });
   await logAudit({ action: 'update_ek', entityType: 'unit_kompetensi', entityId: id, metadata: { nama: data.nama } });
+
+  // Sync ekNama di bank_soal yang mereferensikan UK ini
+  if (data.nama) await _syncSoalEkNama(id, data.nama);
+}
+
+/**
+ * Sync ekNama di bank_soal untuk satu UK (dipanggil setelah updateUK).
+ * @param {string} ukId  - doc ID UK (= kode.toLowerCase())
+ * @param {string} nama  - nama terbaru dari master
+ */
+async function _syncSoalEkNama(ukId, nama) {
+  const snap = await getDocs(
+    query(collection(db, COL.BANK_SOAL),
+      where('deleted', '==', false),
+      where('unitKompetensi', '==', ukId)
+    )
+  );
+  if (snap.empty) return;
+
+  const CHUNK = 500;
+  const docs  = snap.docs;
+  for (let i = 0; i < docs.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + CHUNK).forEach(d => {
+      batch.update(d.ref, { ekNama: nama, updatedAt: serverTimestamp() });
+    });
+    await batch.commit();
+  }
+}
+
+/**
+ * Sync massal ekNama di seluruh bank_soal berdasarkan master UK.
+ * Soal yang unitKompetensi-nya match dengan kode master → ekNama diupdate.
+ * Soal yang tidak match → dibiarkan.
+ * @returns {{ updated: number, skipped: number }}
+ */
+export async function syncBankSoalUK() {
+  // 1. Load semua UK master (kode → nama)
+  const ukSnap = await getDocs(
+    query(collection(db, COL_NAME), where('deleted', '==', false))
+  );
+  const ukMap = {}; // kode.toLowerCase() → nama
+  ukSnap.docs.forEach(d => {
+    const data = d.data();
+    if (data.kode) ukMap[data.kode.toLowerCase()] = data.nama;
+    ukMap[d.id.toLowerCase()] = data.nama; // doc ID alias
+  });
+
+  // 2. Load semua soal yang punya unitKompetensi
+  const soalSnap = await getDocs(
+    query(collection(db, COL.BANK_SOAL), where('deleted', '==', false))
+  );
+  const toUpdate = soalSnap.docs.filter(d => {
+    const uk = d.data().unitKompetensi;
+    return uk && ukMap[uk.toLowerCase()] !== undefined;
+  });
+
+  // 3. Batch update ekNama
+  let updated = 0;
+  const CHUNK = 500;
+  for (let i = 0; i < toUpdate.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    toUpdate.slice(i, i + CHUNK).forEach(d => {
+      const uk   = d.data().unitKompetensi;
+      const nama = ukMap[uk.toLowerCase()];
+      batch.update(d.ref, { ekNama: nama, updatedAt: serverTimestamp() });
+      updated++;
+    });
+    await batch.commit();
+  }
+
+  await logAudit({ action: 'sync_bank_soal_uk', entityType: 'bank_soal', entityId: 'all', metadata: { updated, skipped: soalSnap.size - updated } });
+  return { updated, skipped: soalSnap.size - updated };
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

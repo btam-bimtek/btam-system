@@ -7,7 +7,7 @@ import { showToast } from '../../components/toast.js';
 import { requireWrite } from '../../auth-guard.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import {
-  listUK, countUK, createUK, updateUK, deleteUK, bulkImportUK
+  listUK, countUK, createUK, updateUK, deleteUK, bulkImportUK, syncBankSoalUK
 } from './api.js';
 import { openImportUK } from './import.js';
 
@@ -31,6 +31,10 @@ export async function renderMasterUK({ query = {} } = {}) {
           <p class="text-xs text-gray-500 mt-0.5">Master UK global — digunakan di bimtek, bank soal, dan laporan</p>
         </div>
         <div class="flex items-center gap-2">
+          <button id="btn-sync" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors flex items-center gap-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Sinkronkan ke Bank Soal
+          </button>
           <button id="btn-import" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">
             Import Excel
           </button>
@@ -437,7 +441,22 @@ function _bindEvents() {
     if (!requireWrite()) return; _openForm(null);
   });
 
-  document.getElementById('btn-import')?.addEventListener('click', () => {
+  document.getElementById('btn-sync')?.addEventListener('click', async () => {
+    if (!requireWrite()) return;
+    const btn = document.getElementById('btn-sync');
+    btn.disabled = true;
+    btn.textContent = 'Menyinkronkan...';
+    try {
+      const { updated, skipped } = await syncBankSoalUK();
+      showToast(`Sinkronisasi selesai: ${updated} soal diperbarui, ${skipped} soal tidak cocok.`, 'success');
+    } catch (err) {
+      showToast('Sinkronisasi gagal: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sinkronkan ke Bank Soal';
+    }
+  });
+document.getElementById('btn-import')?.addEventListener('click', () => {
     if (!requireWrite()) return;
     openImportUK(result => {
       showToast(`Import selesai: ${result.imported} UK diproses, ${result.errors.length} error.`,
