@@ -93,10 +93,18 @@ function _render(app) {
           <div class="text-xs text-gray-500 mt-1">${_esc(bidangNama)} · ${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)} · ${_esc(b.lokasi || '-')}</div>
         </div>
       </div>
-      ${canEdit ? `
-        <button id="btn-edit" class="shrink-0 px-3 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-white transition-colors">
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-ubah-status" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+          </svg>
+          Ubah Status
+        </button>
+        ${canEdit ? `
+        <button id="btn-edit" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-white transition-colors">
           Edit Info
         </button>` : ''}
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -117,6 +125,7 @@ function _render(app) {
   // Bind header events
   app.querySelector('#btn-back').addEventListener('click', () => navigate('/bimtek'));
   app.querySelector('#btn-edit')?.addEventListener('click', () => navigate(`/bimtek/${S.id}/edit`));
+  app.querySelector('#btn-ubah-status')?.addEventListener('click', () => _openUbahStatus(b.status));
 
   // Bind tab buttons
   app.querySelectorAll('.tab-btn').forEach(btn => {
@@ -952,6 +961,70 @@ async function _showAddPesertaModal(app, el) {
 
     _renderList();
   } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+}
+
+// ─── UBAH STATUS ────────────────────────────────────────────────────────────
+
+function _openUbahStatus(currentStatus) {
+  const ALL_STATUSES = ['draft', 'planned', 'ongoing', 'completed', 'cancelled'];
+  const LABELS = {
+    draft:     'Draft',
+    planned:   'Direncanakan',
+    ongoing:   'Berlangsung',
+    completed: 'Selesai',
+    cancelled: 'Dibatalkan',
+  };
+  const COLORS = {
+    planned:   'bg-blue-600 hover:bg-blue-500',
+    ongoing:   'bg-green-600 hover:bg-green-500',
+    completed: 'bg-purple-600 hover:bg-purple-500',
+    cancelled: 'bg-red-700 hover:bg-red-600',
+  };
+
+  const nextStatuses = ALL_STATUSES.filter(s => s !== currentStatus);
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
+
+  modal.innerHTML = `
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h3 class="text-sm font-semibold text-white mb-1">Ubah Status Bimtek</h3>
+      <p class="text-xs text-gray-500 mb-5">Status saat ini: <span class="text-gray-300 font-medium">${LABELS[currentStatus] ?? currentStatus}</span></p>
+      <div class="flex flex-col gap-2" id="us-options">
+        ${nextStatuses.map(s => `
+          <button data-status="${s}"
+            class="us-opt w-full text-left px-4 py-2.5 rounded-xl text-xs font-medium text-white transition-colors ${COLORS[s] ?? 'bg-gray-700 hover:bg-gray-600'}">
+            Ubah ke: ${LABELS[s] ?? s}
+          </button>`).join('')}
+      </div>
+      <div class="flex justify-end mt-5">
+        <button id="us-cancel" class="px-4 py-2 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">Batal</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#us-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelectorAll('.us-opt').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newStatus = btn.dataset.status;
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan…';
+      try {
+        await updateStatus(S.id, newStatus);
+        close();
+        showToast(`Status diubah ke "${LABELS[newStatus]}"`, 'success');
+        navigate(`/bimtek/${S.id}`);
+      } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = `Ubah ke: ${LABELS[newStatus] ?? newStatus}`;
+      }
+    });
+  });
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────

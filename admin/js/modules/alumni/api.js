@@ -1,7 +1,10 @@
 // admin/js/modules/alumni/api.js
 // Query gabungan alumni_historis + sistem baru untuk Tab Alumni.
 
-import { db, collection, query, where, getDocs, doc, getDoc } from '../../../../shared/db.js';
+import {
+  db, collection, query, where, getDocs, doc, getDoc,
+  writeBatch, serverTimestamp, updateDoc,
+} from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 
 /**
@@ -51,96 +54,142 @@ async function _fetchHistoris() {
   });
 }
 
-// ─── Sumber 2: sistem baru (bimtek completed) ─────────────────
+// ─── Sumber 2: koleksi alumni (dari bimtek completed) ────────
 
 async function _fetchSistem() {
-  // Ambil semua bimtek completed
-  const snapBimtek = await getDocs(
-    query(collection(db, COL.BIMTEK), where('status', '==', 'completed'))
-  );
-  if (snapBimtek.empty) return [];
+  const snap = await getDocs(collection(db, COL.ALUMNI));
+  return snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+}
 
-  const bimteks = snapBimtek.docs.map(d => ({ id: d.id, ...d.data() }));
+// ─── Sync alumni saat bimtek → completed ─────────────────────
 
-  // Kumpulkan semua noPeserta unik dari bimtek completed
-  const pesertaSet = new Set();
-  bimteks.forEach(b => (b.pesertaIds ?? []).forEach(np => pesertaSet.add(np)));
-  if (!pesertaSet.size) return [];
+/**
+ * Tulis/timpa record alumni untuk semua peserta di bimtek ini.
+ * Dipanggil dari bimtek/api.js saat status berubah ke 'completed'.
+ */
+export async function syncAlumniFromBimtek(bimtek) {
+  const pesertaIds = bimtek.pesertaIds ?? [];
+  if (!pesertaIds.length) return;
 
   // Fetch peserta_master (chunk 30)
-  const allIds  = [...pesertaSet];
   const pesertaMap = {};
-  for (let i = 0; i < allIds.length; i += 30) {
-    const chunk = allIds.slice(i, i + 30);
+  for (let i = 0; i < pesertaIds.length; i += 30) {
+    const chunk = pesertaIds.slice(i, i + 30);
     const snap  = await getDocs(
       query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
     );
     snap.docs.forEach(d => { pesertaMap[d.id] = d.data(); });
   }
 
-  // Fetch bimtek_scores untuk status lulus
-  const scoresMap = {}; // `${bimtekId}_${noPeserta}` → lulus
-  const snapScores = await getDocs(
-    query(collection(db, COL.BIMTEK_SCORES),
-      where('bimtekId', 'in', bimteks.map(b => b.id).slice(0, 30))) // Firestore in max 30
-  );
-  snapScores.docs.forEach(d => {
-    const s = d.data();
-    scoresMap[`${s.bimtekId}_${s.noPeserta}`] = s.lulus ?? null;
-  });
-
-  // Jika bimtek > 30, fetch sisa scores
-  if (bimteks.length > 30) {
-    for (let i = 30; i < bimteks.length; i += 30) {
-      const chunk = bimteks.slice(i, i + 30).map(b => b.id);
-      const snap  = await getDocs(
-        query(collection(db, COL.BIMTEK_SCORES), where('bimtekId', 'in', chunk))
-      );
-      snap.docs.forEach(d => {
-        const s = d.data();
-        scoresMap[`${s.bimtekId}_${s.noPeserta}`] = s.lulus ?? null;
-      });
-    }
+  // Fetch bimtek_scores untuk lulus
+  const scoresMap = {};
+  for (let i = 0; i < pesertaIds.length; i += 30) {
+    const chunk = pesertaIds.slice(i, i + 30);
+    const snap  = await getDocs(
+      query(collection(db, COL.BIMTEK_SCORES),
+        where('bimtekId', '==', bimtek.id),
+        where('noPeserta', 'in', chunk))
+    );
+    snap.docs.forEach(d => {
+      const s = d.data();
+      scoresMap[s.noPeserta] = s.lulus ?? null;
+    });
   }
 
-  // Bangun satu record per peserta per bimtek
-  const records = [];
-  bimteks.forEach(b => {
-    const tglMulai   = b.periode?.mulai?.toDate?.() ?? (b.periode?.mulai ? new Date(b.periode.mulai) : null);
-    const tglSelesai = b.periode?.selesai?.toDate?.() ?? (b.periode?.selesai ? new Date(b.periode.selesai) : null);
-    const tahun      = tglMulai?.getFullYear() ?? null;
+  const tglMulai   = bimtek.periode?.mulai?.toDate?.()   ?? null;
+  const tglSelesai = bimtek.periode?.selesai?.toDate?.() ?? null;
+  const tahun      = tglMulai?.getFullYear() ?? null;
 
-    (b.pesertaIds ?? []).forEach(np => {
+  // Tulis ke koleksi alumni (doc id = bimtekId_noPeserta)
+  const BATCH_SIZE = 400; // Firestore max 500 ops per batch
+  for (let i = 0; i < pesertaIds.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const chunk = pesertaIds.slice(i, i + BATCH_SIZE);
+    chunk.forEach(np => {
       const p = pesertaMap[np];
       if (!p) return;
-      records.push({
-        _id:         `${b.id}_${np}`,
+      const ref = doc(db, COL.ALUMNI, `${bimtek.id}_${np}`);
+      batch.set(ref, {
         _sumber:     'Sistem',
-        nama:        p.nama         ?? null,
-        nik:         p.NIK          ?? null,
-        instansi:    p.instansi     ?? null,
-        kabKota:     p.kabKota      ?? null,
-        provinsi:    p.provinsi     ?? null,
+        noPeserta:   np,
+        bimtekId:    bimtek.id,
+        nama:        p.nama          ?? null,
+        nik:         p.NIK           ?? null,
+        instansi:    p.instansi      ?? null,
+        kabKota:     p.kabKota       ?? null,
+        provinsi:    p.provinsi      ?? null,
         tahun,
-        namaBimtek:  b.nama         ?? null,
-        bidang:      b.bidangIds?.[0] ?? null,
-        tipe:        b.tipe         ?? null,
-        // expandable
-        jabatan:     p.jabatan      ?? null,
-        pendidikan:  p.pendidikan   ?? null,
-        jenisKelamin:p.jenisKelamin ?? null,
-        mode:        b.mode         ?? null,
+        namaBimtek:  bimtek.nama     ?? null,
+        bidang:      bimtek.bidangIds?.[0] ?? null,
+        tipe:        bimtek.tipe     ?? null,
+        jabatan:     p.jabatan       ?? null,
+        pendidikan:  p.pendidikan    ?? null,
+        jenisKelamin:p.jenisKelamin  ?? null,
+        mode:        bimtek.mode     ?? null,
         jenisLokasi: null,
         tglMulai:    tglMulai   ? _fmtDate(tglMulai)   : null,
         tglSelesai:  tglSelesai ? _fmtDate(tglSelesai) : null,
-        lulus:       scoresMap[`${b.id}_${np}`] ?? null,
-        email:       p.email        ?? null,
-        noHp:        p.noHp         ?? null,
+        lulus:       scoresMap[np] ?? null,
+        email:       p.email         ?? null,
+        noHp:        p.noHp          ?? null,
+        syncedAt:    serverTimestamp(),
       });
     });
-  });
+    await batch.commit();
+  }
 
-  return records;
+  // Flag isAlumni di peserta_master
+  for (let i = 0; i < pesertaIds.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    pesertaIds.slice(i, i + BATCH_SIZE).forEach(np => {
+      batch.update(doc(db, COL.PESERTA_MASTER, np), { isAlumni: true });
+    });
+    await batch.commit();
+  }
+}
+
+// ─── Hapus alumni saat bimtek dihapus / di-revert ────────────
+
+/**
+ * Hapus semua record alumni dari bimtek ini, dan lepas flag isAlumni
+ * pada peserta yang tidak lagi punya record alumni lain.
+ */
+export async function deleteAlumniByBimtek(bimtekId) {
+  const snap = await getDocs(
+    query(collection(db, COL.ALUMNI), where('bimtekId', '==', bimtekId))
+  );
+  if (snap.empty) return;
+
+  const affectedNoPeserta = snap.docs.map(d => d.data().noPeserta);
+
+  // Hapus record alumni
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  // Untuk setiap peserta, cek apakah masih punya alumni record lain
+  // Firestore 'in' max 30
+  for (let i = 0; i < affectedNoPeserta.length; i += 30) {
+    const chunk = affectedNoPeserta.slice(i, i + 30);
+    const remaining = await getDocs(
+      query(collection(db, COL.ALUMNI), where('noPeserta', 'in', chunk))
+    );
+    const stillAlumni = new Set(remaining.docs.map(d => d.data().noPeserta));
+
+    const toUnset = chunk.filter(np => !stillAlumni.has(np));
+    if (!toUnset.length) continue;
+
+    for (let j = 0; j < toUnset.length; j += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      toUnset.slice(j, j + BATCH_SIZE).forEach(np => {
+        batch.update(doc(db, COL.PESERTA_MASTER, np), { isAlumni: false });
+      });
+      await batch.commit();
+    }
+  }
 }
 
 function _fmtDate(d) {

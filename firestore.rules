@@ -218,6 +218,12 @@ service cloud.firestore {
       allow write: if canWrite();
     }
 
+    // ─── Alumni (sistem — sync dari bimtek completed) ─────────
+    match /alumni/{doc} {
+      allow read:  if isAdmin();
+      allow write: if canWrite();
+    }
+
     match /alumni_view_cache/{doc} {
       allow read:  if isAdmin();
       allow write: if canWrite();

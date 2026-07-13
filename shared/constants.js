@@ -188,6 +188,7 @@ export const COL = {
   APP_SETTINGS:       'app_settings',
   AUDIT_LOG:          'audit_log',
   ALUMNI_HISTORIS:    'alumni_historis',
+  ALUMNI:             'alumni',
   KINERJA_INSTANSI:   'kinerja_instansi',
   SIKLUS_SELEKSI:     'siklus_seleksi',
   CALON_PESERTA:      'calon_peserta',

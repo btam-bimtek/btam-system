@@ -33,6 +33,8 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
     let q = query(
       collection(db, COL_NAME),
       where('deleted', '==', false),
+      where('isAlumni', '!=', true),
+      orderBy('isAlumni'),
       orderBy('nama')
     );
     if (instansiId) q = query(q, where('instansiId', '==', instansiId));
@@ -58,6 +60,8 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
   let q = query(
     collection(db, COL_NAME),
     where('deleted', '==', false),
+    where('isAlumni', '!=', true),
+    orderBy('isAlumni'),
     orderBy('nama'),
     limit(pageSize)
   );
@@ -76,7 +80,9 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
  */
 export async function countPeserta() {
   const snap = await getCountFromServer(
-    query(collection(db, COL_NAME), where('deleted', '==', false))
+    query(collection(db, COL_NAME),
+      where('deleted', '==', false),
+      where('isAlumni', '!=', true))
   );
   return snap.data().count;
 }

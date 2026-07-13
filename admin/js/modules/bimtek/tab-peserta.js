@@ -7,10 +7,11 @@
  */
 
 import { addPesertaToBimtek, removePesertaFromBimtek, getBimtek } from './api.js';
-import { db, collection, query, where, getDocs } from '../../../../shared/db.js';
+import { db, collection, query, where, getDocs, orderBy } from '../../../../shared/db.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { requireWrite } from '../../auth-guard.js';
+import { COL } from '../../../../shared/constants.js';
 
 /**
  * Entry point — dipanggil dari detail.js:
@@ -351,8 +352,24 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
     if (!selected.size) return;
     const btn = overlay.querySelector('#btn-confirm-add');
     btn.disabled = true;
-    btn.textContent = 'Menambahkan…';
+    btn.textContent = 'Memeriksa…';
+
     try {
+      // Cek aturan 3 tahun hanya jika diaktifkan di bimtek ini
+      if (bimtek.larangRepeatBimtek3Tahun) {
+        const warnings = await _checkEnrollmentRule(selected, bimtek);
+        if (warnings.length > 0) {
+          btn.disabled = false;
+          btn.textContent = 'Tambahkan ke Bimtek';
+          const proceed = await _showEnrollmentWarning(warnings);
+          if (!proceed) return;
+          btn.disabled = true;
+          btn.textContent = 'Menambahkan…';
+        }
+      } else {
+        btn.textContent = 'Menambahkan…';
+      }
+
       await addPesertaToBimtek(bimtekId, [...selected.keys()]);
       showToast(`${selected.size} peserta berhasil ditambahkan`, 'success');
       close();
@@ -412,6 +429,143 @@ async function _fetchPesertaDetails(ids) {
   // Preserve original order dari pesertaIds
   const order = new Map(ids.map((np, i) => [np, i]));
   return results.sort((a, b) => (order.get(a.noPeserta) ?? 999) - (order.get(b.noPeserta) ?? 999));
+}
+
+// ─── Aturan Enrollment 3 Tahun ───────────────────────────────────────────────
+
+// Jaccard word similarity — kata pendek (≤2 huruf) diabaikan
+function _jaccard(a, b) {
+  const words = s => new Set(s.toLowerCase().split(/\W+/).filter(w => w.length > 2));
+  const wA = words(a), wB = words(b);
+  const inter = [...wA].filter(w => wB.has(w)).length;
+  const union = new Set([...wA, ...wB]).size;
+  return union === 0 ? 0 : inter / union;
+}
+
+/**
+ * Cek apakah peserta yang akan dienroll pernah ikut bimtek serupa dalam 3 tahun terakhir.
+ * @param {Map} selected  - Map noPeserta → {noPeserta, nama, instansi}
+ * @param {object} bimtek - bimtek yang akan dienroll
+ * @returns {Promise<Array>} warnings: [{noPeserta, namaPeserta, tahun, bimtekNama, source}]
+ */
+async function _checkEnrollmentRule(selected, bimtek) {
+  const periodeDate = bimtek.periode?.mulai?.toDate?.() ?? (bimtek.periode?.mulai ? new Date(bimtek.periode.mulai) : new Date());
+  const currentYear = periodeDate.getFullYear();
+  const minYear     = currentYear - 2;
+  const bimtekNama  = bimtek.nama ?? '';
+  const warnings    = [];
+
+  // ── Sumber 1: Bimtek sistem baru ──────────────────────────────────────────
+  // Fetch semua bimtek (biasanya < 200), filter by tahun + nama similarity
+  const snapBimtek = await getDocs(collection(db, COL.BIMTEK));
+  const selectedIds = new Set(selected.keys());
+
+  snapBimtek.docs.forEach(d => {
+    if (d.id === bimtek.id) return; // skip bimtek itu sendiri
+    const b    = d.data();
+    const yr   = b.periode?.mulai?.toDate?.().getFullYear()
+              ?? (b.periode?.mulai ? new Date(b.periode.mulai).getFullYear() : null);
+    if (!yr || yr < minYear || yr > currentYear) return;
+    if (_jaccard(bimtekNama, b.nama ?? '') < 0.5) return;
+
+    (b.pesertaIds ?? []).forEach(np => {
+      if (!selectedIds.has(np)) return;
+      const p = selected.get(np);
+      warnings.push({ noPeserta: np, namaPeserta: p.nama, tahun: yr, bimtekNama: b.nama, source: 'Sistem' });
+    });
+  });
+
+  // ── Sumber 2: alumni_historis ─────────────────────────────────────────────
+  const snapAlumni = await getDocs(
+    query(collection(db, COL.ALUMNI_HISTORIS),
+      where('tahun', '>=', minYear),
+      where('tahun', '<=', currentYear))
+  );
+
+  snapAlumni.docs.forEach(d => {
+    const r = d.data();
+    if (_jaccard(bimtekNama, r.nama_bimtek ?? '') < 0.5) return;
+
+    // Match peserta: cek apakah ada selected peserta dengan nama mirip dari instansi yang sama
+    for (const [np, p] of selected.entries()) {
+      const namaMatch = _jaccard(p.nama ?? '', r.nama ?? '') >= 0.6;
+      const instMatch = !r.instansi || !p.instansi || _jaccard(p.instansi, r.instansi) >= 0.4;
+      if (namaMatch && instMatch) {
+        // Hindari duplikat entry yang sama
+        const alreadyAdded = warnings.some(w =>
+          w.noPeserta === np && w.tahun === r.tahun && w.bimtekNama === r.nama_bimtek);
+        if (!alreadyAdded) {
+          warnings.push({ noPeserta: np, namaPeserta: p.nama, tahun: r.tahun, bimtekNama: r.nama_bimtek, source: 'Historis' });
+        }
+      }
+    }
+  });
+
+  return warnings;
+}
+
+/**
+ * Tampilkan modal warning aturan 3 tahun.
+ * Resolve true jika admin pilih "Tetap Daftarkan", false jika Batalkan.
+ */
+function _showEnrollmentWarning(warnings) {
+  return new Promise(resolve => {
+    const existing = document.getElementById('modal-enroll-warning');
+    if (existing) existing.remove();
+
+    const grouped = {};
+    warnings.forEach(w => {
+      if (!grouped[w.noPeserta]) grouped[w.noPeserta] = { nama: w.namaPeserta, hits: [] };
+      grouped[w.noPeserta].hits.push(w);
+    });
+
+    const rows = Object.values(grouped).map(g => `
+      <div class="mb-3 last:mb-0">
+        <p class="text-sm font-medium text-yellow-300">${_esc(g.nama)}</p>
+        <ul class="mt-1 space-y-0.5">
+          ${g.hits.map(h => `
+            <li class="text-xs text-gray-400 flex items-start gap-1.5">
+              <span class="text-yellow-500 mt-0.5">•</span>
+              <span>${_esc(h.bimtekNama)} — <span class="text-gray-300">${h.tahun}</span>
+              <span class="ml-1 text-gray-600">(${h.source})</span></span>
+            </li>`).join('')}
+        </ul>
+      </div>`).join('');
+
+    const el = document.createElement('div');
+    el.id = 'modal-enroll-warning';
+    el.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+    el.innerHTML = `
+      <div class="bg-gray-900 border border-yellow-700/50 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center gap-3">
+          <svg class="w-5 h-5 text-yellow-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+          <h3 class="text-sm font-semibold text-white">Peringatan: Aturan 3 Tahun</h3>
+        </div>
+        <div class="px-5 py-4">
+          <p class="text-xs text-gray-400 mb-4">
+            Peserta berikut terdeteksi pernah mengikuti bimtek serupa dalam 3 tahun terakhir:
+          </p>
+          <div class="bg-gray-800/60 rounded-lg px-4 py-3 max-h-52 overflow-y-auto">
+            ${rows}
+          </div>
+          <p class="text-xs text-gray-500 mt-3">Admin dapat tetap mendaftarkan peserta dengan memilih "Tetap Daftarkan".</p>
+        </div>
+        <div class="px-5 py-4 border-t border-gray-800 flex justify-end gap-3">
+          <button id="btn-warn-cancel" class="px-4 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+            Batalkan
+          </button>
+          <button id="btn-warn-override" class="px-4 py-2 rounded-lg text-xs bg-yellow-600 hover:bg-yellow-500 text-white font-medium transition-colors">
+            Tetap Daftarkan
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(el);
+    el.querySelector('#btn-warn-cancel').addEventListener('click', () => { el.remove(); resolve(false); });
+    el.querySelector('#btn-warn-override').addEventListener('click', () => { el.remove(); resolve(true); });
+  });
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────

@@ -142,6 +142,10 @@ export async function updateBimtek(bimtekId, data) {
 // ─── SOFT DELETE BIMTEK ─────────────────────────────────────────────────────
 
 export async function deleteBimtek(bimtekId) {
+  // Cascade: hapus alumni records dari bimtek ini
+  const { deleteAlumniByBimtek } = await import('../alumni/api.js');
+  await deleteAlumniByBimtek(bimtekId);
+
   await updateDoc(doc(db, COL, bimtekId), {
     deleted: true,
     updatedAt: serverTimestamp(),
@@ -154,11 +158,25 @@ export async function deleteBimtek(bimtekId) {
 export async function updateStatus(bimtekId, status, cancelReason = null) {
   const validStatuses = ['draft', 'planned', 'ongoing', 'completed', 'cancelled'];
   if (!validStatuses.includes(status)) throw new Error(`Status tidak valid: ${status}`);
+
+  const bimtekSnap = await getDoc(doc(db, COL, bimtekId));
+  const prevStatus = bimtekSnap.data()?.status;
+
   await updateDoc(doc(db, COL, bimtekId), {
     status,
     cancelReason: status === 'cancelled' ? (cancelReason || null) : null,
     updatedAt: serverTimestamp(),
   });
+
+  // Sync alumni
+  const { syncAlumniFromBimtek, deleteAlumniByBimtek } = await import('../alumni/api.js');
+  if (status === 'completed') {
+    const bimtek = { id: bimtekId, ...bimtekSnap.data() };
+    await syncAlumniFromBimtek(bimtek);
+  } else if (prevStatus === 'completed') {
+    await deleteAlumniByBimtek(bimtekId);
+  }
+
   await logAudit('bimtek', 'status_change', bimtekId, { status });
 }
 
