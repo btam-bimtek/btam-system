@@ -1,47 +1,88 @@
 // admin/js/modules/bimtek/sub-prepost.js
 // Sinkronisasi Pre/Post Test: fetch exam_submissions → score → update bimtek_scores
-// Trigger scoring engine
+// Tabel menggabungkan dua sumber: exam_results (ujian online) + bimtek_scores (import CSV)
 
 import { scoreAllSubmissions } from './scorer.js';
 import { listExams } from './exam-api.js';
-import { listExamResults } from './penilaian-api.js';
+import { listExamResults, listBimtekScores } from './penilaian-api.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
+import {
+  db, collection, query, where, getDocs
+} from '../../../../shared/db.js';
+import { COL } from '../../../../shared/constants.js';
 
 export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSyncComplete) {
   try {
     const exams = await listExams(bimtekId);
-    const prePostExams = exams.filter(e => ['pretest', 'posttest', 'pretest_posttest', 'seleksi_tertulis'].includes(e.tipe));
+    const prePostExams = exams.filter(e =>
+      ['pretest', 'posttest', 'pretest_posttest', 'seleksi_tertulis'].includes(e.tipe)
+    );
 
-    if (prePostExams.length === 0) {
-      container.innerHTML = '<div class="text-gray-400 text-sm">Belum ada exam pre/post test atau seleksi tertulis yang terkait.</div>';
+    // Selalu fetch scores terbaru (jangan andalkan parameter yang mungkin kosong)
+    const freshScores = await listBimtekScores(bimtekId);
+    const scoresMap = Object.fromEntries(freshScores.map(s => [s.noPeserta, s]));
+
+    // Fetch nama peserta
+    const namaMap = {};
+    const ids = freshScores.map(s => s.noPeserta);
+    for (let i = 0; i < ids.length; i += 30) {
+      const chunk = ids.slice(i, i + 30);
+      const snap = await getDocs(
+        query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
+      );
+      snap.docs.forEach(d => { namaMap[d.id] = d.data().nama ?? d.id; });
+    }
+
+    // Fetch exam results (dari ujian online)
+    const results = await listExamResults(bimtekId);
+
+    // Cek apakah ada nilai CSV (pretest/posttest di bimtek_scores)
+    const hasCsvScores = freshScores.some(s => s.pretest !== null || s.posttest !== null);
+
+    if (prePostExams.length === 0 && !hasCsvScores) {
+      container.innerHTML = '<div class="text-gray-400 text-sm">Belum ada nilai pre/post test. Buat exam atau import via CSV.</div>';
       return;
     }
 
-    // Load exam results (sudah di-score)
-    const results = await listExamResults(bimtekId);
+    // Kalau tidak ada exam tapi ada CSV, tampilkan tabel CSV saja
+    if (prePostExams.length === 0 && hasCsvScores) {
+      container.innerHTML = `
+        <div class="space-y-6">
+          ${_buildCsvOnlyTable(freshScores, namaMap)}
+          ${_infoBox()}
+        </div>`;
+      return;
+    }
 
     container.innerHTML = `
       <div class="space-y-6">
         ${prePostExams.map(exam => {
           const examResults = results.filter(r => r.examId === exam.id);
 
-          // Group by noPeserta
-          const byPeserta = {};
+          // Nilai dari ujian online (exam_results)
+          const byPesertaOnline = {};
           examResults.forEach(r => {
-            if (!byPeserta[r.noPeserta]) byPeserta[r.noPeserta] = {};
-            byPeserta[r.noPeserta][r.tipeSession] = r.skor;
+            if (!byPesertaOnline[r.noPeserta]) byPesertaOnline[r.noPeserta] = {};
+            byPesertaOnline[r.noPeserta][r.tipeSession] = r.skor;
           });
 
-          const tipe = exam.tipe;
+          const tipe      = exam.tipe;
           const isSeleksi = tipe === 'seleksi_tertulis';
           const showPre   = !isSeleksi && (tipe === 'pretest'  || tipe === 'pretest_posttest');
           const showPost  = !isSeleksi && (tipe === 'posttest' || tipe === 'pretest_posttest');
+
           const preCount     = examResults.filter(r => r.tipeSession === 'pretest').length;
           const postCount    = examResults.filter(r => r.tipeSession === 'posttest').length;
           const seleksiCount = examResults.filter(r => r.tipeSession === 'seleksi_tertulis').length;
 
-          const hasSkor = Object.keys(byPeserta).length > 0;
+          // Gabungkan semua noPeserta dari dua sumber
+          const allNoPeserta = [...new Set([
+            ...Object.keys(byPesertaOnline),
+            ...freshScores.map(s => s.noPeserta)
+          ])].sort();
+
+          const hasData = allNoPeserta.length > 0;
 
           return `
             <div class="bg-gray-800 p-4 rounded-lg">
@@ -64,51 +105,63 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                 </button>
               </div>
 
-              ${hasSkor ? `
+              ${hasData ? `
                 <div class="overflow-x-auto">
                   <table class="btam-table">
                     <thead>
                       <tr>
-                        <th>Peserta</th>
+                        <th class="sticky left-0 bg-gray-900 z-10 min-w-40">Peserta</th>
                         ${isSeleksi ? '<th class="text-left">Nilai</th>' : ''}
-                        ${showPre  ? '<th class="text-left">Pre Test</th>' : ''}
+                        ${showPre  ? '<th class="text-left">Pre Test</th>'  : ''}
                         ${showPost ? '<th class="text-left">Post Test</th>' : ''}
                         ${showPre && showPost ? '<th class="text-left">Peningkatan</th>' : ''}
+                        <th class="text-left text-gray-500 text-xs">Sumber</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${Object.entries(byPeserta).sort(([a],[b]) => a.localeCompare(b)).map(([noPeserta, skor]) => {
-                        const pre  = skor.pretest  ?? null;
-                        const post = skor.posttest ?? null;
+                      ${allNoPeserta.map(noPeserta => {
+                        const online  = byPesertaOnline[noPeserta] ?? {};
+                        const csvScore = scoresMap[noPeserta];
+
+                        // Prioritas: ujian online > import CSV
+                        const pre  = online['pretest']           ?? csvScore?.pretest  ?? null;
+                        const post = online['posttest']          ?? csvScore?.posttest ?? null;
+                        const sel  = online['seleksi_tertulis']  ?? null;
+
+                        const hasOnline = Object.keys(online).length > 0;
+                        const hasCSV    = !hasOnline && csvScore &&
+                          (csvScore.pretest !== null || csvScore.posttest !== null);
+                        const sumber = hasOnline ? 'Ujian' : hasCSV ? 'CSV' : '—';
+                        const sumberClass = hasOnline
+                          ? 'text-teal-400'
+                          : hasCSV ? 'text-yellow-400' : 'text-gray-600';
+
                         const delta = (pre !== null && post !== null) ? post - pre : null;
                         const deltaClass = delta === null ? '' : delta >= 0 ? 'text-green-400' : 'text-red-400';
-                        const seleksiNilai = skor['seleksi_tertulis'] ?? null;
+
                         return `
                           <tr>
-                            <td class="font-medium text-sm">${_esc(noPeserta)}</td>
-                            ${isSeleksi ? `<td class="text-left">${seleksiNilai !== null ? seleksiNilai : '—'}</td>` : ''}
+                            <td class="sticky left-0 bg-gray-950 z-10">
+                              <div class="font-medium text-sm text-gray-200">${_esc(namaMap[noPeserta] ?? noPeserta)}</div>
+                              <div class="text-xs text-gray-500 font-mono">${_esc(noPeserta)}</div>
+                            </td>
+                            ${isSeleksi ? `<td class="text-left">${sel !== null ? sel : '—'}</td>` : ''}
                             ${showPre  ? `<td class="text-left">${pre  !== null ? pre  : '—'}</td>` : ''}
                             ${showPost ? `<td class="text-left">${post !== null ? post : '—'}</td>` : ''}
                             ${showPre && showPost ? `<td class="text-left ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>` : ''}
+                            <td class="text-xs ${sumberClass}">${sumber}</td>
                           </tr>
                         `;
                       }).join('')}
                     </tbody>
                   </table>
                 </div>
-              ` : `<div class="text-xs text-gray-500 mt-2">Belum ada data skor — klik Sinkronisasi untuk memproses submissions.</div>`}
+              ` : `<div class="text-xs text-gray-500 mt-2">Belum ada data skor — klik Sinkronisasi untuk memproses submissions, atau import via CSV.</div>`}
             </div>
           `;
         }).join('')}
 
-        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
-          <h4 class="font-medium text-sm text-white mb-2">ℹ️ Informasi</h4>
-          <ul class="text-xs text-gray-400 space-y-1">
-            <li>• Sinkronisasi fetch semua submissions → hitung skor → update bimtek_scores</li>
-            <li>• Jika sudah ada hasil sebelumnya, akan di-overwrite (rescoring)</li>
-            <li>• Peserta yang belum submit tidak akan diproses</li>
-          </ul>
-        </div>
+        ${_infoBox()}
       </div>
     `;
 
@@ -148,13 +201,9 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, on
       showToast(`${processed} submissions ${examJudul} berhasil di-score`, 'ok');
     }
 
-    btn.disabled = false;
-    btn.textContent = origText;
-
-    // Re-render sub-tab ini agar tabel hasil muncul
+    // Re-render dengan scores terbaru
     await renderSubPrePost(container, bimtekId, bimtek, [], onSyncComplete);
 
-    // Trigger refresh kelulusan di parent (switch tab dan reload scores)
     if (onSyncComplete) {
       try {
         await onSyncComplete();
@@ -171,8 +220,60 @@ async function _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, on
   }
 }
 
+function _buildCsvOnlyTable(scores, namaMap) {
+  const rows = scores.filter(s => s.pretest !== null || s.posttest !== null);
+  return `
+    <div class="bg-gray-800 p-4 rounded-lg">
+      <h3 class="font-medium text-white mb-1">Nilai Pre/Post Test (Import CSV)</h3>
+      <div class="text-xs text-yellow-400 mb-4">Tidak ada exam ujian online — menampilkan nilai dari import CSV.</div>
+      <div class="overflow-x-auto">
+        <table class="btam-table">
+          <thead>
+            <tr>
+              <th class="sticky left-0 bg-gray-900 z-10 min-w-40">Peserta</th>
+              <th class="text-left">Pre Test</th>
+              <th class="text-left">Post Test</th>
+              <th class="text-left">Peningkatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(s => {
+              const pre   = s.pretest  ?? null;
+              const post  = s.posttest ?? null;
+              const delta = pre !== null && post !== null ? post - pre : null;
+              const deltaClass = delta === null ? '' : delta >= 0 ? 'text-green-400' : 'text-red-400';
+              return `
+                <tr>
+                  <td class="sticky left-0 bg-gray-950 z-10">
+                    <div class="font-medium text-sm text-gray-200">${_esc(namaMap[s.noPeserta] ?? s.noPeserta)}</div>
+                    <div class="text-xs text-gray-500 font-mono">${_esc(s.noPeserta)}</div>
+                  </td>
+                  <td class="text-left">${pre  !== null ? pre  : '—'}</td>
+                  <td class="text-left">${post !== null ? post : '—'}</td>
+                  <td class="text-left ${deltaClass}">${delta !== null ? (delta >= 0 ? '+' : '') + delta : '—'}</td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function _infoBox() {
+  return `
+    <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+      <h4 class="font-medium text-sm text-white mb-2">ℹ️ Informasi</h4>
+      <ul class="text-xs text-gray-400 space-y-1">
+        <li>• <span class="text-teal-400">Ujian</span> — nilai dari submissions ujian online (scoring engine)</li>
+        <li>• <span class="text-yellow-400">CSV</span> — nilai dari import CSV (sub tab Import CSV)</li>
+        <li>• Jika keduanya ada, nilai ujian online yang dipakai</li>
+        <li>• Sinkronisasi fetch semua submissions → hitung skor → update bimtek_scores</li>
+      </ul>
+    </div>`;
+}
+
 function _esc(str) {
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = String(str ?? '');
   return div.innerHTML;
 }

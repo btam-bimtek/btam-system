@@ -6,6 +6,8 @@ import { updateBimtek } from './api.js';
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
+import { db, collection, query, where, getDocs } from '../../../../shared/db.js';
+import { COL } from '../../../../shared/constants.js';
 
 const DEFAULT_THRESHOLDS = {
   kehadiran: [
@@ -35,6 +37,17 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
   const tidakLulus = scores.filter(s => !s.lulus);
   const kkm = bimtek.kkm || 60;
 
+  // Fetch nama peserta
+  const namaMap = {};
+  const ids = scores.map(s => s.noPeserta);
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    const snap = await getDocs(
+      query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
+    );
+    snap.docs.forEach(d => { namaMap[d.id] = d.data().nama ?? d.id; });
+  }
+
   // Kolom komponen yang relevan
   const komponen = [
     { id: 'pretest',    label: 'Pre Test' },
@@ -51,9 +64,12 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
 
   const _buildRow = (s) => `
     <tr>
-      <td class="font-medium text-sm whitespace-nowrap">${_esc(s.noPeserta)}</td>
-      ${komponen.map(k => `<td class="text-left text-sm">${_val(s[k.id])}</td>`).join('')}
-      <td class="text-left font-bold">${s.nilaiAkhir}</td>
+      <td class="sticky left-0 bg-gray-950 z-10 whitespace-nowrap">
+        <div class="font-medium text-sm text-gray-200">${_esc(namaMap[s.noPeserta] ?? s.noPeserta)}</div>
+        <div class="text-xs text-gray-500 font-mono">${_esc(s.noPeserta)}</div>
+      </td>
+      ${komponen.map(k => `<td class="text-center text-sm">${_val(s[k.id])}</td>`).join('')}
+      <td class="text-center font-bold">${s.nilaiAkhir}</td>
       <td class="text-center">
         ${s.lulus
           ? '<span class="badge badge-green text-xs">LULUS</span>'
@@ -104,7 +120,7 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
           <table class="btam-table">
             <thead>
               <tr>
-                <th class="whitespace-nowrap">Peserta</th>
+                <th class="sticky left-0 bg-gray-900 z-10 whitespace-nowrap">Peserta</th>
                 ${komponen.map(k => `<th class="text-center whitespace-nowrap">${k.label}</th>`).join('')}
                 <th class="text-center whitespace-nowrap">Nilai Akhir</th>
                 <th class="text-center whitespace-nowrap">Status</th>

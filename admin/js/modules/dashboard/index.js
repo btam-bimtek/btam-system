@@ -198,14 +198,18 @@ function _renderStats(aktif, selesai, peserta, pengajar, alumniStats) {
 // ─── Chart: Tren Bimtek per Tahun ─────────────────────────────────────────────
 
 function _renderChartTren(allBimtek, alumniStats) {
-  // Bimtek baru (dari sistem)
-  const byYearNew = {};
+  // Bimtek baru (dari sistem) — hitung nama unik per tahun, sama seperti historis
+  const byYearNewSet = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
-    byYearNew[yr] = (byYearNew[yr] || 0) + 1;
+    if (!byYearNewSet[yr]) byYearNewSet[yr] = new Set();
+    byYearNewSet[yr].add((b.nama ?? '').toLowerCase().trim());
   });
+  const byYearNew = Object.fromEntries(
+    Object.entries(byYearNewSet).map(([yr, s]) => [yr, s.size])
+  );
 
   // Gabungkan semua tahun dari historis + baru
   const allYears = new Set([

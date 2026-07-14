@@ -6,7 +6,7 @@ import { showToast } from '../../components/toast.js';
 
 const FIELDS = ['pretest', 'posttest', 'kehadiran', 'keaktifan', 'respek'];
 
-export function renderSubImportNilai(container, bimtekId, onDone) {
+export function renderSubImportNilai(container, bimtekId, onDone, bimtek) {
   container.innerHTML = `
     <div class="space-y-6 max-w-2xl">
 
@@ -124,10 +124,11 @@ export function renderSubImportNilai(container, bimtekId, onDone) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = window.XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-      const { rows, errors } = _parseRows(raw);
+      const pesertaIds = new Set(bimtek?.pesertaIds ?? []);
+      const { rows, errors, skipped } = _parseRows(raw, pesertaIds);
       parsedRows = rows;
 
-      _renderPreview(container, rows, errors);
+      _renderPreview(container, rows, errors, skipped);
       container.querySelector('#btn-import-confirm').disabled = rows.length === 0;
     } catch (err) {
       errEl.textContent = `Gagal membaca file: ${err.message}`;
@@ -157,9 +158,10 @@ export function renderSubImportNilai(container, bimtekId, onDone) {
 
 // ─── PARSER ──────────────────────────────────────────────────────────────────
 
-function _parseRows(rawRows) {
+function _parseRows(rawRows, pesertaIds = new Set()) {
   const rows = [];
   const errors = [];
+  const skipped = [];
 
   for (let i = 0; i < rawRows.length; i++) {
     const raw = rawRows[i];
@@ -172,6 +174,12 @@ function _parseRows(rawRows) {
     const noPeserta = String(raw[keyMap['nopeserta']] ?? '').trim();
     if (!noPeserta) {
       errors.push(`Baris ${i + 2}: noPeserta kosong`);
+      continue;
+    }
+
+    // Validasi: hanya peserta yang terdaftar di bimtek
+    if (pesertaIds.size > 0 && !pesertaIds.has(noPeserta)) {
+      skipped.push(noPeserta);
       continue;
     }
 
@@ -203,10 +211,10 @@ function _parseRows(rawRows) {
     }
   }
 
-  return { rows, errors };
+  return { rows, errors, skipped };
 }
 
-function _renderPreview(container, rows, errors) {
+function _renderPreview(container, rows, errors, skipped = []) {
   const preview = container.querySelector('#import-preview');
   const tbody = container.querySelector('#preview-tbody');
   const countEl = container.querySelector('#preview-count');
@@ -214,7 +222,10 @@ function _renderPreview(container, rows, errors) {
 
   preview.classList.remove('hidden');
   countEl.textContent = rows.length;
-  errEl.textContent = errors.length > 0 ? `${errors.length} baris diabaikan (error)` : '';
+  const msgs = [];
+  if (errors.length > 0)  msgs.push(`${errors.length} baris diabaikan (nilai tidak valid)`);
+  if (skipped.length > 0) msgs.push(`${skipped.length} baris dilewati (bukan peserta bimtek ini: ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''})`);
+  errEl.textContent = msgs.join(' · ');
 
   tbody.innerHTML = rows.map(r => `
     <tr>

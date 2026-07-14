@@ -107,7 +107,7 @@ function _render(container) {
         S.scores = await listBimtekScores(S.bimtekId);
         S.subTab = 'kelulusan';
         _render(container);
-      });
+      }, S.bimtek);
       break;
   }
 
