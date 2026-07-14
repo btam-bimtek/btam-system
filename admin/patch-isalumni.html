@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Patch isAlumni</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ccc; padding: 2rem; }
+    pre  { background: #1a1a1a; border: 1px solid #333; padding: 1rem; border-radius: 8px; white-space: pre-wrap; }
+    button { padding: .5rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h2 style="color:#fff">Patch peserta_master — set isAlumni: false</h2>
+  <p>Script ini mencari semua dokumen <code>peserta_master</code> yang tidak punya field <code>isAlumni</code>, lalu men-set-nya ke <code>false</code>.</p>
+  <button id="btn">Jalankan Patch</button>
+  <pre id="log">Tekan tombol untuk mulai…</pre>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore, collection, getDocs, writeBatch, doc
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    // ── Salin dari shared/firebase-config.js ──
+    const firebaseConfig = {
+      apiKey:            'AIzaSyBaMOaqhHJ2DnIDsepunwZevidWWveOr7g',
+      authDomain:        'bimtek-27fe5.firebaseapp.com',
+      projectId:         'bimtek-27fe5',
+      storageBucket:     'bimtek-27fe5.firebasestorage.app',
+      messagingSenderId: '176268102387',
+      appId:             '1:176268102387:web:ba809b01efdd06ac184586'
+    };
+
+    const app  = initializeApp(firebaseConfig, 'patch-isalumni');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const logEl = document.getElementById('log');
+    const btn   = document.getElementById('btn');
+
+    function log(msg) { logEl.textContent += '\n' + msg; }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      logEl.textContent = 'Memulai…';
+
+      try {
+        // Login dulu
+        const email    = prompt('Email admin:');
+        const password = prompt('Password:');
+        await signInWithEmailAndPassword(auth, email, password);
+        log('✓ Login berhasil');
+
+        // Fetch semua peserta_master
+        const snap = await getDocs(collection(db, 'peserta_master'));
+        log(`✓ Total dokumen: ${snap.size}`);
+
+        // Filter yang tidak punya field isAlumni
+        const toFix = snap.docs.filter(d => !('isAlumni' in d.data()));
+        log(`→ Perlu di-patch: ${toFix.length} dokumen`);
+
+        if (toFix.length === 0) {
+          log('✓ Tidak ada yang perlu diperbaiki.');
+          btn.disabled = false;
+          return;
+        }
+
+        // Batch update (max 500 per batch)
+        const BATCH_SIZE = 450;
+        let updated = 0;
+        for (let i = 0; i < toFix.length; i += BATCH_SIZE) {
+          const batch = writeBatch(db);
+          toFix.slice(i, i + BATCH_SIZE).forEach(d => {
+            batch.update(doc(db, 'peserta_master', d.id), { isAlumni: false });
+          });
+          await batch.commit();
+          updated += Math.min(BATCH_SIZE, toFix.length - i);
+          log(`  … ${updated} / ${toFix.length} selesai`);
+        }
+
+        log(`\n✅ Patch selesai — ${updated} dokumen diupdate.`);
+      } catch (err) {
+        log(`\n❌ Error: ${err.message}`);
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

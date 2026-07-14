@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Patch: Hapus Scores Bukan Peserta Bimtek</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ccc; padding: 2rem; max-width: 800px; }
+    h2 { color: #fff; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 4px; margin-top: 16px; }
+    input { background: #1a1a1a; border: 1px solid #444; color: #fff; padding: 6px 10px; border-radius: 6px; width: 100%; box-sizing: border-box; font-family: monospace; }
+    .btn { padding: .5rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 8px; margin-top: 16px; }
+    .btn-scan    { background: #2563eb; color: #fff; }
+    .btn-delete  { background: #dc2626; color: #fff; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    pre { background: #1a1a1a; border: 1px solid #333; padding: 1rem; border-radius: 8px; white-space: pre-wrap; min-height: 120px; margin-top: 16px; }
+    .warn { color: #facc15; }
+    .ok   { color: #4ade80; }
+    .err  { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h2>Patch — Hapus bimtek_scores bukan peserta bimtek</h2>
+  <p>Scan dulu untuk melihat record yang akan dihapus, baru klik Hapus jika sudah yakin.</p>
+
+  <label>Bimtek ID</label>
+  <input type="text" id="inp-bimtek-id" placeholder="Contoh: abc123xyz" />
+
+  <div>
+    <button class="btn btn-scan"   id="btn-scan">Scan</button>
+    <button class="btn btn-delete" id="btn-delete" disabled>Hapus yang Tidak Valid</button>
+  </div>
+
+  <pre id="log">Masukkan Bimtek ID lalu klik Scan…</pre>
+
+  <script type="module">
+    import { initializeApp }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore, collection, doc, getDoc, getDocs,
+      query, where, deleteDoc
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            'AIzaSyBaMOaqhHJ2DnIDsepunwZevidWWveOr7g',
+      authDomain:        'bimtek-27fe5.firebaseapp.com',
+      projectId:         'bimtek-27fe5',
+      storageBucket:     'bimtek-27fe5.firebasestorage.app',
+      messagingSenderId: '176268102387',
+      appId:             '1:176268102387:web:ba809b01efdd06ac184586'
+    };
+
+    const app  = initializeApp(firebaseConfig, 'patch-scores');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const logEl    = document.getElementById('log');
+    const btnScan  = document.getElementById('btn-scan');
+    const btnDel   = document.getElementById('btn-delete');
+
+    let toDelete = [];
+
+    function log(msg, cls = '') {
+      logEl.innerHTML += `\n<span class="${cls}">${msg}</span>`;
+    }
+
+    async function ensureLogin() {
+      if (auth.currentUser) return;
+      const email    = prompt('Email admin:');
+      const password = prompt('Password:');
+      await signInWithEmailAndPassword(auth, email, password);
+      log('✓ Login berhasil', 'ok');
+    }
+
+    btnScan.addEventListener('click', async () => {
+      const bimtekId = document.getElementById('inp-bimtek-id').value.trim();
+      if (!bimtekId) { alert('Isi Bimtek ID dulu.'); return; }
+
+      btnScan.disabled = true;
+      btnDel.disabled  = true;
+      toDelete = [];
+      logEl.textContent = 'Memulai scan…';
+
+      try {
+        await ensureLogin();
+
+        // Ambil pesertaIds dari bimtek
+        const bimtekDoc = await getDoc(doc(db, 'bimtek', bimtekId));
+        if (!bimtekDoc.exists()) {
+          log(`❌ Bimtek "${bimtekId}" tidak ditemukan.`, 'err');
+          btnScan.disabled = false;
+          return;
+        }
+        const pesertaIds = new Set(bimtekDoc.data().pesertaIds ?? []);
+        const bimtekNama = bimtekDoc.data().nama ?? bimtekId;
+        log(`✓ Bimtek: ${bimtekNama}`, 'ok');
+        log(`✓ Peserta terdaftar: ${pesertaIds.size} orang`);
+
+        // Fetch semua bimtek_scores untuk bimtek ini
+        const scoresSnap = await getDocs(
+          query(collection(db, 'bimtek_scores'), where('bimtekId', '==', bimtekId))
+        );
+        log(`✓ Total bimtek_scores: ${scoresSnap.size}`);
+
+        toDelete = scoresSnap.docs.filter(d => !pesertaIds.has(d.data().noPeserta));
+
+        if (toDelete.length === 0) {
+          log('\n✅ Tidak ada record yang perlu dihapus.', 'ok');
+        } else {
+          log(`\n⚠ ${toDelete.length} record bukan peserta bimtek ini:`, 'warn');
+          toDelete.forEach(d => log(`  • ${d.data().noPeserta}`, 'warn'));
+          log('\nKlik "Hapus yang Tidak Valid" untuk menghapus.', 'warn');
+          btnDel.disabled = false;
+        }
+      } catch (err) {
+        log(`❌ Error: ${err.message}`, 'err');
+      } finally {
+        btnScan.disabled = false;
+      }
+    });
+
+    btnDel.addEventListener('click', async () => {
+      if (!toDelete.length) return;
+      if (!confirm(`Hapus ${toDelete.length} record? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+      btnDel.disabled = true;
+      btnScan.disabled = true;
+      log('\nMenghapus…');
+
+      try {
+        for (const d of toDelete) {
+          await deleteDoc(d.ref);
+          log(`  ✓ Hapus: ${d.data().noPeserta}`, 'ok');
+        }
+        log(`\n✅ Selesai — ${toDelete.length} record dihapus.`, 'ok');
+        toDelete = [];
+      } catch (err) {
+        log(`❌ Error: ${err.message}`, 'err');
+        btnDel.disabled = false;
+      } finally {
+        btnScan.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
