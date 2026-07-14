@@ -180,7 +180,7 @@ export function openImportPeserta(onDone) {
         <div class="bg-green-900/30 border border-green-800 rounded-lg p-3">
           <p class="text-green-300 font-medium">Import selesai</p>
           <p class="text-green-400/80 text-xs mt-1">
-            Berhasil: ${result.created} | Dilewati: ${result.skipped} | Error: ${result.errors.length}
+            Baru: ${result.created} | Diperbarui: ${result.updated} | Dilewati: ${result.skipped} | Error: ${result.errors.length}
           </p>
         </div>
         ${result.errors.length ? `
@@ -193,8 +193,12 @@ export function openImportPeserta(onDone) {
           </div>` : ''}
       `;
 
-      if (result.created > 0) {
-        showToast(`${result.created} peserta berhasil diimpor.`, 'success');
+      if (result.created > 0 || result.updated > 0) {
+        const msg = [
+          result.created  ? `${result.created} ditambahkan`  : '',
+          result.updated  ? `${result.updated} diperbarui`   : '',
+        ].filter(Boolean).join(', ');
+        showToast(`Import selesai: ${msg}.`, 'success');
         onDone?.();
       }
     } catch (err) {

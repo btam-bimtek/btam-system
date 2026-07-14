@@ -96,8 +96,8 @@ export async function syncAlumniFromBimtek(bimtek) {
     });
   }
 
-  const tglMulai   = bimtek.periode?.mulai?.toDate?.()   ?? null;
-  const tglSelesai = bimtek.periode?.selesai?.toDate?.() ?? null;
+  const tglMulai   = _parseDate(bimtek.periode?.mulai);
+  const tglSelesai = _parseDate(bimtek.periode?.selesai);
   const tahun      = tglMulai?.getFullYear() ?? null;
 
   // Tulis ke koleksi alumni (doc id = bimtekId_noPeserta)
@@ -190,6 +190,14 @@ export async function deleteAlumniByBimtek(bimtekId) {
       await batch.commit();
     }
   }
+}
+
+function _parseDate(val) {
+  if (!val) return null;
+  if (typeof val.toDate === 'function') return val.toDate();
+  if (val.seconds) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function _fmtDate(d) {

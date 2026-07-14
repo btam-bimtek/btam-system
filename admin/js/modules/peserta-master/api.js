@@ -192,9 +192,9 @@ export async function deletePeserta(noPeserta) {
  * @returns {Promise<{created: number, skipped: number, errors: object[]}>}
  */
 export async function bulkImportPeserta(rows, { skipDupes = false } = {}) {
-  let created = 0, skipped = 0;
+  let created = 0, updated = 0, skipped = 0;
   const errors = [];
-  const BATCH_SIZE = 450; // Firestore max 500, kasih buffer
+  const BATCH_SIZE = 450;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = writeBatch(db);
@@ -213,8 +213,14 @@ export async function bulkImportPeserta(rows, { skipDupes = false } = {}) {
       const existing = await getDoc(ref);
 
       if (existing.exists() && !existing.data().deleted) {
-        if (skipDupes) { skipped++; continue; }
-        errors.push({ noPeserta: data.noPeserta, nama: data.nama, errors: ['Duplikat — sudah terdaftar.'] });
+        // Update hanya field yang tidak null/kosong dari file import
+        const updates = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (v !== null && v !== '') updates[k] = v;
+        }
+        updates.updatedAt = serverTimestamp();
+        batch.update(ref, updates);
+        updated++;
         continue;
       }
 
@@ -224,6 +230,7 @@ export async function bulkImportPeserta(rows, { skipDupes = false } = {}) {
         updatedAt: serverTimestamp(),
         createdBy: auth.currentUser?.email ?? null,
         deleted: false, deletedAt: null,
+        isAlumni: false,
         pendaftarIdOrigin: null, tahunSiklusOrigin: null,
       });
       created++;
@@ -235,10 +242,10 @@ export async function bulkImportPeserta(rows, { skipDupes = false } = {}) {
   await logAudit({
     action: 'bulk_import_peserta',
     entityType: 'peserta',
-    metadata: { created, skipped, errorCount: errors.length }
+    metadata: { created, updated, skipped, errorCount: errors.length }
   });
 
-  return { created, skipped, errors };
+  return { created, updated, skipped, errors };
 }
 
 // ─── Export all ───────────────────────────────────────────────
