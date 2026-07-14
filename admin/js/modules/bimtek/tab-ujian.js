@@ -195,9 +195,9 @@ function _buildExamCard(exam, sessions, S, canEdit) {
         <div class="flex gap-1.5 flex-wrap justify-end">${actions}</div>
       </div>
       <div class="px-4 py-3 flex flex-wrap gap-4 text-xs text-gray-400">
-        <span>â± ${exam.durasi} menit</span>
-        <span>ðŸ“‹ ${jumlahSoal} soal dipilih → ${exam.jumlahDitampilkan} ditampilkan</span>
-        <span>ðŸ”— ${sessionCount} link${submitted ? ` (${submitted} selesai)` : ''}</span>
+        <span>⏱ ${exam.durasi} menit</span>
+        <span>📋 ${jumlahSoal} soal dipilih → ${exam.jumlahDitampilkan} ditampilkan</span>
+        <span>🔗 ${sessionCount} link${submitted ? ` (${submitted} selesai)` : ''}</span>
       </div>
       <div class="px-4 pb-3 flex gap-2 flex-wrap">
         ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
@@ -248,7 +248,7 @@ async function _showExamModal(app, el, S, exam) {
     <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-2xl mx-4 flex flex-col" style="max-height:95vh">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
         <h3 class="font-semibold text-white">${isEdit ? 'Edit Ujian' : 'Buat Ujian'}</h3>
-        <button id="exam-modal-close" class="text-gray-400 hover:text-white text-xl leading-none">Ã—</button>
+        <button id="exam-modal-close" class="text-gray-400 hover:text-white text-xl leading-none">×</button>
       </div>
 
       <div class="overflow-y-auto flex-1 p-5 space-y-4 min-h-0">

@@ -146,7 +146,7 @@ function _renderTable() {
       { key: 'bobot', label: 'Bobot', width: '60px',
         render: v => `<span class="font-mono text-sm text-gray-300">${v ?? '—'}</span>` },
       { key: 'usedCount', label: 'Dipakai', width: '70px',
-        render: v => `<span class="text-gray-400">${v ?? 0}Ã—</span>` },
+        render: v => `<span class="text-gray-400">${v ?? 0}×</span>` },
       { key: 'correctRate', label: 'Benar %', width: '70px',
         render: v => v != null
           ? `<span class="${v >= 60 ? 'text-green-400' : 'text-yellow-400'}">${Math.round(v)}%</span>`
