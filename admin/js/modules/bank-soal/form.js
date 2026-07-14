@@ -83,8 +83,8 @@ export async function openSoalForm(soalId = null, onSaved) {
 
             <!-- Trigger button -->
             <button type="button" id="btn-uk-trigger"
-                    class="form-input w-full text-left flex items-center justify-between gap-2 pr-2">
-              <span id="uk-display" class="truncate text-gray-500 text-sm">Pilih Unit Kompetensi…</span>
+                    class="form-input w-full text-left flex items-start justify-between gap-2 pr-2 min-h-[2.25rem]">
+              <span id="uk-display" class="text-gray-500 text-sm leading-snug">Pilih Unit Kompetensi…</span>
               <div class="flex items-center gap-1 shrink-0">
                 <span id="btn-uk-clear"
                       class="hidden text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
@@ -434,10 +434,12 @@ function _renderUKList(filter = '') {
         <button type="button" data-uk-id="${u.id}" data-uk-kode="${_esc(u.kode ?? '')}" data-uk-nama="${_esc(u.nama)}"
                 class="uk-item w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors
                        ${isSelected ? 'bg-blue-600/20 text-blue-300' : 'text-gray-300 hover:bg-gray-700'}">
-          ${u.kode
-            ? `<span class="font-mono text-xs text-blue-400 shrink-0 w-28 truncate">${_esc(u.kode)}</span>`
-            : `<span class="text-xs text-gray-600 italic shrink-0 w-28">Non-SKKNI</span>`}
-          <span class="truncate">${_esc(u.nama)}</span>
+          <div class="flex flex-col min-w-0">
+            ${u.kode
+              ? `<span class="font-mono text-xs text-blue-400">${_esc(u.kode)}</span>`
+              : `<span class="text-xs text-gray-600 italic">Non-SKKNI</span>`}
+            <span class="text-sm text-gray-200 leading-snug">${_esc(u.nama)}</span>
+          </div>
           ${isSelected ? '<svg class="w-3.5 h-3.5 ml-auto shrink-0 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
         </button>`;
     }).join('');

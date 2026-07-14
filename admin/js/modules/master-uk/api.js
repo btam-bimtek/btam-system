@@ -213,9 +213,10 @@ export async function syncBankSoalUK() {
     const entry = { kode: data.kode ?? d.id.toUpperCase(), nama: data.nama };
     if (data.kode) ukMap[data.kode.toLowerCase()] = entry;
     ukMap[d.id.toLowerCase()] = entry;
+    // Match by nama juga — untuk soal yang menyimpan nama UK bukan kode
+    if (data.nama) ukMap[data.nama.toLowerCase()] = entry;
   });
-
-  // 2. Load semua soal aktif
+  // 2. Load semua soal
   const soalSnap = await getDocs(
     query(collection(db, COL.BANK_SOAL), where('deleted', '==', false))
   );
