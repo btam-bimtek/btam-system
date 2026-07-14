@@ -351,7 +351,7 @@ async function _showExamModal(app, el, S, exam) {
         <input type="checkbox" class="soal-cb mt-0.5 shrink-0 accent-blue-500" value="${s.soalId}" ${selectedSoalIds.has(s.soalId) ? 'checked' : ''}>
         <div class="min-w-0">
           <p class="text-xs text-white leading-snug line-clamp-2">${_esc(s.pertanyaan)}</p>
-          <p class="text-xs text-gray-400 mt-0.5">${_esc(s.unitKompetensi || '-')} Â· ${s.bloomLevel}</p>
+          <p class="text-xs text-gray-400 mt-0.5">${_esc(s.unitKompetensi || '-')} · ${s.bloomLevel}</p>
         </div>
       </label>`).join('');
 

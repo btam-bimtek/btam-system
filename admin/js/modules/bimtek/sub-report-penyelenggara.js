@@ -219,7 +219,7 @@ function _renderPerPeserta(el) {
     </tr>`).join('');
 
   el.innerHTML = `
-    <div class="text-xs text-gray-400 mb-3">${scoresSorted.length} peserta Â· KKM ${kkm}</div>
+    <div class="text-xs text-gray-400 mb-3">${scoresSorted.length} peserta · KKM ${kkm}</div>
     <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-x-auto">
       <table class="btam-table">
         <thead>
@@ -348,7 +348,7 @@ function _renderPerSoal(el) {
 
   el.innerHTML = `
     <div class="text-xs text-gray-400 mb-4">
-      ${soalErrorData.length} soal Â· Diurutkan dari yang paling sering salah
+      ${soalErrorData.length} soal · Diurutkan dari yang paling sering salah
     </div>
 
     <!-- Chart top 10 -->

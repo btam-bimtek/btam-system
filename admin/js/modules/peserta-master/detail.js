@@ -70,7 +70,7 @@ function _render(app) {
             <div class="flex items-center gap-2 mt-1 flex-wrap">
               <span class="text-xs text-gray-400 font-mono">${_esc(p.noPeserta)}</span>
               ${jk ? `<span class="badge ${p.jenisKelamin === 'L' ? 'badge-blue' : 'badge-purple'} text-xs">${jk}</span>` : ''}
-              ${p.instansi ? `<span class="text-xs text-gray-400">Â· ${_esc(p.instansi)}</span>` : ''}
+              ${p.instansi ? `<span class="text-xs text-gray-400">· ${_esc(p.instansi)}</span>` : ''}
             </div>
           </div>
         </div>

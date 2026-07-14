@@ -178,7 +178,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-  // ── Â¶1 Gambaran Umum ──────────────────────────────────────────────────────
+  // ── ¶1 Gambaran Umum ──────────────────────────────────────────────────────
 
   {
 
@@ -234,7 +234,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-  // ── Â¶2 Profil Penguasaan Awal ─────────────────────────────────────────────
+  // ── ¶2 Profil Penguasaan Awal ─────────────────────────────────────────────
 
   {
 
@@ -274,7 +274,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-  // ── Â¶3 Pencapaian & Peningkatan ───────────────────────────────────────────
+  // ── ¶3 Pencapaian & Peningkatan ───────────────────────────────────────────
 
   if (meningkat.length > 0) {
 
@@ -326,7 +326,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
 
 
-  // ── Â¶4 Area Perhatian ─────────────────────────────────────────────────────
+  // ── ¶4 Area Perhatian ─────────────────────────────────────────────────────
 
   if (stabil.length > 0 || menurun.length > 0) {
 
@@ -437,7 +437,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
   if (lulus !== false) {
 
-    // Â¶1 — Apresiasi & capaian
+    // ¶1 — Apresiasi & capaian
 
     let p1 = `${subjek} telah berhasil menyelesaikan kegiatan bimbingan teknis`;
 
@@ -449,7 +449,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶2 — Penerapan kompetensi di tempat kerja
+    // ¶2 — Penerapan kompetensi di tempat kerja
 
     let p2 = `Kompetensi yang telah diperoleh melalui kegiatan ini diharapkan dapat segera diterapkan dalam pelaksanaan tugas dan tanggung jawab sehari-hari di instansi masing-masing.`;
 
@@ -465,7 +465,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶3 — Pendalaman lanjutan (jika ada UK yang perlu perhatian)
+    // ¶3 — Pendalaman lanjutan (jika ada UK yang perlu perhatian)
 
     if (ekPerlu.length > 0) {
 
@@ -497,7 +497,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶4 — Pengembangan profesional berkelanjutan
+    // ¶4 — Pengembangan profesional berkelanjutan
 
     let p4 = `Sebagai bagian dari upaya pengembangan kompetensi yang berkesinambungan, ${subjek} didorong untuk senantiasa memperbarui pengetahuan dan keterampilan teknis di bidang air minum, `;
 
@@ -513,7 +513,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
   } else {
 
-    // Â¶1 — Kondisi & non-judgmental
+    // ¶1 — Kondisi & non-judgmental
 
     const tidakLulusKarenaKehadiran = nilaiAkhir != null && nilaiAkhir >= kkm;
 
@@ -535,7 +535,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶2 — Prioritas penguatan
+    // ¶2 — Prioritas penguatan
 
     if (ekPerlu.length > 0) {
 
@@ -573,7 +573,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶3 — Langkah konkret
+    // ¶3 — Langkah konkret
 
     let p3 = `Berikut adalah langkah-langkah yang disarankan untuk meningkatkan penguasaan kompetensi pada kegiatan berikutnya: `;
 
@@ -593,7 +593,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
 
 
-    // Â¶4 — Motivasi & harapan
+    // ¶4 — Motivasi & harapan
 
     let p4 = `Penyelenggara mengapresiasi kesediaan dan semangat ${subjek} dalam mengikuti kegiatan bimbingan teknis ini. `;
 
