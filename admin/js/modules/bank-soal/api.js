@@ -28,10 +28,14 @@ export async function listSoal({
   if (activeOnly)  constraints.push(where('active', '==', true));
   if (bidangId)    constraints.push(where('bidangId', '==', bidangId));
   if (bloomLevel)  constraints.push(where('bloomLevel', '==', bloomLevel));
-
   constraints.push(orderBy('createdAt', 'desc'));
-  constraints.push(limit(pageSize));
-  if (lastDoc) constraints.push(startAfter(lastDoc));
+
+  // search/noUkOnly are client-side — must fetch all matching records first
+  const needsClientFilter = !!search || noUkOnly;
+  if (!needsClientFilter) {
+    constraints.push(limit(pageSize));
+    if (lastDoc) constraints.push(startAfter(lastDoc));
+  }
 
   const q    = query(collection(db, COL.BANK_SOAL), ...constraints);
   const snap = await getDocs(q);
@@ -47,13 +51,17 @@ export async function listSoal({
   }
   if (noUkOnly) data = data.filter(s2 => !s2.unitKompetensi);
 
-  return { data, lastDoc: snap.docs[snap.docs.length - 1] ?? null };
+  if (needsClientFilter) {
+    return { data, lastDoc: null, clientFiltered: true, filteredTotal: data.length };
+  }
+  return { data, lastDoc: snap.docs[snap.docs.length - 1] ?? null, clientFiltered: false };
 }
 
-export async function countSoal({ bidangId = '', activeOnly = true } = {}) {
+export async function countSoal({ bidangId = '', bloomLevel = '', activeOnly = true } = {}) {
   const constraints = [where('deleted', '==', false)];
   if (activeOnly) constraints.push(where('active', '==', true));
   if (bidangId)   constraints.push(where('bidangId', '==', bidangId));
+  if (bloomLevel) constraints.push(where('bloomLevel', '==', bloomLevel));
 
   const snap = await getCountFromServer(
     query(collection(db, COL.BANK_SOAL), ...constraints)

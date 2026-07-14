@@ -103,7 +103,7 @@ async function _load() {
   _state.loading = true; _renderTable();
 
   try {
-    const [{ data, lastDoc }, total] = await Promise.all([
+    const [{ data, lastDoc, clientFiltered, filteredTotal }, total] = await Promise.all([
       listSoal({
         search:     _state.search,
         bidangId:   _state.bidangId,
@@ -113,9 +113,10 @@ async function _load() {
         pageSize:   PER_PAGE,
         lastDoc:    _state.lastDocs[_state.page - 1]
       }),
-      countSoal({ bidangId: _state.bidangId, activeOnly: _state.activeOnly })
+      countSoal({ bidangId: _state.bidangId, bloomLevel: _state.bloomLevel, activeOnly: _state.activeOnly })
     ]);
-    _state.data = data; _state.total = total;
+    _state.data = data;
+    _state.total = clientFiltered ? filteredTotal : total;
     if (lastDoc) _state.lastDocs[_state.page] = lastDoc;
     const badge = document.getElementById('total-badge');
     if (badge) badge.textContent = `${total} soal`;
