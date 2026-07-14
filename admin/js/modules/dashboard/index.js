@@ -202,10 +202,12 @@ function _renderChartTren(allBimtek, alumniStats) {
   const byYearNewSet = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
+    const nama = (b.nama ?? '').toLowerCase().trim();
+    if (!nama) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
     if (!byYearNewSet[yr]) byYearNewSet[yr] = new Set();
-    byYearNewSet[yr].add((b.nama ?? '').toLowerCase().trim());
+    byYearNewSet[yr].add(nama);
   });
   const byYearNew = Object.fromEntries(
     Object.entries(byYearNewSet).map(([yr, s]) => [yr, s.size])
