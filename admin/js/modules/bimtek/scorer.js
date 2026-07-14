@@ -9,6 +9,7 @@ import {
 } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { logAudit } from '../../../../shared/logger.js';
+import { recalcSoalStats } from '../bank-soal/api.js';
 
 /**
  * Hitung skor submission based on kunci jawaban dan bobot Bloom.
@@ -171,6 +172,7 @@ export async function scoreAllSubmissions(bimtekId, examId) {
         entityId: examId,
         metadata: { bimtekId, processed, failed }
       });
+      recalcSoalStats(exam.soalIds).catch(console.error);
     }
 
     return { processed, failed, errors };
@@ -254,6 +256,7 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       entityId: `${examId}__${noPeserta}`,
       metadata: { skor }
     });
+    recalcSoalStats(examSnap.data().soalIds).catch(console.error);
 
     return skor;
   } catch (err) {

@@ -9,6 +9,7 @@ import {
 import { getCurrentUser } from '../../../../shared/auth.js';
 import { logAudit } from '../../../../shared/logger.js';
 import { COL } from '../../../../shared/constants.js';
+import { recalcSoalStats } from '../bank-soal/api.js';
 
 // ─── Exam Config ──────────────────────────────────────────────
 
@@ -49,11 +50,16 @@ export async function createExam(bimtekId, data) {
     createdBy:          user.uid,
   });
   await logAudit({ action: 'create_exam', entityType: 'exam', entityId: ref.id, metadata: { bimtekId, tipe: data.tipe } });
+  recalcSoalStats(data.soalIds).catch(console.error);
   return ref.id;
 }
 
 export async function updateExam(examId, data) {
   _validateExam(data);
+  // Ambil soalIds lama untuk recalc soal yang mungkin dikeluarkan dari exam
+  const oldSnap = await getDoc(doc(db, COL.EXAMS, examId));
+  const oldSoalIds = oldSnap.exists() ? (oldSnap.data().soalIds ?? []) : [];
+
   await updateDoc(doc(db, COL.EXAMS, examId), {
     tipe:              data.tipe,
     judul:             data.judul.trim(),
@@ -63,9 +69,16 @@ export async function updateExam(examId, data) {
     updatedAt:         serverTimestamp(),
   });
   await logAudit({ action: 'update_exam', entityType: 'exam', entityId: examId });
+  // Recalc untuk semua soal yang terpengaruh (lama + baru)
+  const affectedIds = [...new Set([...oldSoalIds, ...data.soalIds])];
+  recalcSoalStats(affectedIds).catch(console.error);
 }
 
 export async function deleteExam(examId) {
+  // Ambil soalIds sebelum hapus untuk recalc setelahnya
+  const examSnap = await getDoc(doc(db, COL.EXAMS, examId));
+  const soalIds  = examSnap.exists() ? (examSnap.data().soalIds ?? []) : [];
+
   // Hapus semua sessions dulu
   const sessions = await listSessions(examId);
   if (sessions.length > 0) {
@@ -75,6 +88,7 @@ export async function deleteExam(examId) {
   }
   await deleteDoc(doc(db, COL.EXAMS, examId));
   await logAudit({ action: 'delete_exam', entityType: 'exam', entityId: examId });
+  recalcSoalStats(soalIds).catch(console.error);
 }
 
 export async function publishExam(examId, published) {

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Patch: Hapus Duplikat Bank Soal</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ccc; padding: 2rem; max-width: 900px; }
+    h2 { color: #fff; }
+    p  { font-size: 13px; color: #aaa; }
+    .section { margin-top: 2rem; border-top: 1px solid #333; padding-top: 1.5rem; }
+    .section h3 { color: #e5e7eb; font-size: 15px; margin: 0 0 6px; }
+    .section p  { margin: 0 0 10px; }
+    .btn { padding: .5rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 8px; margin-top: 8px; }
+    .btn-blue   { background: #2563eb; color: #fff; }
+    .btn-red    { background: #dc2626; color: #fff; }
+    .btn-orange { background: #d97706; color: #fff; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    pre { background: #1a1a1a; border: 1px solid #333; padding: 1rem; border-radius: 8px; white-space: pre-wrap; min-height: 80px; margin-top: 12px; font-size: 12px; }
+    .warn { color: #facc15; }
+    .ok   { color: #4ade80; }
+    .err  { color: #f87171; }
+    .dim  { color: #6b7280; }
+    .keep { color: #34d399; }
+    .del  { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h2>Patch — Bank Soal Cleanup</h2>
+
+  <!-- SEKSI 1: DUPLIKAT -->
+  <div class="section">
+    <h3>1. Hapus Duplikat</h3>
+    <p>Scan soal aktif (<code>deleted=false</code>) yang teks pertanyaannya identik.<br>
+       Dari setiap grup, <strong>dokumen tertua (createdAt terkecil) dipertahankan</strong>; yang lain dihapus beserta kunci jawaban.</p>
+    <div>
+      <button class="btn btn-blue" id="btn-scan-dupe">Scan Duplikat</button>
+      <button class="btn btn-red"  id="btn-del-dupe" disabled>Hapus Duplikat</button>
+    </div>
+    <pre id="log-dupe">Klik "Scan Duplikat" untuk memulai…</pre>
+  </div>
+
+  <!-- SEKSI 2: RECALC STATS -->
+  <div class="section">
+    <h3>2. Recalculate Statistik Soal (usedCount & correctRate)</h3>
+    <p>Hitung ulang <code>usedCount</code> dan <code>correctRate</code> untuk semua soal aktif berdasarkan data <code>exams</code> dan <code>exam_results</code> yang ada.<br>
+       Jalankan ini sekali untuk memperbaiki data historis sebelum fitur auto-recalc aktif.</p>
+    <div>
+      <button class="btn btn-blue" id="btn-recalc">Recalculate Semua Stats</button>
+    </div>
+    <pre id="log-recalc">Klik tombol untuk memulai…</pre>
+  </div>
+
+  <!-- SEKSI 3: SOFT-DELETED -->
+  <div class="section">
+    <h3>3. Bersihkan Soal yang Sudah Dihapus (Hard Delete)</h3>
+    <p>Soal yang dihapus di aplikasi hanya di-soft-delete (<code>deleted=true</code>), dokumennya masih ada di Firestore.<br>
+       Opsi ini menghapus permanen semua dokumen tersebut beserta kunci jawaban di <code>bank_soal_answers</code>.</p>
+    <div>
+      <button class="btn btn-blue"   id="btn-scan-soft">Scan Soal Terhapus</button>
+      <button class="btn btn-orange" id="btn-del-soft" disabled>Hapus Permanen</button>
+    </div>
+    <pre id="log-soft">Klik "Scan Soal Terhapus" untuk memulai…</pre>
+  </div>
+
+  <script type="module">
+    import { initializeApp }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore, collection, getDocs, doc, deleteDoc, query, where,
+      writeBatch
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            'AIzaSyBaMOaqhHJ2DnIDsepunwZevidWWveOr7g',
+      authDomain:        'bimtek-27fe5.firebaseapp.com',
+      projectId:         'bimtek-27fe5',
+      storageBucket:     'bimtek-27fe5.firebasestorage.app',
+      messagingSenderId: '176268102387',
+      appId:             '1:176268102387:web:ba809b01efdd06ac184586'
+    };
+
+    const app  = initializeApp(firebaseConfig, 'patch-dedupe');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    async function ensureLogin() {
+      if (auth.currentUser) return;
+      const email    = prompt('Email admin:');
+      const password = prompt('Password:');
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function logTo(elId, msg, cls = '') {
+      document.getElementById(elId).innerHTML += `\n<span class="${cls}">${msg}</span>`;
+    }
+    function clsLog(elId, msg) {
+      document.getElementById(elId).innerHTML = `<span>${msg}</span>`;
+    }
+    function _toMs(ts) {
+      if (!ts) return 0;
+      if (ts.seconds) return ts.seconds * 1000;
+      if (ts.toMillis) return ts.toMillis();
+      return new Date(ts).getTime() || 0;
+    }
+    function _fmtDate(ts) {
+      const ms = _toMs(ts);
+      if (!ms) return 'tanpa tanggal';
+      return new Date(ms).toLocaleString('id-ID');
+    }
+    async function hardDelete(ids, logId) {
+      let deleted = 0, errors = 0;
+      for (const id of ids) {
+        try {
+          await deleteDoc(doc(db, 'bank_soal', id));
+          await deleteDoc(doc(db, 'bank_soal_answers', id)).catch(() => {});
+          logTo(logId, `  ✓ ${id}`, 'ok');
+          deleted++;
+        } catch (err) {
+          logTo(logId, `  ✗ ${id}: ${err.message}`, 'err');
+          errors++;
+        }
+      }
+      return { deleted, errors };
+    }
+
+    // ── SEKSI 1: DUPLIKAT ────────────────────────────────────────
+    let dupesToDelete = [];
+
+    document.getElementById('btn-scan-dupe').addEventListener('click', async () => {
+      const btnScan = document.getElementById('btn-scan-dupe');
+      const btnDel  = document.getElementById('btn-del-dupe');
+      btnScan.disabled = true;
+      btnDel.disabled  = true;
+      dupesToDelete = [];
+      clsLog('log-dupe', 'Memuat soal aktif…');
+
+      try {
+        await ensureLogin();
+
+        const snap = await getDocs(
+          query(collection(db, 'bank_soal'), where('deleted', '==', false))
+        );
+        logTo('log-dupe', `✓ Soal aktif: ${snap.size}`);
+
+        const groups = {};
+        snap.docs.forEach(d => {
+          const key = (d.data().pertanyaan ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+          if (!key) return;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({ id: d.id, data: d.data() });
+        });
+
+        const dupeGroups = Object.entries(groups).filter(([, docs]) => docs.length > 1);
+
+        if (dupeGroups.length === 0) {
+          logTo('log-dupe', '\n✅ Tidak ada duplikat.', 'ok');
+          return;
+        }
+
+        logTo('log-dupe', `\n⚠ ${dupeGroups.length} grup duplikat:\n`, 'warn');
+
+        dupeGroups.forEach(([key, docs], gi) => {
+          docs.sort((a, b) => _toMs(a.data.createdAt) - _toMs(b.data.createdAt));
+          const preview = key.length > 80 ? key.slice(0, 80) + '…' : key;
+          logTo('log-dupe', `\nGrup ${gi + 1}: "${preview}"`, 'warn');
+          docs.forEach((d, i) => {
+            const tgl = _fmtDate(d.data.createdAt);
+            if (i === 0) {
+              logTo('log-dupe', `  ✓ SIMPAN  ${d.id}  (${tgl})`, 'keep');
+            } else {
+              logTo('log-dupe', `  ✗ HAPUS   ${d.id}  (${tgl})`, 'del');
+              dupesToDelete.push(d.id);
+            }
+          });
+        });
+
+        logTo('log-dupe', `\n──────────────────────────────`, 'dim');
+        logTo('log-dupe', `Total akan dihapus: ${dupesToDelete.length} soal`, 'warn');
+        btnDel.disabled = false;
+
+      } catch (err) {
+        logTo('log-dupe', `\n❌ ${err.message}`, 'err');
+        console.error(err);
+      } finally {
+        btnScan.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-del-dupe').addEventListener('click', async () => {
+      if (!dupesToDelete.length) return;
+      if (!confirm(`Hapus ${dupesToDelete.length} soal duplikat? Tidak bisa dibatalkan.`)) return;
+      const btnScan = document.getElementById('btn-scan-dupe');
+      const btnDel  = document.getElementById('btn-del-dupe');
+      btnDel.disabled = btnScan.disabled = true;
+      logTo('log-dupe', '\nMenghapus…');
+      const { deleted, errors } = await hardDelete(dupesToDelete, 'log-dupe');
+      logTo('log-dupe', `\n✅ Selesai — ${deleted} dihapus${errors ? `, ${errors} error` : ''}.`, 'ok');
+      dupesToDelete = [];
+      btnScan.disabled = false;
+    });
+
+    // ── SEKSI 2: RECALC STATS ────────────────────────────────────
+    document.getElementById('btn-recalc').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-recalc');
+      btn.disabled = true;
+      clsLog('log-recalc', 'Memuat semua soal aktif…');
+
+      try {
+        await ensureLogin();
+
+        // Ambil semua soal aktif
+        const soalSnap = await getDocs(
+          query(collection(db, 'bank_soal'), where('deleted', '==', false))
+        );
+        const soalIds = soalSnap.docs.map(d => d.id);
+        logTo('log-recalc', `✓ ${soalIds.length} soal aktif ditemukan`);
+
+        // Fetch exams dan exam_results secara paralel
+        logTo('log-recalc', 'Memuat exams dan exam_results…');
+        const [examsSnap, resultsSnap] = await Promise.all([
+          getDocs(collection(db, 'exams')),
+          getDocs(collection(db, 'exam_results')),
+        ]);
+        logTo('log-recalc', `✓ ${examsSnap.size} exam, ${resultsSnap.size} exam_results`);
+
+        // Hitung usedCount
+        const usedCount = {};
+        const answered  = {};
+        const correct   = {};
+        const idSet = new Set(soalIds);
+        soalIds.forEach(id => { usedCount[id] = 0; answered[id] = 0; correct[id] = 0; });
+
+        examsSnap.docs.forEach(d => {
+          (d.data().soalIds ?? []).forEach(sid => {
+            if (idSet.has(sid)) usedCount[sid]++;
+          });
+        });
+
+        resultsSnap.docs.forEach(d => {
+          const detail = d.data().detail ?? {};
+          for (const sid of soalIds) {
+            if (detail[sid] !== undefined) {
+              answered[sid]++;
+              if (detail[sid].benar) correct[sid]++;
+            }
+          }
+        });
+
+        // Batch update — chunk 400
+        logTo('log-recalc', 'Menulis update ke bank_soal…');
+        const CHUNK = 400;
+        let updated = 0;
+        for (let i = 0; i < soalIds.length; i += CHUNK) {
+          const chunk = soalIds.slice(i, i + CHUNK);
+          const batch = writeBatch(db);
+          chunk.forEach(sid => {
+            const rate = answered[sid] > 0
+              ? Math.round((correct[sid] / answered[sid]) * 100)
+              : null;
+            batch.update(doc(db, 'bank_soal', sid), {
+              usedCount:   usedCount[sid],
+              correctRate: rate,
+            });
+            updated++;
+          });
+          await batch.commit();
+        }
+
+        logTo('log-recalc', `\n✅ Selesai — ${updated} soal diperbarui.`, 'ok');
+      } catch (err) {
+        logTo('log-recalc', `\n❌ ${err.message}`, 'err');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ── SEKSI 3: SOFT-DELETED ────────────────────────────────────
+    let softToDelete = [];
+
+    document.getElementById('btn-scan-soft').addEventListener('click', async () => {
+      const btnScan = document.getElementById('btn-scan-soft');
+      const btnDel  = document.getElementById('btn-del-soft');
+      btnScan.disabled = true;
+      btnDel.disabled  = true;
+      softToDelete = [];
+      clsLog('log-soft', 'Memuat soal yang sudah dihapus…');
+
+      try {
+        await ensureLogin();
+
+        const snap = await getDocs(
+          query(collection(db, 'bank_soal'), where('deleted', '==', true))
+        );
+
+        if (snap.size === 0) {
+          logTo('log-soft', '✅ Tidak ada soal soft-deleted.', 'ok');
+          return;
+        }
+
+        logTo('log-soft', `⚠ ${snap.size} soal soft-deleted:\n`, 'warn');
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const tgl  = _fmtDate(data.deletedAt ?? data.updatedAt);
+          const preview = (data.pertanyaan ?? '').slice(0, 60);
+          logTo('log-soft', `  ${d.id}  (dihapus: ${tgl}) — "${preview}…"`, 'del');
+          softToDelete.push(d.id);
+        });
+
+        logTo('log-soft', `\n──────────────────────────────`, 'dim');
+        logTo('log-soft', `Total: ${softToDelete.length} soal akan dihapus permanen dari Firestore.`, 'warn');
+        btnDel.disabled = false;
+
+      } catch (err) {
+        logTo('log-soft', `\n❌ ${err.message}`, 'err');
+        console.error(err);
+      } finally {
+        btnScan.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-del-soft').addEventListener('click', async () => {
+      if (!softToDelete.length) return;
+      if (!confirm(`Hapus permanen ${softToDelete.length} soal? Tidak bisa dibatalkan.`)) return;
+      const btnScan = document.getElementById('btn-scan-soft');
+      const btnDel  = document.getElementById('btn-del-soft');
+      btnDel.disabled = btnScan.disabled = true;
+      logTo('log-soft', '\nMenghapus permanen…');
+      const { deleted, errors } = await hardDelete(softToDelete, 'log-soft');
+      logTo('log-soft', `\n✅ Selesai — ${deleted} dihapus${errors ? `, ${errors} error` : ''}.`, 'ok');
+      softToDelete = [];
+      btnScan.disabled = false;
+    });
+  </script>
+</body>
+</html>

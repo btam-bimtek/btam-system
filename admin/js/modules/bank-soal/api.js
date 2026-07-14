@@ -250,6 +250,66 @@ export async function exportSoalWithAnswers(bidangId = '') {
   }));
 }
 
+// ─── Stats ────────────────────────────────────────────────────
+
+/**
+ * Hitung ulang usedCount dan correctRate untuk soalIds yang diberikan.
+ * Dipanggil setelah exam dibuat/diubah/dihapus atau setelah scoring selesai.
+ *
+ * usedCount  = jumlah exam yang menyertakan soal ini di soalIds
+ * correctRate = % jawaban benar di seluruh exam_results yang memuat soal ini
+ */
+export async function recalcSoalStats(soalIds) {
+  if (!soalIds?.length) return;
+
+  const idSet = new Set(soalIds);
+
+  // Fetch semua exams dan exam_results secara paralel
+  const [examsSnap, resultsSnap] = await Promise.all([
+    getDocs(collection(db, COL.EXAMS)),
+    getDocs(collection(db, COL.EXAM_RESULTS)),
+  ]);
+
+  // Hitung usedCount: berapa exam yang menyertakan soal ini
+  const usedCount = {};
+  soalIds.forEach(id => { usedCount[id] = 0; });
+  examsSnap.docs.forEach(d => {
+    const examSoalIds = d.data().soalIds ?? [];
+    examSoalIds.forEach(sid => { if (idSet.has(sid)) usedCount[sid]++; });
+  });
+
+  // Hitung correctRate: benar/dijawab di semua exam_results
+  const answered = {};
+  const correct  = {};
+  soalIds.forEach(id => { answered[id] = 0; correct[id] = 0; });
+  resultsSnap.docs.forEach(d => {
+    const detail = d.data().detail ?? {};
+    for (const sid of soalIds) {
+      if (detail[sid] !== undefined) {
+        answered[sid]++;
+        if (detail[sid].benar) correct[sid]++;
+      }
+    }
+  });
+
+  // Batch update bank_soal — chunk 400 agar tidak melebihi batas batch
+  const CHUNK = 400;
+  for (let i = 0; i < soalIds.length; i += CHUNK) {
+    const chunk = soalIds.slice(i, i + CHUNK);
+    const batch = writeBatch(db);
+    chunk.forEach(sid => {
+      const rate = answered[sid] > 0
+        ? Math.round((correct[sid] / answered[sid]) * 100)
+        : null;
+      batch.update(doc(db, COL.BANK_SOAL, sid), {
+        usedCount:   usedCount[sid],
+        correctRate: rate,
+      });
+    });
+    await batch.commit();
+  }
+}
+
 // ─── Internal ─────────────────────────────────────────────────
 
 function _validateSoal(data) {
