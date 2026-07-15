@@ -199,6 +199,27 @@ export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
   return { created, skipped };
 }
 
+/**
+ * Perpanjang waktu sesi ujian yang sedang berjalan.
+ * Tambahan menit bersifat kumulatif — memanggil dua kali masing-masing +5 = +10 total.
+ * Efektif saat peserta me-refresh halaman ujian.
+ */
+export async function extendSession(sessionId, additionalMinutes) {
+  const snap = await getDoc(doc(db, COL.EXAM_SESSIONS, sessionId));
+  if (!snap.exists()) throw new Error('Session tidak ditemukan.');
+  const current  = snap.data().timeExtensionMinutes || 0;
+  const newTotal = current + additionalMinutes;
+  await updateDoc(doc(db, COL.EXAM_SESSIONS, sessionId), {
+    timeExtensionMinutes: newTotal,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit({
+    action: 'extend_session', entityType: 'exam_session', entityId: sessionId,
+    metadata: { additionalMinutes, newTotal },
+  });
+  return newTotal;
+}
+
 export async function deleteSession(sessionId) {
   await deleteDoc(doc(db, COL.EXAM_SESSIONS, sessionId));
 }

@@ -37,13 +37,16 @@ export function initExamRunner({ session, exam, soalList, onComplete }) {
   _answers = session.answers ? { ...session.answers } : {};
 
   // Hitung sisa waktu — handle resume (startedAt sudah ada)
+  // timeExtensionMinutes: tambahan waktu yang diberikan admin (default 0)
   const durasiBiasaMenit = exam.durasi || EXAM_DEFAULTS.DURASI_MENIT;
+  const extraSec         = (session.timeExtensionMinutes || 0) * 60;
+  const totalSec         = durasiBiasaMenit * 60 + extraSec;
   if (session.startedAt) {
     const startMs    = _toMs(session.startedAt);
     const elapsedSec = Math.floor((Date.now() - startMs) / 1000);
-    _secondsLeft = Math.max(0, durasiBiasaMenit * 60 - elapsedSec);
+    _secondsLeft = Math.max(0, totalSec - elapsedSec);
   } else {
-    _secondsLeft = durasiBiasaMenit * 60;
+    _secondsLeft = totalSec;
   }
 
   _renderShell();

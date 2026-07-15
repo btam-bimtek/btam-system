@@ -6,7 +6,7 @@ import { showToast }     from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import {
   listExams, createExam, updateExam, deleteExam, publishExam,
-  listSessions, generateSessions, deleteSession, resetSession,
+  listSessions, generateSessions, deleteSession, resetSession, extendSession,
 } from './exam-api.js';
 import { generateBimtekAccessCode } from './api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -161,8 +161,26 @@ function _render(app, el, S, exams, sessions) {
       } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
     });
   });
-}
 
+  // Inline extend session
+  el.querySelectorAll('.btn-extend-session').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const current = parseInt(btn.dataset.ext) || 0;
+      const input   = prompt(
+        `Tambah berapa menit waktu ujian?\n(Sudah diperpanjang: ${current} menit. Masukkan nilai positif.)`,
+        '10'
+      );
+      if (input === null) return;
+      const menit = parseInt(input);
+      if (!menit || menit <= 0) { showToast('Jumlah menit tidak valid.', 'error'); return; }
+      try {
+        const total = await extendSession(btn.dataset.id, menit);
+        await renderTabUjian(app, el, S);
+        showToast(`Waktu diperpanjang +${menit} menit (total: ${total} menit). Peserta perlu refresh halaman ujian.`, 'success');
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+}
 function _buildExamCard(exam, sessions, S, canEdit) {
   const tipeLabel    = TIPE_LABEL[exam.tipe] || exam.tipe;
   const jumlahSoal   = exam.soalIds?.length || 0;
@@ -469,10 +487,13 @@ function _buildInlineSessions(exam, sessions) {
       if (!s) return `<td class="text-xs text-gray-500">—</td>`;
       const badge = SESSION_STATUS_BADGE[s.status] || 'badge-gray';
       const lbl   = SESSION_STATUS_LABEL[s.status] || s.status;
+      const extLabel = s.timeExtensionMinutes ? `+${s.timeExtensionMinutes}m` : '';
       return `<td>
         <div class="flex items-center gap-1.5 flex-wrap">
           <span class="badge ${badge} text-xs">${lbl}</span>
-          <button class="btn-reset-session text-xs text-gray-500 hover:text-gray-200" data-id="${s.id}" title="Reset session">↺</button>
+          ${extLabel ? `<span class="text-xs text-amber-400" title="Waktu diperpanjang ${s.timeExtensionMinutes} menit">${extLabel}</span>` : ''}
+          ${s.status === 'started' ? `<button class="btn-extend-session text-xs text-amber-500 hover:text-amber-300" data-id="${s.id}" data-ext="${s.timeExtensionMinutes || 0}" title="Perpanjang waktu">+Waktu</button>` : ''}
+          <button class="btn-reset-session text-xs text-gray-500 hover:text-gray-200" data-id="${s.id}" title="Reset session">Reset</button>
         </div>
       </td>`;
     }).join('');
