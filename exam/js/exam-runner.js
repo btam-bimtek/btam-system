@@ -15,6 +15,7 @@ let _currentIdx  = 0;
 let _secondsLeft = 0;
 let _timerRef    = null;
 let _saveRef     = null;
+let _saveDebounce = null; // debounce save setelah jawaban berubah
 let _onComplete  = null;
 let _submitting  = false;
 
@@ -73,7 +74,16 @@ export function initExamRunner({ session, exam, soalList, onComplete }) {
 export function destroyExamRunner() {
   clearInterval(_timerRef);
   clearInterval(_saveRef);
+  clearTimeout(_saveDebounce);
   destroyAntiCheat();
+}
+
+/** Jadwalkan save segera setelah jawaban berubah (debounce 2 detik). */
+function _scheduleSave() {
+  clearTimeout(_saveDebounce);
+  _saveDebounce = setTimeout(() => {
+    autoSaveAnswers(_session.id, _answers, getWarnCount()).catch(console.warn);
+  }, 2000);
 }
 
 // ─── Shell (struktur statis) ──────────────────────────────────
@@ -236,6 +246,7 @@ function _renderQuestion() {
       card.querySelectorAll('.option-card').forEach(el => el.classList.remove('selected'));
       e.target.closest('.option-card').classList.add('selected');
       _renderNavGrid();
+      _scheduleSave();
     });
   });
 
