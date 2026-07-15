@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Patch: Backfill namaKey Bimtek</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ccc; padding: 2rem; max-width: 700px; }
+    h2 { color: #fff; }
+    p  { font-size: 13px; color: #aaa; }
+    .btn { padding: .5rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 8px; margin-top: 12px; }
+    .btn-blue { background: #2563eb; color: #fff; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    pre { background: #1a1a1a; border: 1px solid #333; padding: 1rem; border-radius: 8px; white-space: pre-wrap; min-height: 80px; margin-top: 12px; font-size: 12px; }
+    .ok  { color: #4ade80; }
+    .err { color: #f87171; }
+    .dim { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h2>Patch — Backfill namaKey Bimtek</h2>
+  <p>Tambahkan field <code>namaKey</code> (nama lowercase + collapse spasi) ke semua dokumen bimtek yang belum punya field tersebut.<br>
+     Field ini dipakai dashboard untuk deduplication yang konsisten.</p>
+
+  <button class="btn btn-blue" id="btn-run">Jalankan Patch</button>
+  <pre id="log">Klik tombol untuk memulai…</pre>
+
+  <script type="module">
+    import { initializeApp }      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore, collection, getDocs, doc, writeBatch, query, where
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            'AIzaSyBaMOaqhHJ2DnIDsepunwZevidWWveOr7g',
+      authDomain:        'bimtek-27fe5.firebaseapp.com',
+      projectId:         'bimtek-27fe5',
+      storageBucket:     'bimtek-27fe5.firebasestorage.app',
+      messagingSenderId: '176268102387',
+      appId:             '1:176268102387:web:ba809b01efdd06ac184586'
+    };
+
+    const app  = initializeApp(firebaseConfig, 'patch-namakey');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const logEl = document.getElementById('log');
+    const btn   = document.getElementById('btn-run');
+
+    function log(msg, cls = '') {
+      logEl.innerHTML += `\n<span class="${cls}">${msg}</span>`;
+    }
+
+    function normalizeNama(nama) {
+      return (nama ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+    }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      logEl.innerHTML = '<span>Login…</span>';
+
+      try {
+        if (!auth.currentUser) {
+          const email    = prompt('Email admin:');
+          const password = prompt('Password:');
+          await signInWithEmailAndPassword(auth, email, password);
+          log('✓ Login berhasil', 'ok');
+        }
+
+        // Ambil semua bimtek (termasuk deleted — biar lengkap)
+        const snap = await getDocs(collection(db, 'bimtek'));
+        log(`✓ Total dokumen bimtek: ${snap.size}`);
+
+        const toUpdate = snap.docs.filter(d => {
+          const data = d.data();
+          const expected = normalizeNama(data.nama);
+          // Update jika belum ada namaKey atau nilainya berbeda dari expected
+          return !data.namaKey || data.namaKey !== expected;
+        });
+
+        if (toUpdate.length === 0) {
+          log('\n✅ Semua dokumen sudah punya namaKey yang benar.', 'ok');
+          btn.disabled = false;
+          return;
+        }
+
+        log(`\n${toUpdate.length} dokumen perlu diupdate:`, 'dim');
+
+        const CHUNK = 400;
+        let updated = 0;
+        for (let i = 0; i < toUpdate.length; i += CHUNK) {
+          const chunk = toUpdate.slice(i, i + CHUNK);
+          const batch = writeBatch(db);
+          chunk.forEach(d => {
+            const namaKey = normalizeNama(d.data().nama);
+            batch.update(doc(db, 'bimtek', d.id), { namaKey });
+            log(`  ${d.id} → "${namaKey}"`, 'dim');
+            updated++;
+          });
+          await batch.commit();
+        }
+
+        log(`\n✅ Selesai — ${updated} dokumen diperbarui.`, 'ok');
+      } catch (err) {
+        log(`\n❌ Error: ${err.message}`, 'err');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

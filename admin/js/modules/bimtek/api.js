@@ -10,6 +10,14 @@ import { getCurrentUser } from '../../../../shared/auth.js';
 
 const COL = 'bimtek';
 
+// ─── NAMA KEY ────────────────────────────────────────────────────────────────
+// Normalisasi nama untuk pengelompokan — lowercase + collapse whitespace.
+// Disimpan sebagai field namaKey agar dashboard bisa dedup tanpa tergantung
+// variasi spasi/kapital. Tidak menghilangkan angka batch (Batch 3 ≠ Batch 4).
+export function normalizeNama(nama) {
+  return (nama ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 // ─── DEFAULT WEIGHTS ────────────────────────────────────────────────────────
 
 export const DEFAULT_WEIGHTS = {
@@ -83,7 +91,8 @@ export async function createBimtek(data) {
   const kapasitasDefault = data.mode === 'online' ? 25 : 17;
 
   const payload = {
-    nama: data.nama.trim(),
+    nama:    data.nama.trim(),
+    namaKey: normalizeNama(data.nama),
     deskripsi: data.deskripsi?.trim() || '',
     kodeBimtek: data.kodeBimtek?.trim() || '',
     tipe: data.tipe,
@@ -133,6 +142,8 @@ export async function updateBimtek(bimtekId, data) {
   for (const key of allowed) {
     if (key in data) payload[key] = data[key];
   }
+  // Auto-sync namaKey saat nama diubah
+  if ('nama' in data) payload.namaKey = normalizeNama(data.nama);
   payload.updatedAt = serverTimestamp();
 
   await updateDoc(doc(db, COL, bimtekId), payload);

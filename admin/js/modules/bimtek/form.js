@@ -3,7 +3,7 @@ import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { navigate } from '../../router.js';
-import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS, listSesi, shiftSesiPeriode } from './api.js';
+import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS, listSesi, shiftSesiPeriode, listBimtek, normalizeNama } from './api.js';
 import { BIDANG_LIST, KOMPONEN_NILAI } from '../../../../shared/constants.js';
 
 // ─── ENTRY POINT ─────────────────────────────────────────────────────────────
@@ -66,6 +66,7 @@ export async function renderBimtekForm({ id } = {}) {
               <input type="text" id="nama" class="form-input w-full" maxlength="200"
                 value="${_esc(d?.nama ?? '')}"
                 placeholder="cth: Bimtek Operator IPA Lanjutan Batch 3">
+              <div id="nama-similar-warning" class="hidden mt-2 p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-xs text-yellow-300"></div>
             </div>
 
             <div>
@@ -228,6 +229,9 @@ export async function renderBimtekForm({ id } = {}) {
     _attachWeightEvents();
     _updateWeightSum();
   });
+
+  // ── Fuzzy warning nama mirip ──
+  _initNamaFuzzyWarning(app, id);
 
   // ── Submit ──
   app.querySelector('#btn-submit').addEventListener('click', () => _handleSubmit(app, id, isEdit, d));
@@ -483,4 +487,64 @@ function _toInputDate(ts) {
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── FUZZY NAMA WARNING ───────────────────────────────────────────────────────
+
+function _levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = [];
+  for (let i = 0; i <= m; i++) { dp[i] = [i]; }
+  for (let j = 0; j <= n; j++) { dp[0][j] = j; }
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function _isSimilar(a, b) {
+  if (a === b) return true;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen < 6) return false; // nama terlalu pendek, skip
+  const dist = _levenshtein(a, b);
+  // Mirip jika < 15% karakter berbeda
+  return dist / maxLen < 0.15;
+}
+
+async function _initNamaFuzzyWarning(app, currentBimtekId) {
+  // Fetch semua nama bimtek di background — tidak blocking
+  let existingNames = [];
+  try {
+    const all = await listBimtek();
+    existingNames = all
+      .filter(b => b.id !== currentBimtekId) // exclude diri sendiri saat edit
+      .map(b => ({ key: b.namaKey || normalizeNama(b.nama), display: b.nama }))
+      .filter(b => b.key);
+  } catch { return; }
+
+  const input   = app.querySelector('#nama');
+  const warnEl  = app.querySelector('#nama-similar-warning');
+  if (!input || !warnEl) return;
+
+  let debounce;
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      const typed = normalizeNama(input.value);
+      if (!typed || typed.length < 6) { warnEl.classList.add('hidden'); return; }
+
+      const matches = existingNames.filter(b => _isSimilar(typed, b.key) && typed !== b.key);
+      if (matches.length === 0) { warnEl.classList.add('hidden'); return; }
+
+      const list = matches.map(b => `"${_esc(b.display)}"`).join(', ');
+      warnEl.innerHTML = `⚠ Nama ini mirip dengan bimtek yang sudah ada: ${list}. Pastikan ini bukan duplikat.`;
+      warnEl.classList.remove('hidden');
+    }, 400);
+  });
 }

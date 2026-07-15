@@ -202,7 +202,8 @@ function _renderChartTren(allBimtek, alumniStats) {
   const byYearNewSet = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
-    const nama = (b.nama ?? '').toLowerCase().trim();
+    // Gunakan namaKey (pre-normalized) jika tersedia, fallback ke normalisasi manual
+    const nama = b.namaKey || (b.nama ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
     if (!nama) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
