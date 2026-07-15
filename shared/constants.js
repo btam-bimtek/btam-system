@@ -139,7 +139,7 @@ export const EXAM_SESSION_STATUS = {
 
 export const EXAM_DEFAULTS = {
   DURASI_MENIT:    60,
-  MAX_WARNINGS:    3,
+  MAX_WARNINGS:    5,
   AUTOSAVE_DETIK:  30
 };
 
