@@ -8,6 +8,7 @@ let _maxWarnings      = 3;
 let _onWarn           = null;
 let _onAutoSubmit     = null;
 let _blurTimer        = null;
+let _hideTimer        = null; // debounce visibilitychange — hanya warn setelah 3 detik tersembunyi
 let _fsWarnPending    = false; // cegah double-warn saat fullscreen
 let _visibilityWarned = false; // cegah double-warn antara blur dan visibilitychange
 
@@ -42,6 +43,7 @@ export function initAntiCheat({ maxWarnings = 3, initialWarnCount = 0, onWarn, o
 export function destroyAntiCheat() {
   _active = false;
   clearTimeout(_blurTimer);
+  clearTimeout(_hideTimer);
 
   document.removeEventListener('visibilitychange',      _onVisibilityChange);
   window.removeEventListener('blur',                    _onBlur);
@@ -87,12 +89,23 @@ function _warn(reason) {
   }
 }
 
+// Durasi minimum tersembunyi (ms) sebelum dihitung pelanggaran.
+// Mencegah false positive dari notifikasi masuk, keyboard mobile, screen lock sesaat.
+const HIDE_THRESHOLD_MS = 3000;
+
 function _onVisibilityChange() {
   if (!_active) return;
   if (document.hidden) {
-    _visibilityWarned = true;
-    _warn('tab_switch');
+    // Mulai timer — hanya warn kalau masih tersembunyi setelah threshold
+    clearTimeout(_hideTimer);
+    _hideTimer = setTimeout(() => {
+      if (!_active || !document.hidden) return;
+      _visibilityWarned = true;
+      _warn('tab_switch');
+    }, HIDE_THRESHOLD_MS);
   } else {
+    // Kembali terlihat sebelum threshold — batalkan
+    clearTimeout(_hideTimer);
     _visibilityWarned = false;
   }
 }

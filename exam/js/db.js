@@ -102,6 +102,11 @@ export async function autoSaveAnswers(sessionId, answers, warningCount = 0) {
   });
 }
 
+/** Simpan warningCount segera setelah pelanggaran — agar tidak hilang saat halaman ditutup. */
+export async function saveWarningCount(sessionId, warningCount) {
+  await updateDoc(doc(db, EXAM_SESSIONS, sessionId), { warningCount });
+}
+
 /**
  * Submit ujian: buat exam_submission doc dulu, baru update session status.
  * Urutan ini memastikan kalau submission berhasil tapi update session gagal,

@@ -1,7 +1,7 @@
 // exam/js/exam-runner.js
 // Mengelola UI ujian aktif: render soal, timer, auto-save, navigasi, submit.
 
-import { autoSaveAnswers, submitExam } from './db.js';
+import { autoSaveAnswers, saveWarningCount, submitExam } from './db.js';
 import { initAntiCheat, destroyAntiCheat, getWarnCount, pauseAntiCheat, resumeAntiCheat } from './anti-cheat.js';
 import { EXAM_DEFAULTS } from '../../shared/constants.js';
 
@@ -356,6 +356,8 @@ function _startAutoSave() {
 
 function _handleWarn(count, max, reason) {
   _updateWarnBadge(count);
+  // Simpan segera ke Firestore agar tidak hilang saat halaman ditutup
+  saveWarningCount(_session.id, count).catch(console.warn);
 
   const msgs = {
     tab_switch:      'Anda berpindah tab atau aplikasi lain.',
