@@ -27,41 +27,40 @@ const COL_NAME = COL.PESERTA_MASTER;
  * @returns {Promise<{data: object[], lastDoc: object|null}>}
  */
 export async function listPeserta({ search = '', instansiId = '', pageSize = 25, lastDoc = null } = {}) {
-  // Saat ada search: fetch semua tanpa limit lalu filter client-side
-  // (Firestore tidak support substring search)
+  // Filter isAlumni dilakukan client-side untuk menghindari kebutuhan composite index
+  // yang kompleks di Firestore (deleted + isAlumni + nama).
+
   if (search) {
     let q = query(
       collection(db, COL_NAME),
       where('deleted', '==', false),
-      where('isAlumni', '!=', true),
-      orderBy('isAlumni'),
       orderBy('nama')
     );
     if (instansiId) q = query(q, where('instansiId', '==', instansiId));
 
     const snap = await getDocs(q);
     const s    = search.toLowerCase();
-    const data = snapToArray(snap).filter(p =>
-      p.nama?.toLowerCase().includes(s)       ||
-      p.noPeserta?.toLowerCase().includes(s)  ||
-      p.instansi?.toLowerCase().includes(s)   ||
-      p.jabatan?.toLowerCase().includes(s)    ||
-      p.unitKerja?.toLowerCase().includes(s)  ||
-      p.provinsi?.toLowerCase().includes(s)   ||
-      p.kabKota?.toLowerCase().includes(s)    ||
-      p.pendidikan?.toLowerCase().includes(s) ||
-      p.email?.toLowerCase().includes(s)      ||
-      p.noHp?.toLowerCase().includes(s)
-    );
+    const data = snapToArray(snap)
+      .filter(p => p.isAlumni !== true)
+      .filter(p =>
+        p.nama?.toLowerCase().includes(s)       ||
+        p.noPeserta?.toLowerCase().includes(s)  ||
+        p.instansi?.toLowerCase().includes(s)   ||
+        p.jabatan?.toLowerCase().includes(s)    ||
+        p.unitKerja?.toLowerCase().includes(s)  ||
+        p.provinsi?.toLowerCase().includes(s)   ||
+        p.kabKota?.toLowerCase().includes(s)    ||
+        p.pendidikan?.toLowerCase().includes(s) ||
+        p.email?.toLowerCase().includes(s)      ||
+        p.noHp?.toLowerCase().includes(s)
+      );
     return { data, lastDoc: null };
   }
 
-  // Tanpa search: cursor pagination normal
+  // Tanpa search: cursor pagination normal, filter alumni client-side
   let q = query(
     collection(db, COL_NAME),
     where('deleted', '==', false),
-    where('isAlumni', '!=', true),
-    orderBy('isAlumni'),
     orderBy('nama'),
     limit(pageSize)
   );
@@ -70,7 +69,7 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
 
   const snap = await getDocs(q);
   return {
-    data:    snapToArray(snap),
+    data:    snapToArray(snap).filter(p => p.isAlumni !== true),
     lastDoc: snap.docs[snap.docs.length - 1] ?? null
   };
 }
@@ -81,8 +80,7 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
 export async function countPeserta() {
   const snap = await getCountFromServer(
     query(collection(db, COL_NAME),
-      where('deleted', '==', false),
-      where('isAlumni', '!=', true))
+      where('deleted', '==', false))
   );
   return snap.data().count;
 }
