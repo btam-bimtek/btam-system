@@ -116,6 +116,7 @@ export async function createPeserta(rawData) {
     createdBy:  auth.currentUser?.email ?? null,
     deleted:    false,
     deletedAt:  null,
+    isAlumni:   false,
     pendaftarIdOrigin: null,
     tahunSiklusOrigin: null,
   };
