@@ -133,7 +133,7 @@ export function openImportPeserta(onDone) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
@@ -151,9 +151,14 @@ export function openImportPeserta(onDone) {
           const mapped = {};
           Object.entries(headerMap).forEach(([rawKey, fieldKey]) => {
             let val = row[rawKey];
-            // SheetJS mengembalikan sel tanggal Excel sebagai Date object
+            // SheetJS mengembalikan sel tanggal sebagai Date (dengan cellDates:true)
+            // atau kadang sebagai angka serial Excel — keduanya dikonversi ke YYYY-MM-DD
             if (val instanceof Date) {
-              val = val.toISOString().split('T')[0]; // → "YYYY-MM-DD"
+              val = val.toISOString().split('T')[0];
+            } else if (fieldKey === 'tanggalLahir' && typeof val === 'number') {
+              // Konversi serial Excel: epoch Excel mulai 1 Jan 1900 (serial 1)
+              const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+              val = d.toISOString().split('T')[0];
             }
             mapped[fieldKey] = val;
           });
