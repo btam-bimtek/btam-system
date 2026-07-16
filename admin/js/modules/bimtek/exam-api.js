@@ -276,7 +276,33 @@ export async function extendSession(sessionId, additionalMinutes) {
 }
 
 export async function deleteSession(sessionId) {
-  await deleteDoc(doc(db, COL.EXAM_SESSIONS, sessionId));
+  const sessSnap = await getDoc(doc(db, COL.EXAM_SESSIONS, sessionId));
+  if (!sessSnap.exists()) return;
+  const sess = sessSnap.data();
+
+  const batch = writeBatch(db);
+
+  // Hapus session
+  batch.delete(doc(db, COL.EXAM_SESSIONS, sessionId));
+
+  // Hapus exam_results
+  batch.delete(doc(db, COL.EXAM_RESULTS, `${sess.examId}__${sess.noPeserta}__${sess.tipeSession}`));
+
+  // Bersihkan bimtek_scores
+  if (sess.tipeSession !== 'seleksi_tertulis') {
+    const scoreKey  = sess.tipeSession === 'pretest' ? 'pretest' : 'posttest';
+    const scoreRef  = doc(db, COL.BIMTEK_SCORES, `${sess.bimtekId}__${sess.noPeserta}`);
+    const scoreSnap = await getDoc(scoreRef);
+    if (scoreSnap.exists()) {
+      batch.update(scoreRef, {
+        [scoreKey]:          deleteField(),
+        [`${scoreKey}_src`]: deleteField(),
+        updatedAt:           serverTimestamp(),
+      });
+    }
+  }
+
+  await batch.commit();
 }
 
 export async function resetSession(sessionId) {

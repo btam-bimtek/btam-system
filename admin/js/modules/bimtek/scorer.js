@@ -187,11 +187,17 @@ export async function scoreAllSubmissions(bimtekId, examId) {
  */
 export async function scoreSubmission(bimtekId, examId, noPeserta) {
   try {
-    // Ambil submission
-    const submissionRef = doc(db, COL.EXAM_SUBMISSIONS, `${examId}__${noPeserta}`);
-    const submissionSnap = await getDoc(submissionRef);
-    if (!submissionSnap.exists()) throw new Error('Submission tidak ditemukan');
-    const submission = { id: submissionSnap.id, ...submissionSnap.data() };
+    // Submissions pakai auto-ID — harus query by field, bukan doc reference langsung
+    const submSnap = await getDocs(
+      query(
+        collection(db, COL.EXAM_SUBMISSIONS),
+        where('examId',    '==', examId),
+        where('noPeserta', '==', noPeserta),
+      )
+    );
+    if (submSnap.empty) throw new Error('Submission tidak ditemukan');
+    const submDoc    = submSnap.docs[0];
+    const submission = { id: submDoc.id, ...submDoc.data() };
 
     // Ambil exam, soal, answers, dan custom bloom bobot
     const examSnap = await getDoc(doc(db, COL.EXAMS, examId));

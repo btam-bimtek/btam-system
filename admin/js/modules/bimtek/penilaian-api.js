@@ -362,17 +362,27 @@ export async function bulkImportNilai(bimtekId, rows) {
 
 /**
  * Get exam result untuk peserta + tipe session.
+ * Jika tipeSession diisi, fetch doc langsung (fast path).
+ * Jika tidak, ambil semua result untuk peserta+exam ini.
  */
 export async function getExamResult(examId, noPeserta, tipeSession = null) {
-  const docId = `${examId}__${noPeserta}`;
-  const snap = await getDoc(doc(db, COL.EXAM_RESULTS, docId));
+  if (tipeSession) {
+    const docId = `${examId}__${noPeserta}__${tipeSession}`;
+    const snap  = await getDoc(doc(db, COL.EXAM_RESULTS, docId));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  }
 
-  if (!snap.exists()) return null;
-
-  const result = { id: snap.id, ...snap.data() };
-  if (tipeSession && result.tipeSession !== tipeSession) return null;
-
-  return result;
+  // Tanpa tipeSession: query semua result untuk peserta+exam ini
+  const snap = await getDocs(
+    query(
+      collection(db, COL.EXAM_RESULTS),
+      where('examId',    '==', examId),
+      where('noPeserta', '==', noPeserta),
+    )
+  );
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() };
 }
 
 /**
