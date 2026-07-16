@@ -75,17 +75,72 @@ export async function updateExam(examId, data) {
 }
 
 export async function deleteExam(examId) {
-  // Ambil soalIds sebelum hapus untuk recalc setelahnya
+  // Ambil data exam sebelum hapus
   const examSnap = await getDoc(doc(db, COL.EXAMS, examId));
-  const soalIds  = examSnap.exists() ? (examSnap.data().soalIds ?? []) : [];
+  if (!examSnap.exists()) throw new Error('Ujian tidak ditemukan.');
+  const exam    = examSnap.data();
+  const soalIds = exam.soalIds ?? [];
+  const bimtekId = exam.bimtekId;
 
-  // Hapus semua sessions dulu
+  // Ambil semua sessions untuk mendapatkan daftar noPeserta + tipeSession
   const sessions = await listSessions(examId);
-  if (sessions.length > 0) {
+
+  // Kumpulkan semua doc yang harus dihapus dalam batch(es)
+  // Firestore batch limit = 500 operasi
+  const toDelete = [];
+
+  // exam_sessions
+  sessions.forEach(s => toDelete.push(doc(db, COL.EXAM_SESSIONS, s.id)));
+
+  // exam_results: id = ${examId}__${noPeserta}__${tipeSession}
+  sessions.forEach(s => toDelete.push(doc(db, COL.EXAM_RESULTS, `${examId}__${s.noPeserta}__${s.tipeSession}`)));
+
+  // exam_submissions: hapus yang terkait examId ini
+  const subsSnap = await getDocs(
+    query(collection(db, COL.EXAM_SUBMISSIONS), where('examId', '==', examId))
+  );
+  subsSnap.forEach(d => toDelete.push(d.ref));
+
+  // Jalankan batch delete (maks 500 per batch)
+  const BATCH_LIMIT = 490;
+  for (let i = 0; i < toDelete.length; i += BATCH_LIMIT) {
     const batch = writeBatch(db);
-    sessions.forEach(s => batch.delete(doc(db, COL.EXAM_SESSIONS, s.id)));
+    toDelete.slice(i, i + BATCH_LIMIT).forEach(ref => batch.delete(ref));
     await batch.commit();
   }
+
+  // Bersihkan field pretest/posttest di bimtek_scores untuk peserta yang terdampak
+  const tipeMap = { pretest: new Set(), posttest: new Set() };
+  sessions.forEach(s => {
+    if (s.tipeSession === 'pretest' || s.tipeSession === 'posttest') {
+      tipeMap[s.tipeSession].add(s.noPeserta);
+    }
+  });
+
+  const scoreUpdates = [];
+  for (const [tipe, pesertaSet] of Object.entries(tipeMap)) {
+    for (const noPeserta of pesertaSet) {
+      scoreUpdates.push({ noPeserta, tipe });
+    }
+  }
+
+  if (scoreUpdates.length > 0) {
+    const batch = writeBatch(db);
+    for (const { noPeserta, tipe } of scoreUpdates) {
+      const scoreRef  = doc(db, COL.BIMTEK_SCORES, `${bimtekId}__${noPeserta}`);
+      const scoreSnap = await getDoc(scoreRef);
+      if (scoreSnap.exists()) {
+        batch.update(scoreRef, {
+          [tipe]:          deleteField(),
+          [`${tipe}_src`]: deleteField(),
+          updatedAt:       serverTimestamp(),
+        });
+      }
+    }
+    await batch.commit();
+  }
+
+  // Hapus doc exam
   await deleteDoc(doc(db, COL.EXAMS, examId));
   await logAudit({ action: 'delete_exam', entityType: 'exam', entityId: examId });
   recalcSoalStats(soalIds).catch(console.error);
