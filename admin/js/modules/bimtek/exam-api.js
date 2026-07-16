@@ -226,13 +226,28 @@ export async function deleteSession(sessionId) {
 
 export async function resetSession(sessionId) {
   const user = getCurrentUser();
-  await updateDoc(doc(db, COL.EXAM_SESSIONS, sessionId), {
-    status:      'issued',
-    startedAt:   null,
-    submittedAt: null,
-    updatedAt:   serverTimestamp(),
-    resetBy:     user.uid,
+
+  // Hapus semua submission yang terkait session ini
+  const subsSnap = await getDocs(
+    query(collection(db, COL.EXAM_SUBMISSIONS), where('sessionId', '==', sessionId))
+  );
+  const batch = writeBatch(db);
+  subsSnap.forEach(d => batch.delete(d.ref));
+
+  // Reset session ke state awal
+  batch.update(doc(db, COL.EXAM_SESSIONS, sessionId), {
+    status:       'issued',
+    startedAt:    null,
+    submittedAt:  null,
+    answers:      null,
+    lastSavedAt:  null,
+    warningCount: 0,
+    violationLog: [],
+    updatedAt:    serverTimestamp(),
+    resetBy:      user.uid,
   });
+
+  await batch.commit();
   await logAudit({ action: 'reset_session', entityType: 'exam_session', entityId: sessionId });
 }
 

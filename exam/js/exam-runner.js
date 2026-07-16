@@ -6,18 +6,19 @@ import { initAntiCheat, destroyAntiCheat, getWarnCount, pauseAntiCheat, resumeAn
 import { EXAM_DEFAULTS } from '../../shared/constants.js';
 
 // ─── State ────────────────────────────────────────────────────
-let _session     = null;
-let _exam        = null;
-let _soalList    = [];
-let _answers     = {};        // { [soalId]: 'a'|'b'|'c'|'d' }
-let _flagged     = new Set();
-let _currentIdx  = 0;
-let _secondsLeft = 0;
-let _timerRef    = null;
-let _saveRef     = null;
+let _session      = null;
+let _exam         = null;
+let _soalList     = [];
+let _answers      = {};        // { [soalId]: 'a'|'b'|'c'|'d' }
+let _flagged      = new Set();
+let _currentIdx   = 0;
+let _secondsLeft  = 0;
+let _timerRef     = null;
+let _saveRef      = null;
 let _saveDebounce = null; // debounce save setelah jawaban berubah
-let _onComplete  = null;
-let _submitting  = false;
+let _onComplete   = null;
+let _submitting   = false;
+let _violationLog = [];       // riwayat jenis pelanggaran
 
 // ─── Public API ───────────────────────────────────────────────
 
@@ -370,8 +371,8 @@ function _startAutoSave() {
 
 function _handleWarn(count, max, reason) {
   _updateWarnBadge(count);
-  // Simpan segera ke Firestore agar tidak hilang saat halaman ditutup
-  saveWarningCount(_session.id, count).catch(console.warn);
+  _violationLog.push(reason);
+  saveWarningCount(_session.id, count, reason).catch(console.warn);
 
   const msgs = {
     tab_switch:      'Anda berpindah tab atau aplikasi lain.',
@@ -479,9 +480,10 @@ async function _doSubmit(reason) {
       tipeSession: _session.tipeSession,
       answers:     { ..._answers },
       flagged:     [..._flagged],
-      submitReason: reason,
-      warningCount: getWarnCount(),
-      totalSoal:   _soalList.length,
+      submitReason:  reason,
+      warningCount:  getWarnCount(),
+      violationLog:  [..._violationLog],
+      totalSoal:     _soalList.length,
     });
     _onComplete?.();
   } catch (err) {

@@ -5,7 +5,7 @@
 import {
   db, collection, getDocs, query, where, snapToArray
 } from '../../../../shared/db.js';
-import { COL } from '../../../../shared/constants.js';
+import { COL, EXAM_DEFAULTS } from '../../../../shared/constants.js';
 import { listExams } from './exam-api.js';
 
 const SUBMIT_REASON_LABEL = {
@@ -44,7 +44,7 @@ export async function renderSubPelanggaran(container, bimtekId) {
       return (b.warningCount || 0) - (a.warningCount || 0);
     });
 
-    const maxWarn = 3;
+    const maxWarn = EXAM_DEFAULTS.MAX_WARNINGS;
     const autoCount = submissions.filter(isAutoSubmit).length;
     const warnCount = submissions.filter(s => (s.warningCount || 0) > 0).length;
 
@@ -83,6 +83,10 @@ export async function renderSubPelanggaran(container, bimtekId) {
               const auto = isAutoSubmit(s);
               const warnClass = auto ? 'text-red-400 font-bold' : warn > 0 ? 'text-yellow-400' : 'text-gray-500';
               const reasonLabel = SUBMIT_REASON_LABEL[s.submitReason] || s.submitReason || '—';
+              const violationLog = s.violationLog || [];
+              const violationSummary = violationLog.length
+                ? violationLog.map(r => SUBMIT_REASON_LABEL[r] || r).join(', ')
+                : null;
 
               return `
                 <tr class="${auto ? 'bg-red-950 bg-opacity-20' : ''}">
@@ -100,7 +104,9 @@ export async function renderSubPelanggaran(container, bimtekId) {
                   <td class="text-left text-xs">
                     ${warn === 0
                       ? '<span class="text-green-500">Bersih</span>'
-                      : `<span class="${auto ? 'text-red-400' : 'text-yellow-400'}">${_esc(reasonLabel)}</span>`}
+                      : violationSummary
+                        ? `<span class="${auto ? 'text-red-400' : 'text-yellow-400'}">${_esc(violationSummary)}</span>`
+                        : `<span class="${auto ? 'text-red-400' : 'text-yellow-400'}">${_esc(reasonLabel)}</span>`}
                   </td>
                 </tr>
               `;

@@ -6,7 +6,7 @@
 import { db } from '../../shared/firebase-config.js';
 import {
   doc, getDoc, getDocs, updateDoc, addDoc,
-  collection, query, where, serverTimestamp,
+  collection, query, where, serverTimestamp, arrayUnion,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // Collection names — mirror dari shared/constants.js COL
@@ -102,9 +102,11 @@ export async function autoSaveAnswers(sessionId, answers, warningCount = 0) {
   });
 }
 
-/** Simpan warningCount segera setelah pelanggaran — agar tidak hilang saat halaman ditutup. */
-export async function saveWarningCount(sessionId, warningCount) {
-  await updateDoc(doc(db, EXAM_SESSIONS, sessionId), { warningCount });
+/** Simpan warningCount + catat jenis pelanggaran ke violationLog. */
+export async function saveWarningCount(sessionId, warningCount, reason) {
+  const update = { warningCount };
+  if (reason) update.violationLog = arrayUnion(reason);
+  await updateDoc(doc(db, EXAM_SESSIONS, sessionId), update);
 }
 
 /**
@@ -125,10 +127,11 @@ export async function submitExam(sessionId, submissionData) {
     noPeserta:    submissionData.noPeserta,
     tipeSession:  submissionData.tipeSession,
     answers:      submissionData.answers,
-    flagged:      submissionData.flagged,
-    submitReason: submissionData.submitReason,
-    warningCount: submissionData.warningCount,
-    totalSoal:    submissionData.totalSoal,
+    flagged:       submissionData.flagged,
+    submitReason:  submissionData.submitReason,
+    warningCount:  submissionData.warningCount,
+    violationLog:  submissionData.violationLog || [],
+    totalSoal:     submissionData.totalSoal,
     submittedAt:  serverTimestamp(),
   });
 

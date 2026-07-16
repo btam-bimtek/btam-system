@@ -34,33 +34,33 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
     let q = query(
       collection(db, COL_NAME),
       where('deleted', '==', false),
+      where('isAlumni', '==', false),
       orderBy('nama')
     );
     if (instansiId) q = query(q, where('instansiId', '==', instansiId));
 
     const snap = await getDocs(q);
     const s    = search.toLowerCase();
-    const data = snapToArray(snap)
-      .filter(p => p.isAlumni !== true)
-      .filter(p =>
-        p.nama?.toLowerCase().includes(s)       ||
-        p.noPeserta?.toLowerCase().includes(s)  ||
-        p.instansi?.toLowerCase().includes(s)   ||
-        p.jabatan?.toLowerCase().includes(s)    ||
-        p.unitKerja?.toLowerCase().includes(s)  ||
-        p.provinsi?.toLowerCase().includes(s)   ||
-        p.kabKota?.toLowerCase().includes(s)    ||
-        p.pendidikan?.toLowerCase().includes(s) ||
-        p.email?.toLowerCase().includes(s)      ||
-        p.noHp?.toLowerCase().includes(s)
-      );
+    const data = snapToArray(snap).filter(p =>
+      p.nama?.toLowerCase().includes(s)       ||
+      p.noPeserta?.toLowerCase().includes(s)  ||
+      p.instansi?.toLowerCase().includes(s)   ||
+      p.jabatan?.toLowerCase().includes(s)    ||
+      p.unitKerja?.toLowerCase().includes(s)  ||
+      p.provinsi?.toLowerCase().includes(s)   ||
+      p.kabKota?.toLowerCase().includes(s)    ||
+      p.pendidikan?.toLowerCase().includes(s) ||
+      p.email?.toLowerCase().includes(s)      ||
+      p.noHp?.toLowerCase().includes(s)
+    );
     return { data, lastDoc: null };
   }
 
-  // Tanpa search: cursor pagination normal, filter alumni client-side
+  // Tanpa search: cursor pagination normal
   let q = query(
     collection(db, COL_NAME),
     where('deleted', '==', false),
+    where('isAlumni', '==', false),
     orderBy('nama'),
     limit(pageSize)
   );
@@ -69,7 +69,7 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
 
   const snap = await getDocs(q);
   return {
-    data:    snapToArray(snap).filter(p => p.isAlumni !== true),
+    data:    snapToArray(snap),
     lastDoc: snap.docs[snap.docs.length - 1] ?? null
   };
 }
@@ -80,7 +80,8 @@ export async function listPeserta({ search = '', instansiId = '', pageSize = 25,
 export async function countPeserta() {
   const snap = await getCountFromServer(
     query(collection(db, COL_NAME),
-      where('deleted', '==', false))
+      where('deleted', '==', false),
+      where('isAlumni', '==', false))
   );
   return snap.data().count;
 }
