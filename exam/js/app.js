@@ -173,7 +173,7 @@ function _renderKodeUjianScreen() {
         <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 2 — Nomor Peserta</p>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Nomor peserta Anda</label>
         <div class="flex gap-2">
-          <input id="inp-np" type="text" placeholder="Contoh: BT-001"
+          <input id="inp-np" type="text" placeholder="Contoh: 26000101"
             autocomplete="off" spellcheck="false"
             class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm
                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
