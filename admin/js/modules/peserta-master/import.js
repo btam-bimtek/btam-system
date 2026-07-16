@@ -21,8 +21,9 @@ const COLUMN_MAP = {
   'kabupaten': 'kabKota', 'kota': 'kabKota', 'kab/kota': 'kabKota', 'kabkota': 'kabKota',
   'nik': 'nik', 'nomor induk kependudukan': 'nik',
   'tempat lahir': 'tempatLahir', 'templahir': 'tempatLahir',
-  'tanggal lahir': 'tanggalLahir', 'tgl lahir': 'tanggalLahir', 'tgllahir': 'tanggalLahir',
-  'kualifikasi': 'kualifikasi', 'golongan': 'kualifikasi', 'kualifikasi/golongan': 'kualifikasi',
+  'tanggal lahir': 'tanggalLahir', 'tgl lahir': 'tanggalLahir', 'tgllahir': 'tanggalLahir', 'tgl. lahir': 'tanggalLahir',
+  'kualifikasi': 'kualifikasi', 'golongan': 'kualifikasi',
+  'kualifikasi/golongan': 'kualifikasi', 'golongan/kualifikasi': 'kualifikasi',
 };
 
 export function openImportPeserta(onDone) {
@@ -149,7 +150,12 @@ export function openImportPeserta(onDone) {
         _parsedRows = raw.map(row => {
           const mapped = {};
           Object.entries(headerMap).forEach(([rawKey, fieldKey]) => {
-            mapped[fieldKey] = row[rawKey];
+            let val = row[rawKey];
+            // SheetJS mengembalikan sel tanggal Excel sebagai Date object
+            if (val instanceof Date) {
+              val = val.toISOString().split('T')[0]; // → "YYYY-MM-DD"
+            }
+            mapped[fieldKey] = val;
           });
           return mapped;
         }).filter(r => r.noPeserta || r.nama); // skip empty rows
