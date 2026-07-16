@@ -58,7 +58,10 @@ function _renderList(container) {
 
   const rows = S.pesertaList.map((p, i) => `
     <tr>
-      <td class="text-center text-gray-500 text-xs">${i + 1}</td>
+      <td class="text-center">
+        <input type="checkbox" class="chk-peserta accent-indigo-500 w-3.5 h-3.5"
+          data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}">
+      </td>
       <td>
         <div class="text-sm text-white font-medium">${_esc(p.nama)}</div>
         <div class="text-xs text-gray-500">${_esc(p.noPeserta)}</div>
@@ -72,9 +75,9 @@ function _renderList(container) {
           data-nopeserta="${_esc(p.noPeserta)}">
           Print
         </button>
-        <button class="btn-word-peserta text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors mr-1"
-          data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}">
-          Word
+        <button class="btn-docx-peserta text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors mr-1"
+          data-nopeserta="${_esc(p.noPeserta)}">
+          docx
         </button>
         ${p.lulus
           ? `<button class="btn-cert-peserta text-xs px-3 py-1.5 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white transition-colors"
@@ -89,18 +92,20 @@ function _renderList(container) {
     <div id="peserta-list-section">
       <div class="flex items-center justify-between mb-3">
         <div class="text-xs text-gray-400">${S.pesertaList.length} peserta · Klik Preview untuk melihat, Print untuk cetak</div>
-        <button id="btn-word-semua" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors flex items-center gap-1.5">
+        <button id="btn-docx-terpilih" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors flex items-center gap-1.5">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
           </svg>
-          Download Semua (Word)
+          Download Terpilih (.docx)
         </button>
       </div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
         <table class="btam-table">
           <thead>
             <tr>
-              <th class="text-center w-8">#</th>
+              <th class="text-center w-8">
+                <input type="checkbox" id="chk-all" class="accent-indigo-500 w-3.5 h-3.5">
+              </th>
               <th>Peserta</th>
               <th class="text-right">Aksi</th>
             </tr>
@@ -140,13 +145,18 @@ function _renderList(container) {
     btn.addEventListener('click', () => _loadAndShowSuratKeterangan(container, btn.dataset.nopeserta));
   });
 
-  // Bind word per-peserta
-  container.querySelectorAll('.btn-word-peserta').forEach(btn => {
-    btn.addEventListener('click', () => _downloadWordSingle(btn, btn.dataset.nopeserta, btn.dataset.nama));
+  // Checkbox select-all
+  container.querySelector('#chk-all')?.addEventListener('change', e => {
+    container.querySelectorAll('.chk-peserta').forEach(c => { c.checked = e.target.checked; });
   });
 
-  // Bind download semua word
-  container.querySelector('#btn-word-semua')?.addEventListener('click', () => _downloadWordSemua(container));
+  // Bind docx per-peserta
+  container.querySelectorAll('.btn-docx-peserta').forEach(btn => {
+    btn.addEventListener('click', () => _downloadDocxSingle(btn, btn.dataset.nopeserta));
+  });
+
+  // Bind download terpilih
+  container.querySelector('#btn-docx-terpilih')?.addEventListener('click', () => _downloadDocxTerpilih(container));
 }
 
 // ─── LOAD & SHOW PREVIEW ─────────────────────────────────────────────────────
@@ -224,130 +234,167 @@ function _doPrint() {
   window.print();
 }
 
-// ─── WORD EXPORT ──────────────────────────────────────────────────────────────
+// ─── DOCX EXPORT ──────────────────────────────────────────────────────────────
 
-async function _downloadWordSingle(btnEl, noPeserta, nama) {
-  const orig = btnEl.textContent;
-  btnEl.disabled = true;
-  btnEl.textContent = '...';
+function _loadHtmlDocx() {
+  if (window.htmlDocx) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s   = document.createElement('script');
+    s.src     = 'https://unpkg.com/html-docx-js/dist/html-docx.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Gagal memuat library html-docx-js'));
+    document.head.appendChild(s);
+  });
+}
+
+async function _imageToBase64(url) {
   try {
-    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
-    const html = _buildWordHTML([data]);
-    _triggerWordDownload(html, `laporan-${noPeserta}.doc`);
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function _downloadDocxSingle(btnEl, noPeserta) {
+  const orig = btnEl.textContent;
+  btnEl.disabled = true; btnEl.textContent = '…';
+  try {
+    await _loadHtmlDocx();
+    const data   = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
+    const kopB64 = await _getKopBase64();
+    const docHtml = _buildDocxFullHtml([data], kopB64);
+    const blob    = window.htmlDocx.asBlob(docHtml, {
+      orientation: 'portrait',
+      margins: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+    });
+    _triggerDownload(blob, `laporan-${noPeserta}.docx`);
   } catch (err) {
-    alert('Gagal membuat dokumen: ' + err.message);
+    alert('Gagal membuat docx: ' + err.message);
   } finally {
-    btnEl.disabled = false;
-    btnEl.textContent = orig;
+    btnEl.disabled = false; btnEl.textContent = orig;
   }
 }
 
-async function _downloadWordSemua(container) {
-  const btn = container.querySelector('#btn-word-semua');
+async function _downloadDocxTerpilih(container) {
+  const checked = [...container.querySelectorAll('.chk-peserta:checked')];
+  if (!checked.length) { alert('Pilih minimal satu peserta terlebih dahulu.'); return; }
+
+  const btn  = container.querySelector('#btn-docx-terpilih');
   const orig = btn.textContent;
   btn.disabled = true;
 
-  const total = S.pesertaList.length;
   try {
+    await _loadHtmlDocx();
+    const kopB64 = await _getKopBase64();
     const allData = [];
-    for (let i = 0; i < total; i++) {
-      const p = S.pesertaList[i];
-      btn.textContent = `Memuat ${i + 1}/${total}…`;
-      const data = await getPesertaReportData(S.bimtekId, p.noPeserta, S.bimtek);
+    for (let i = 0; i < checked.length; i++) {
+      btn.textContent = `Memuat ${i + 1}/${checked.length}…`;
+      const data = await getPesertaReportData(S.bimtekId, checked[i].dataset.nopeserta, S.bimtek);
       allData.push(data);
     }
-    btn.textContent = 'Menyiapkan dokumen…';
-    const html = _buildWordHTML(allData);
-    const bimtekNama = (S.bimtek?.nama ?? 'bimtek').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-    _triggerWordDownload(html, `laporan-peserta-${bimtekNama}.doc`);
+    btn.textContent = 'Menyiapkan docx…';
+    const docHtml = _buildDocxFullHtml(allData, kopB64);
+    const blob    = window.htmlDocx.asBlob(docHtml, {
+      orientation: 'portrait',
+      margins: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+    });
+    const nama = (S.bimtek?.nama ?? 'bimtek').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    _triggerDownload(blob, `laporan-peserta-${nama}.docx`);
   } catch (err) {
-    alert('Gagal membuat dokumen: ' + err.message);
+    alert('Gagal membuat docx: ' + err.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = orig;
+    btn.disabled = false; btn.textContent = orig;
   }
 }
 
-function _triggerWordDownload(html, filename) {
-  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+let _kopBase64Cache = null;
+async function _getKopBase64() {
+  if (_kopBase64Cache) return _kopBase64Cache;
+  const url = S.lembagaSettings?.logoUrl || '../shared/assets/kop_btam.png';
+  _kopBase64Cache = await _imageToBase64(url);
+  return _kopBase64Cache;
 }
 
-function _buildWordHTML(dataList) {
+function _triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function _buildDocxFullHtml(dataList, kopBase64) {
   const pages = dataList.map((data, idx) => {
     const isLast = idx === dataList.length - 1;
-    return `
-      <div style="${isLast ? '' : 'page-break-after:always;'}">
-        ${_buildReportHTMLForWord(data)}
-      </div>`;
+    const pageBreak = isLast ? '' : '<p style="page-break-after:always;"></p>';
+    return _buildDocxPageHtml(data, kopBase64) + pageBreak;
   }).join('');
 
-  return `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office"
-          xmlns:w="urn:schemas-microsoft-com:office:word"
-          xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta charset="UTF-8">
-      <meta name=ProgId content=Word.Document>
-      <meta name=Generator content=Microsoft>
-      <!--[if gte mso 9]>
-      <xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml>
-      <![endif]-->
-      <style>
-        body { font-family: "Times New Roman", serif; font-size: 12pt; color: #1a1a1a; margin: 0; }
-        @page { size: A4; margin: 2cm 2.5cm; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { font-size: 11pt; }
-        .page-break { page-break-after: always; }
-      </style>
-    </head>
-    <body>${pages}</body>
-    </html>`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: "Times New Roman", serif; font-size: 12pt; color: #1a1a1a; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { font-size: 11pt; vertical-align: top; }
+  hr { border: none; }
+</style>
+</head>
+<body>${pages}</body>
+</html>`;
 }
 
-function _buildReportHTMLForWord(data) {
-  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, hasIncompleteUKData, hasUKBaseline, thresholds } = data;
-  const b  = S.bimtek;
-  const ls = S.lembagaSettings;
+function _buildDocxPageHtml(data, kopBase64) {
+  const { peserta, scores, kehadiranDetail, ekComparison, thresholds } = data;
+  const b   = S.bimtek;
+  const kkm = b.kkm ?? 60;
 
-  const fieldLine = (label, value) => value
-    ? `<tr><td style="width:130px;color:#555;font-size:11pt;padding:2px 0;">${label}</td>
-           <td style="font-size:11pt;padding:2px 0;">: ${_esc(value)}</td></tr>`
+  const fl = (label, val) => val
+    ? `<tr>
+         <td style="width:140px;color:#555;padding:2px 0;white-space:nowrap;">${label}</td>
+         <td style="width:10px;padding:2px 4px;">:</td>
+         <td style="padding:2px 0;">${_esc(val)}</td>
+       </tr>`
     : '';
+
+  // ── Kop Surat ──
+  const kopImg = kopBase64
+    ? `<img src="${kopBase64}" style="width:100%;height:auto;display:block;" />`
+    : `<div style="text-align:center;font-size:14pt;font-weight:bold;padding:12px 0;">BALAI TEKNIK AIR MINUM</div>`;
+
+  // ── Judul ──
+  const judul = `
+    <div style="text-align:center;margin:16px 0 20px;">
+      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Laporan Hasil Pembelajaran</div>
+      <div style="font-size:10pt;color:#555;margin-top:4px;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
+    </div>`;
 
   // ── Section A ──
   const sectionA = `
-    <div style="text-align:center;margin-bottom:16px;">
-      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Laporan Hasil Pembelajaran</div>
-      <div style="font-size:10pt;color:#555;margin-top:4px;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
-    </div>
-    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:16px;">
-      <div style="font-size:11pt;font-weight:600;margin-bottom:8px;">Identitas Peserta</div>
-      <table style="width:auto;border-collapse:collapse;">
-        ${fieldLine('Nama', peserta?.nama)}
-        ${peserta?.jabatan  ? fieldLine('Jabatan',  peserta.jabatan)  : ''}
-        ${peserta?.instansi ? fieldLine('Instansi', peserta.instansi) : ''}
-        ${peserta?.provinsi ? fieldLine('Provinsi', peserta.provinsi) : ''}
-      </table>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #ddd;">
-        <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">Data Kegiatan</div>
-        <table style="width:auto;border-collapse:collapse;">
-          ${fieldLine('Nama Kegiatan', b.nama)}
-          ${fieldLine('Tanggal', `${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)}`)}
-          ${fieldLine('Lokasi', b.lokasi)}
-        </table>
-      </div>
-    </div>`;
+    <table style="width:100%;border-collapse:collapse;border:1px solid #d1d5db;margin-bottom:16px;">
+      <tr style="background:#f3f4f6;">
+        <td colspan="3" style="padding:6px 10px;font-weight:600;font-size:11pt;">Identitas Peserta</td>
+      </tr>
+      ${fl('Nama',      peserta?.nama)}
+      ${fl('Jabatan',   peserta?.jabatan)}
+      ${fl('Instansi',  peserta?.instansi)}
+      ${fl('Provinsi',  peserta?.provinsi)}
+      <tr style="background:#f3f4f6;">
+        <td colspan="3" style="padding:6px 10px;font-weight:600;font-size:11pt;border-top:1px solid #d1d5db;">Data Kegiatan</td>
+      </tr>
+      ${fl('Nama Kegiatan', b.nama)}
+      ${fl('Tanggal',       `${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)}`)}
+      ${fl('Lokasi',        b.lokasi)}
+    </table>`;
 
   // ── Section B ──
-  const kkm   = b.kkm ?? 60;
   const pre   = scores?.pretest  ?? null;
   const post  = scores?.posttest ?? null;
   const na    = scores?.nilaiAkhir ?? null;
@@ -356,136 +403,135 @@ function _buildReportHTMLForWord(data) {
   const nilaiRows = [
     ['Pre Test',    pre,  'Penilaian awal sebelum kegiatan'],
     ['Post Test',   post, 'Penilaian akhir setelah kegiatan'],
-    [`Nilai Akhir (min. ${kkm})`, na, ''],
-  ].map(([label, nilai, ket]) => `
-    <tr style="border-bottom:1px solid #eee;">
-      <td style="padding:6px 10px;font-size:11pt;">${label}</td>
-      <td style="padding:6px 10px;font-size:11pt;text-align:center;">${nilai != null ? nilai : '—'}</td>
-      <td style="padding:6px 10px;font-size:10pt;color:#666;">${ket}</td>
+    [`Nilai Akhir`, na,   `Nilai minimum kelulusan: ${kkm}`],
+  ].map(([lbl, val, ket]) => `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:6px 10px;">${lbl}</td>
+      <td style="padding:6px 10px;text-align:center;">${val != null ? val : '—'}</td>
+      <td style="padding:6px 10px;color:#666;font-size:10pt;">${ket}</td>
     </tr>`).join('');
 
-  const kehadiranPct     = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
-  const kehadiran_label  = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
-  const kehadiranFakta   = kehadiranDetail
+  const kehadiranPct    = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
+  const kehadiranLabel  = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
+  const kehadiranFakta  = kehadiranDetail
     ? `${kehadiranDetail.hadir} dari ${kehadiranDetail.total} sesi (${kehadiranDetail.persentase}%)`
     : (kehadiranPct != null ? `${kehadiranPct}%` : null);
-  const keaktifanLabel   = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
-  const respekLabel      = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
+  const keaktifanLabel  = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
+  const respekLabel     = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
 
   const deskRows = [
-    ['Kehadiran',       kehadiran_label, kehadiranFakta],
-    ['Keaktifan',       keaktifanLabel,  null],
-    ['Sikap & Respek',  respekLabel,     null],
-  ].filter(([, lbl]) => lbl).map(([komponen, lbl, fakta]) => `
-    <tr style="border-bottom:1px solid #eee;">
-      <td style="padding:6px 10px;font-size:11pt;">${komponen}</td>
-      <td style="padding:6px 10px;font-size:11pt;">${_esc(lbl)}</td>
-      <td style="padding:6px 10px;font-size:10pt;color:#555;">${fakta ? _esc(fakta) : ''}</td>
+    ['Kehadiran',      kehadiranLabel, kehadiranFakta],
+    ['Keaktifan',      keaktifanLabel, null],
+    ['Sikap & Respek', respekLabel,    null],
+  ].filter(([, l]) => l).map(([k, l, f]) => `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:6px 10px;">${k}</td>
+      <td style="padding:6px 10px;">${_esc(l)}</td>
+      <td style="padding:6px 10px;color:#555;font-size:10pt;">${f ? _esc(f) : ''}</td>
     </tr>`).join('');
 
   const sectionB = `
     <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">B. Ringkasan Hasil Pembelajaran</div>
-    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">B.1 Nilai Kuantitatif</div>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
+    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">B.1 Nilai Kuantitatif</div>
+    <table style="border:1px solid #d1d5db;margin-bottom:14px;">
       <thead>
-        <tr style="background:#f9fafb;">
-          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Komponen</th>
-          <th style="padding:6px 10px;text-align:center;font-size:10pt;">Nilai</th>
-          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Keterangan</th>
+        <tr style="background:#f3f4f6;">
+          <th style="padding:6px 10px;text-align:left;">Komponen</th>
+          <th style="padding:6px 10px;text-align:center;">Nilai</th>
+          <th style="padding:6px 10px;text-align:left;">Keterangan</th>
         </tr>
       </thead>
       <tbody>
         ${nilaiRows}
         <tr>
-          <td style="padding:6px 10px;font-size:11pt;font-weight:700;">Status</td>
-          <td style="padding:6px 10px;text-align:center;font-size:11pt;font-weight:700;color:${lulus ? '#166534' : '#991b1b'};">
-            ${lulus ? 'LULUS' : 'BELUM MEMENUHI'}
-          </td>
+          <td style="padding:6px 10px;font-weight:700;">Status</td>
+          <td style="padding:6px 10px;text-align:center;font-weight:700;color:${lulus ? '#166534' : '#991b1b'};">${lulus ? 'LULUS' : 'BELUM MEMENUHI'}</td>
           <td></td>
         </tr>
       </tbody>
     </table>
-    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">B.2 Komponen Deskriptif</div>
-    ${deskRows ? `
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
-      <thead>
-        <tr style="background:#f9fafb;">
-          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Komponen</th>
-          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Kategori</th>
-          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Fakta</th>
-        </tr>
-      </thead>
-      <tbody>${deskRows}</tbody>
-    </table>` : '<p style="font-size:10pt;color:#999;">Data komponen deskriptif belum tersedia.</p>'}`;
+    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">B.2 Komponen Deskriptif</div>
+    ${deskRows
+      ? `<table style="border:1px solid #d1d5db;margin-bottom:14px;">
+           <thead><tr style="background:#f3f4f6;">
+             <th style="padding:6px 10px;text-align:left;">Komponen</th>
+             <th style="padding:6px 10px;text-align:left;">Kategori</th>
+             <th style="padding:6px 10px;text-align:left;">Fakta</th>
+           </tr></thead>
+           <tbody>${deskRows}</tbody>
+         </table>`
+      : '<p style="color:#999;font-size:10pt;">Data komponen deskriptif belum tersedia.</p>'}`;
 
   // ── Section C ──
-  let ekTableSection = '';
-  if (ekComparison && ekComparison.length > 0) {
+  let ekTable = '';
+  if (ekComparison?.length) {
     const ekRows = ekComparison.map(ek => {
       const delta = ek.delta != null ? `${ek.delta >= 0 ? '+' : ''}${ek.delta}%` : '—';
-      return `
-        <tr style="border-bottom:1px solid #f0f0f0;">
-          <td style="padding:6px 10px;font-size:10pt;">${_esc(ek.ekNama)}</td>
-          <td style="padding:6px 10px;font-size:10pt;text-align:center;">${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
-          <td style="padding:6px 10px;font-size:10pt;text-align:center;">${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
-          <td style="padding:6px 10px;font-size:10pt;text-align:center;color:${ek.delta != null && ek.delta >= 0 ? '#166534' : '#991b1b'};">${delta}</td>
-        </tr>`;
+      return `<tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:6px 10px;font-size:10pt;">${_esc(ek.ekNama)}</td>
+        <td style="padding:6px 10px;text-align:center;font-size:10pt;">${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
+        <td style="padding:6px 10px;text-align:center;font-size:10pt;">${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
+        <td style="padding:6px 10px;text-align:center;font-size:10pt;color:${ek.delta != null && ek.delta >= 0 ? '#166534' : '#991b1b'};">${delta}</td>
+      </tr>`;
     }).join('');
-    ekTableSection = `
-      <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.1 Penguasaan per Unit Kompetensi</div>
-      <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
-        <thead>
-          <tr style="background:#f9fafb;">
-            <th style="padding:6px 10px;text-align:left;font-size:10pt;">Unit Kompetensi</th>
-            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Pre</th>
-            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Post</th>
-            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Δ</th>
-          </tr>
-        </thead>
+    ekTable = `
+      <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.1 Penguasaan per Unit Kompetensi</div>
+      <table style="border:1px solid #d1d5db;margin-bottom:14px;">
+        <thead><tr style="background:#f3f4f6;">
+          <th style="padding:6px 10px;text-align:left;">Unit Kompetensi</th>
+          <th style="padding:6px 10px;text-align:center;">Pre</th>
+          <th style="padding:6px 10px;text-align:center;">Post</th>
+          <th style="padding:6px 10px;text-align:center;">Δ</th>
+        </tr></thead>
         <tbody>${ekRows}</tbody>
       </table>`;
   }
 
-  const narasi      = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, kkm);
-  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, peserta?.nama, kkm);
+  const narasi      = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, na, kkm);
+  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, na, peserta?.nama, kkm);
 
   const sectionC = `
     <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">C. Perubahan Kompetensi</div>
-    ${ekTableSection}
-    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.2 Analisis Kompetensi</div>
-    <div style="background:#f0f7ff;border-left:4px solid #2563eb;padding:10px 14px;font-size:11pt;line-height:1.7;margin-bottom:14px;">${narasi}</div>
-    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.3 Rekomendasi Tindak Lanjut</div>
-    <div style="background:#fffbeb;border-left:4px solid #d97706;padding:10px 14px;font-size:11pt;line-height:1.7;margin-bottom:14px;">${rekomendasi}</div>`;
+    ${ekTable}
+    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.2 Analisis Kompetensi</div>
+    <div style="background:#f0f7ff;border-left:4px solid #2563eb;padding:10px 14px;line-height:1.7;margin-bottom:14px;">${narasi}</div>
+    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.3 Rekomendasi Tindak Lanjut</div>
+    <div style="background:#fffbeb;border-left:4px solid #d97706;padding:10px 14px;line-height:1.7;margin-bottom:14px;">${rekomendasi}</div>`;
 
   // ── Section D ──
-  const today  = new Date();
-  const tglStr = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const tglStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   const kota   = b.lokasi?.split(',')[0]?.trim() ?? 'Jakarta';
 
   const sectionD = `
     <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">D. Penutup</div>
-    <div style="font-size:11pt;line-height:1.8;margin-bottom:24px;">
+    <div style="line-height:1.8;margin-bottom:32px;">
       Dokumen ini diterbitkan sebagai laporan hasil pembelajaran peserta pada kegiatan bimbingan teknis
       tersebut di atas. Keberatan atau pertanyaan mengenai isi laporan dapat disampaikan kepada
       penyelenggara dalam waktu 7 (tujuh) hari kerja sejak tanggal penerbitan.
     </div>
-    <div style="text-align:right;">
-      <div style="display:inline-block;text-align:center;min-width:180px;">
-        <div style="font-size:11pt;">${_esc(kota)}, ${tglStr}</div>
-        <div style="font-size:11pt;margin-top:4px;">Penyelenggara,</div>
-        <div style="margin:48px 0 6px;border-bottom:1px solid #374151;"></div>
-        <div style="font-size:10pt;color:#6b7280;font-style:italic;">Penanggung Jawab Kegiatan</div>
-      </div>
-    </div>`;
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td></td>
+        <td style="width:200px;text-align:center;">
+          <div>${_esc(kota)}, ${tglStr}</div>
+          <div style="margin-top:4px;">Penyelenggara,</div>
+          <div style="height:48px;"></div>
+          <div style="border-top:1px solid #374151;padding-top:4px;font-style:italic;font-size:10pt;">Penanggung Jawab Kegiatan</div>
+        </td>
+      </tr>
+    </table>`;
 
   return `
-    <div style="font-family:'Times New Roman',serif;font-size:12pt;color:#1a1a1a;max-width:700px;margin:0 auto;">
+    <div style="font-family:'Times New Roman',serif;font-size:12pt;color:#1a1a1a;">
+      ${kopImg}
+      <hr style="border-top:2px solid #1a1a1a;margin:12px 0;">
+      ${judul}
       ${sectionA}
-      <hr style="border:none;border-top:2px solid #1a1a1a;margin:16px 0;">
+      <hr style="border-top:2px solid #1a1a1a;margin:16px 0;">
       ${sectionB}
-      <hr style="border:none;border-top:1px solid #ccc;margin:16px 0;">
+      <hr style="border-top:1px solid #ccc;margin:16px 0;">
       ${sectionC}
-      <hr style="border:none;border-top:1px solid #ccc;margin:16px 0;">
+      <hr style="border-top:1px solid #ccc;margin:16px 0;">
       ${sectionD}
     </div>`;
 }
