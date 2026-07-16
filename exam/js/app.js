@@ -130,8 +130,9 @@ function _renderKodeUjianScreen() {
 
   // State lokal alur ini
   let _bimtekL   = null;
-  let _sessionsL = null;
-  let _tipeL     = null;
+  let _sessionsL = null;  // semua sesi peserta dalam bimtek ini
+  let _examIdL   = null;  // examId yang dipilih di step 3
+  let _tipeL     = null;  // tipeSession yang dipilih di step 4
 
   appEl.innerHTML = `
     <div class="w-full max-w-md mx-auto space-y-3">
@@ -198,16 +199,22 @@ function _renderKodeUjianScreen() {
         </div>
       </div>
 
-      <!-- Langkah 3 (hidden) -->
+      <!-- Langkah 3 — Pilih Ujian (hidden, muncul jika ada >1 exam) -->
       <div id="s3" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
-        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 3 — Jenis Ujian</p>
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 3 — Pilih Ujian</p>
         <div id="s3-opts" class="space-y-2"></div>
       </div>
 
-      <!-- Langkah 4 (hidden) -->
+      <!-- Langkah 4 — Jenis Ujian (hidden) -->
       <div id="s4" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
-        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 4 — Status Sesi</p>
-        <div id="s4-body"></div>
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 4 — Jenis Ujian</p>
+        <div id="s4-opts" class="space-y-2"></div>
+      </div>
+
+      <!-- Langkah 5 — Status Sesi (hidden) -->
+      <div id="s5" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hidden">
+        <p class="text-xs font-semibold text-gray-400 tracking-wide uppercase mb-3">Langkah 5 — Status Sesi</p>
+        <div id="s5-body"></div>
       </div>
 
     </div>`;
@@ -296,51 +303,103 @@ function _renderKodeUjianScreen() {
     inpNp.readOnly = true;
     btn.classList.add('hidden');
 
-    _renderStep3();
+    // Cek apakah ada lebih dari 1 exam dalam bimtek ini
+    const examIds = [...new Set(_sessionsL.map(s => s.examId))];
+    if (examIds.length > 1) {
+      _renderStep3ExamPicker(examIds);
+    } else {
+      _examIdL = examIds[0];
+      q('#s3').classList.add('hidden');
+      _renderStep4();
+    }
 
     q('#btn-ubah-np').addEventListener('click', () => {
-      // Reset state lokal
       _sessionsL = null;
+      _examIdL   = null;
       _tipeL     = null;
 
-      // Kembalikan step 2 ke input state
       q('#s2-info').classList.add('hidden');
       inpNp.readOnly = false;
       inpNp.value    = '';
       q('#btn-cek-np').classList.remove('hidden');
-      q('#btn-cek-np').disabled  = false;
+      q('#btn-cek-np').disabled    = false;
       q('#btn-cek-np').textContent = 'Periksa';
       q('#s2-err').classList.add('hidden');
 
-      // Sembunyikan step 3 & 4
       q('#s3').classList.add('hidden');
       q('#s3-opts').innerHTML = '';
       q('#s4').classList.add('hidden');
-      q('#s4-body').innerHTML = '';
+      q('#s4-opts').innerHTML = '';
+      q('#s5').classList.add('hidden');
+      q('#s5-body').innerHTML = '';
 
       inpNp.focus();
     });
   });
 
-  // ── Langkah 3 ────────────────────────────────────────────────
-  function _renderStep3() {
+  // ── Langkah 3 — Pilih Ujian (hanya kalau >1 exam) ────────────
+  function _renderStep3ExamPicker(examIds) {
     const s3   = q('#s3');
     const opts = q('#s3-opts');
     s3.classList.remove('hidden');
 
-    const sPretest  = _sessionsL.find(s => s.tipeSession === 'pretest');
-    const sPosttest = _sessionsL.find(s => s.tipeSession === 'posttest');
-    const pretestOK = sPretest?.status === 'submitted';
+    opts.innerHTML = examIds.map(examId => {
+      const examSessions = _sessionsL.filter(s => s.examId === examId);
+      const judul = examSessions[0]?.examJudul || examId;
+      const sel   = _examIdL === examId;
+      return `
+        <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors cursor-pointer
+          ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}">
+          <input type="radio" name="exam" value="${_esc(examId)}" class="accent-blue-600 shrink-0"
+            ${sel ? 'checked' : ''}>
+          <p class="text-sm font-medium text-gray-900">${_esc(judul)}</p>
+        </label>`;
+    }).join('');
+
+    opts.querySelectorAll('input[type="radio"]').forEach(r => {
+      r.addEventListener('change', () => {
+        _examIdL = r.value;
+        _tipeL   = null;
+        q('#s4-opts').innerHTML = '';
+        q('#s5').classList.add('hidden');
+        q('#s5-body').innerHTML = '';
+        _renderStep3ExamPicker(examIds);
+        _renderStep4();
+      });
+    });
+
+    s3.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Langkah 4 — Pilih Jenis Ujian ────────────────────────────
+  function _renderStep4() {
+    const s4   = q('#s4');
+    const opts = q('#s4-opts');
+    s4.classList.remove('hidden');
+
+    const sessByExam = _sessionsL.filter(s => s.examId === _examIdL);
+    const sPretest   = sessByExam.find(s => s.tipeSession === 'pretest');
+    const sPosttest  = sessByExam.find(s => s.tipeSession === 'posttest');
+    const sSingle    = sessByExam.find(s => s.tipeSession !== 'pretest' && s.tipeSession !== 'posttest');
+    const pretestOK  = sPretest?.status === 'submitted';
+
+    // Ujian single (bukan pretest/posttest) — langsung ke step 5
+    if (sSingle && !sPretest && !sPosttest) {
+      s4.classList.add('hidden');
+      _tipeL = sSingle.tipeSession;
+      _renderStep5();
+      return;
+    }
 
     const _buildOpt = (sess, label, locked) => {
       if (!sess) return '';
-      const st  = sess.status;
+      const st    = sess.status;
       const stTxt = st === 'submitted' ? '✓ Sudah dikumpulkan'
                   : st === 'started'   ? '⏳ Sedang dikerjakan'
                   :                      'Belum dikerjakan';
-      const stCls = st === 'submitted'  ? 'text-green-600'
-                  : locked              ? 'text-amber-600'
-                  :                       'text-gray-400';
+      const stCls = st === 'submitted' ? 'text-green-600'
+                  : locked             ? 'text-amber-600'
+                  :                      'text-gray-400';
       const sel   = _tipeL === sess.tipeSession;
       return `
         <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors
@@ -371,24 +430,26 @@ function _renderKodeUjianScreen() {
     opts.querySelectorAll('input[type="radio"]').forEach(r => {
       r.addEventListener('change', () => {
         _tipeL = r.value;
-        _renderStep3();
         _renderStep4();
+        _renderStep5();
       });
     });
 
-    s3.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // ── Langkah 4 ────────────────────────────────────────────────
-  function _renderStep4() {
-    const s4   = q('#s4');
-    const body = q('#s4-body');
-    s4.classList.remove('hidden');
+  // ── Langkah 5 — Status Sesi ───────────────────────────────────
+  function _renderStep5() {
+    const s5   = q('#s5');
+    const body = q('#s5-body');
+    s5.classList.remove('hidden');
 
-    const sess = _sessionsL.find(s => s.tipeSession === _tipeL);
-    if (!sess) { s4.classList.add('hidden'); return; }
+    const sess = _sessionsL.find(s => s.examId === _examIdL && s.tipeSession === _tipeL);
+    if (!sess) { s5.classList.add('hidden'); return; }
 
-    const label = _tipeL === 'pretest' ? 'Pre-Test' : 'Post-Test';
+    const label = _tipeL === 'pretest' ? 'Pre-Test'
+                : _tipeL === 'posttest' ? 'Post-Test'
+                : (sess.examJudul || _tipeL);
 
     // Sesi kedaluwarsa
     const expiredAt = _toDate(sess.expiredAt);
@@ -399,7 +460,7 @@ function _renderKodeUjianScreen() {
           <p class="text-sm font-semibold text-red-700">Sesi ${_esc(label)} sudah kedaluwarsa.</p>
           <p class="text-xs text-gray-500 mt-1">Hubungi panitia untuk memperpanjang sesi.</p>
         </div>`;
-      s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      s5.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
 
@@ -411,7 +472,7 @@ function _renderKodeUjianScreen() {
           <p class="text-sm font-semibold text-green-700">Anda sudah mengumpulkan ${_esc(label)} ini.</p>
           <p class="text-xs text-gray-500 mt-1">Hubungi panitia jika ada masalah.</p>
         </div>`;
-      s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      s5.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
 
@@ -437,7 +498,6 @@ function _renderKodeUjianScreen() {
       const btn = q('#btn-mulai');
       btn.disabled = true; btn.textContent = 'Memuat...';
 
-      // Set state modul
       _session = sess;
       try {
         _exam = await getExam(sess.examId);
@@ -470,7 +530,7 @@ function _renderKodeUjianScreen() {
       }
     });
 
-    s4.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    s5.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
