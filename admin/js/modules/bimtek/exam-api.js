@@ -3,7 +3,7 @@
 
 import {
   db, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  collection, query, where, orderBy, serverTimestamp, writeBatch,
+  collection, query, where, orderBy, serverTimestamp, writeBatch, deleteField,
   snapToArray, snapToDoc
 } from '../../../../shared/db.js';
 import { getCurrentUser } from '../../../../shared/auth.js';
@@ -238,6 +238,20 @@ export async function resetSession(sessionId) {
   // Submissions TIDAK dihapus — tetap tersimpan sebagai arsip histori pengerjaan
   const resultId = `${sess.examId}__${sess.noPeserta}__${sess.tipeSession}`;
   batch.delete(doc(db, COL.EXAM_RESULTS, resultId));
+
+  // Hapus field pretest/posttest dari bimtek_scores agar tab Pre/Post-Test & Kelulusan ikut terupdate
+  if (sess.tipeSession !== 'seleksi_tertulis') {
+    const scoreKey = sess.tipeSession === 'pretest' ? 'pretest' : 'posttest';
+    const scoreRef = doc(db, COL.BIMTEK_SCORES, `${sess.bimtekId}__${sess.noPeserta}`);
+    const scoreSnap = await getDoc(scoreRef);
+    if (scoreSnap.exists()) {
+      batch.update(scoreRef, {
+        [scoreKey]:          deleteField(),
+        [`${scoreKey}_src`]: deleteField(),
+        updatedAt:           serverTimestamp(),
+      });
+    }
+  }
 
   // Reset session ke state awal
   batch.update(doc(db, COL.EXAM_SESSIONS, sessionId), {
