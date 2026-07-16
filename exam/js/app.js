@@ -4,7 +4,7 @@
 
 import {
   getSessionByToken, getExam, getSoalList, startSession,
-  getBimtekByAccessCode, getSessionsByBimtekAndPeserta,
+  getBimtekByAccessCode, getSessionsByBimtekAndPeserta, getExamsByBimtek,
 } from './db.js';
 import { initExamRunner, destroyExamRunner }                     from './exam-runner.js';
 import { requestFullscreen }                                      from './anti-cheat.js';
@@ -130,6 +130,7 @@ function _renderKodeUjianScreen() {
 
   // State lokal alur ini
   let _bimtekL   = null;
+  let _examsL    = [];    // semua ujian published dalam bimtek ini
   let _sessionsL = null;  // semua sesi peserta dalam bimtek ini
   let _examIdL   = null;  // examId yang dipilih di step 3
   let _tipeL     = null;  // tipeSession yang dipilih di step 4
@@ -259,6 +260,9 @@ function _renderKodeUjianScreen() {
     inpKode.readOnly = true;
     btn.classList.add('hidden');
 
+    // Muat daftar ujian bimtek ini di background (tidak blocking)
+    getExamsByBimtek(_bimtekL.id).then(exams => { _examsL = exams; }).catch(() => {});
+
     q('#s2').classList.remove('hidden');
     q('#inp-np').focus();
     q('#s2').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -303,20 +307,26 @@ function _renderKodeUjianScreen() {
     inpNp.readOnly = true;
     btn.classList.add('hidden');
 
-    // Cek apakah ada lebih dari 1 exam dalam bimtek ini
-    const examIds = [...new Set(_sessionsL.map(s => s.examId))];
-    if (examIds.length > 1) {
-      _renderStep3ExamPicker(examIds);
+    // Gunakan daftar ujian dari bimtek (_examsL) sebagai acuan picker.
+    // Fallback ke examIds dari sesi kalau _examsL belum selesai dimuat.
+    const examIdsFromSessions = [...new Set(_sessionsL.map(s => s.examId))];
+    const pickerExams = _examsL.length > 0 ? _examsL : examIdsFromSessions.map(id => {
+      const s = _sessionsL.find(x => x.examId === id);
+      return { id, judul: s?.examJudul || id };
+    });
+
+    if (pickerExams.length > 1) {
+      _renderStep3ExamPicker(pickerExams);
     } else {
-      _examIdL = examIds[0];
+      _examIdL = pickerExams[0]?.id || examIdsFromSessions[0];
       q('#s3').classList.add('hidden');
       _renderStep4();
     }
 
     q('#btn-ubah-np').addEventListener('click', () => {
-      _sessionsL = null;
-      _examIdL   = null;
-      _tipeL     = null;
+      _sessionsL  = null;
+      _examIdL    = null;
+      _tipeL      = null;
 
       q('#s2-info').classList.add('hidden');
       inpNp.readOnly = false;
@@ -338,21 +348,28 @@ function _renderKodeUjianScreen() {
   });
 
   // ── Langkah 3 — Pilih Ujian (hanya kalau >1 exam) ────────────
-  function _renderStep3ExamPicker(examIds) {
+  function _renderStep3ExamPicker(exams) {
     const s3   = q('#s3');
     const opts = q('#s3-opts');
     s3.classList.remove('hidden');
 
-    opts.innerHTML = examIds.map(examId => {
-      const examSessions = _sessionsL.filter(s => s.examId === examId);
-      const judul = examSessions[0]?.examJudul || examId;
-      const sel   = _examIdL === examId;
+    opts.innerHTML = exams.map(exam => {
+      const examSessions = (_sessionsL || []).filter(s => s.examId === exam.id);
+      const judul        = exam.judul || examSessions[0]?.examJudul || exam.id;
+      const hasSesi      = examSessions.length > 0;
+      const sel          = _examIdL === exam.id;
       return `
-        <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors cursor-pointer
-          ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}">
-          <input type="radio" name="exam" value="${_esc(examId)}" class="accent-blue-600 shrink-0"
-            ${sel ? 'checked' : ''}>
-          <p class="text-sm font-medium text-gray-900">${_esc(judul)}</p>
+        <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors
+          ${!hasSesi
+            ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200'
+            : sel ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                  : 'border-gray-200 hover:bg-gray-50 cursor-pointer'}">
+          <input type="radio" name="exam" value="${_esc(exam.id)}" class="accent-blue-600 shrink-0"
+            ${!hasSesi ? 'disabled' : ''} ${sel ? 'checked' : ''}>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">${_esc(judul)}</p>
+            ${!hasSesi ? '<p class="text-xs text-gray-400 mt-0.5">Sesi belum dibuat oleh panitia</p>' : ''}
+          </div>
         </label>`;
     }).join('');
 
@@ -363,7 +380,7 @@ function _renderKodeUjianScreen() {
         q('#s4-opts').innerHTML = '';
         q('#s5').classList.add('hidden');
         q('#s5-body').innerHTML = '';
-        _renderStep3ExamPicker(examIds);
+        _renderStep3ExamPicker(exams);
         _renderStep4();
       });
     });

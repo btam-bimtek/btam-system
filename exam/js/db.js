@@ -146,6 +146,22 @@ export async function submitExam(sessionId, submissionData) {
 // ─── Exam Config ──────────────────────────────────────────────
 
 /**
+ * Ambil semua ujian yang published di satu bimtek.
+ * Dipakai untuk menampilkan pilihan ujian di step 3.
+ * Firestore rule: allow read if published == true.
+ */
+export async function getExamsByBimtek(bimtekId) {
+  const snap = await getDocs(
+    query(
+      collection(db, EXAMS),
+      where('bimtekId',  '==', bimtekId),
+      where('published', '==', true),
+    )
+  );
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
  * Fetch exam config dari collection 'exams'.
  * Firestore rule: allow read if published == true (exam app tanpa auth)
  */

@@ -143,7 +143,9 @@ export function openImportPeserta(onDone) {
         const headers = Object.keys(raw[0]);
         const headerMap = {};
         headers.forEach(h => {
-          const key = COLUMN_MAP[h.toLowerCase().trim()];
+          // Normalisasi: lowercase, trim, hapus spasi di sekitar '/' agar "Kualifikasi / Golongan" == "kualifikasi/golongan"
+          const normalized = h.toLowerCase().trim().replace(/\s*\/\s*/g, '/');
+          const key = COLUMN_MAP[normalized];
           if (key) headerMap[h] = key;
         });
 
