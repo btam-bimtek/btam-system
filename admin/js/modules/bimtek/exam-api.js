@@ -227,12 +227,17 @@ export async function deleteSession(sessionId) {
 export async function resetSession(sessionId) {
   const user = getCurrentUser();
 
-  // Hapus semua submission yang terkait session ini
-  const subsSnap = await getDocs(
-    query(collection(db, COL.EXAM_SUBMISSIONS), where('sessionId', '==', sessionId))
-  );
+  // Ambil session untuk mendapatkan examId, noPeserta, tipeSession
+  const sessSnap = await getDoc(doc(db, COL.EXAM_SESSIONS, sessionId));
+  if (!sessSnap.exists()) throw new Error('Session tidak ditemukan.');
+  const sess = sessSnap.data();
+
   const batch = writeBatch(db);
-  subsSnap.forEach(d => batch.delete(d.ref));
+
+  // Hapus exam_results untuk session ini (nilai aktif)
+  // Submissions TIDAK dihapus — tetap tersimpan sebagai arsip histori pengerjaan
+  const resultId = `${sess.examId}__${sess.noPeserta}__${sess.tipeSession}`;
+  batch.delete(doc(db, COL.EXAM_RESULTS, resultId));
 
   // Reset session ke state awal
   batch.update(doc(db, COL.EXAM_SESSIONS, sessionId), {
