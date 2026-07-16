@@ -212,17 +212,21 @@ async function _doExport() {
     await _loadSheetJS();
 
     const rows = data.map(p => ({
-      'No Peserta':   p.noPeserta,
-      'Nama':         p.nama,
-      'JK':           p.jenisKelamin ?? '',
-      'Jabatan':      p.jabatan ?? '',
-      'Pendidikan':   p.pendidikan ?? '',
-      'Email':        p.email ?? '',
-      'No HP':        p.noHp ?? '',
-      'Instansi':     p.instansi ?? '',
-      'Unit Kerja':   p.unitKerja ?? '',
-      'Provinsi':     p.provinsi ?? '',
-      'Kab/Kota':     p.kabKota ?? '',
+      'No Peserta':    p.noPeserta,
+      'Nama':          p.nama,
+      'JK':            p.jenisKelamin ?? '',
+      'Tempat Lahir':  p.tempatLahir ?? '',
+      'Tanggal Lahir': p.tanggalLahir ?? '',
+      'NIK':           p.nik ?? '',
+      'Pendidikan':    p.pendidikan ?? '',
+      'Kualifikasi':   p.kualifikasi ?? '',
+      'Jabatan':       p.jabatan ?? '',
+      'No HP':         p.noHp ?? '',
+      'Email':         p.email ?? '',
+      'Instansi':      p.instansi ?? '',
+      'Unit Kerja':    p.unitKerja ?? '',
+      'Provinsi':      p.provinsi ?? '',
+      'Kab/Kota':      p.kabKota ?? '',
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
