@@ -18,7 +18,11 @@ const COLUMN_MAP = {
   'instansi': 'instansi', 'nama instansi': 'instansi', 'kantor': 'instansi', 'perusahaan': 'instansi',
   'unit kerja': 'unitKerja', 'bagian': 'unitKerja', 'divisi': 'unitKerja',
   'provinsi': 'provinsi',
-  'kabupaten': 'kabKota', 'kota': 'kabKota', 'kab/kota': 'kabKota', 'kabkota': 'kabKota'
+  'kabupaten': 'kabKota', 'kota': 'kabKota', 'kab/kota': 'kabKota', 'kabkota': 'kabKota',
+  'nik': 'nik', 'nomor induk kependudukan': 'nik',
+  'tempat lahir': 'tempatLahir', 'templahir': 'tempatLahir',
+  'tanggal lahir': 'tanggalLahir', 'tgl lahir': 'tanggalLahir', 'tgllahir': 'tanggalLahir',
+  'kualifikasi': 'kualifikasi', 'golongan': 'kualifikasi', 'kualifikasi/golongan': 'kualifikasi',
 };
 
 export function openImportPeserta(onDone) {
@@ -216,8 +220,8 @@ function _renderPreview(rows, bodyEl) {
   const headEl      = bodyEl.querySelector('#preview-head');
   const bodyTable   = bodyEl.querySelector('#preview-body');
 
-  const COLS = ['noPeserta','nama','jenisKelamin','pendidikan','instansi','provinsi'];
-  const LABELS = { noPeserta:'No Peserta', nama:'Nama', jenisKelamin:'JK', pendidikan:'Pendidikan', instansi:'Instansi', provinsi:'Provinsi' };
+  const COLS = ['noPeserta','nama','jenisKelamin','nik','tempatLahir','tanggalLahir','kualifikasi','pendidikan','instansi','provinsi'];
+  const LABELS = { noPeserta:'No Peserta', nama:'Nama', jenisKelamin:'JK', nik:'NIK', tempatLahir:'Tempat Lahir', tanggalLahir:'Tgl Lahir', kualifikasi:'Kualifikasi', pendidikan:'Pendidikan', instansi:'Instansi', provinsi:'Provinsi' };
 
   countEl.textContent = `${rows.length} baris siap diimpor`;
   headEl.innerHTML = `<tr>${COLS.map(c => `<th class="text-xs">${LABELS[c]}</th>`).join('')}</tr>`;
