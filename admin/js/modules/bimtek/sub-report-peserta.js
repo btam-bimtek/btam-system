@@ -72,6 +72,10 @@ function _renderList(container) {
           data-nopeserta="${_esc(p.noPeserta)}">
           Print
         </button>
+        <button class="btn-word-peserta text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors mr-1"
+          data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}">
+          Word
+        </button>
         ${p.lulus
           ? `<button class="btn-cert-peserta text-xs px-3 py-1.5 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white transition-colors"
                data-nopeserta="${_esc(p.noPeserta)}">Sertifikat</button>`
@@ -83,7 +87,15 @@ function _renderList(container) {
 
   container.innerHTML = `
     <div id="peserta-list-section">
-      <div class="text-xs text-gray-400 mb-3">${S.pesertaList.length} peserta · Klik Preview untuk melihat, Print untuk cetak</div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs text-gray-400">${S.pesertaList.length} peserta · Klik Preview untuk melihat, Print untuk cetak</div>
+        <button id="btn-word-semua" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Download Semua (Word)
+        </button>
+      </div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
         <table class="btam-table">
           <thead>
@@ -127,6 +139,14 @@ function _renderList(container) {
   container.querySelectorAll('.btn-surat-ket-peserta').forEach(btn => {
     btn.addEventListener('click', () => _loadAndShowSuratKeterangan(container, btn.dataset.nopeserta));
   });
+
+  // Bind word per-peserta
+  container.querySelectorAll('.btn-word-peserta').forEach(btn => {
+    btn.addEventListener('click', () => _downloadWordSingle(btn, btn.dataset.nopeserta, btn.dataset.nama));
+  });
+
+  // Bind download semua word
+  container.querySelector('#btn-word-semua')?.addEventListener('click', () => _downloadWordSemua(container));
 }
 
 // ─── LOAD & SHOW PREVIEW ─────────────────────────────────────────────────────
@@ -202,6 +222,272 @@ function _showPreview(container, panel, data, autoPrint) {
 
 function _doPrint() {
   window.print();
+}
+
+// ─── WORD EXPORT ──────────────────────────────────────────────────────────────
+
+async function _downloadWordSingle(btnEl, noPeserta, nama) {
+  const orig = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  try {
+    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
+    const html = _buildWordHTML([data]);
+    _triggerWordDownload(html, `laporan-${noPeserta}.doc`);
+  } catch (err) {
+    alert('Gagal membuat dokumen: ' + err.message);
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = orig;
+  }
+}
+
+async function _downloadWordSemua(container) {
+  const btn = container.querySelector('#btn-word-semua');
+  const orig = btn.textContent;
+  btn.disabled = true;
+
+  const total = S.pesertaList.length;
+  try {
+    const allData = [];
+    for (let i = 0; i < total; i++) {
+      const p = S.pesertaList[i];
+      btn.textContent = `Memuat ${i + 1}/${total}…`;
+      const data = await getPesertaReportData(S.bimtekId, p.noPeserta, S.bimtek);
+      allData.push(data);
+    }
+    btn.textContent = 'Menyiapkan dokumen…';
+    const html = _buildWordHTML(allData);
+    const bimtekNama = (S.bimtek?.nama ?? 'bimtek').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    _triggerWordDownload(html, `laporan-peserta-${bimtekNama}.doc`);
+  } catch (err) {
+    alert('Gagal membuat dokumen: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function _triggerWordDownload(html, filename) {
+  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function _buildWordHTML(dataList) {
+  const pages = dataList.map((data, idx) => {
+    const isLast = idx === dataList.length - 1;
+    return `
+      <div style="${isLast ? '' : 'page-break-after:always;'}">
+        ${_buildReportHTMLForWord(data)}
+      </div>`;
+  }).join('');
+
+  return `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="UTF-8">
+      <meta name=ProgId content=Word.Document>
+      <meta name=Generator content=Microsoft>
+      <!--[if gte mso 9]>
+      <xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml>
+      <![endif]-->
+      <style>
+        body { font-family: "Times New Roman", serif; font-size: 12pt; color: #1a1a1a; margin: 0; }
+        @page { size: A4; margin: 2cm 2.5cm; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { font-size: 11pt; }
+        .page-break { page-break-after: always; }
+      </style>
+    </head>
+    <body>${pages}</body>
+    </html>`;
+}
+
+function _buildReportHTMLForWord(data) {
+  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, hasIncompleteUKData, hasUKBaseline, thresholds } = data;
+  const b  = S.bimtek;
+  const ls = S.lembagaSettings;
+
+  const fieldLine = (label, value) => value
+    ? `<tr><td style="width:130px;color:#555;font-size:11pt;padding:2px 0;">${label}</td>
+           <td style="font-size:11pt;padding:2px 0;">: ${_esc(value)}</td></tr>`
+    : '';
+
+  // ── Section A ──
+  const sectionA = `
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Laporan Hasil Pembelajaran</div>
+      <div style="font-size:10pt;color:#555;margin-top:4px;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
+    </div>
+    <div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:16px;">
+      <div style="font-size:11pt;font-weight:600;margin-bottom:8px;">Identitas Peserta</div>
+      <table style="width:auto;border-collapse:collapse;">
+        ${fieldLine('Nama', peserta?.nama)}
+        ${peserta?.jabatan  ? fieldLine('Jabatan',  peserta.jabatan)  : ''}
+        ${peserta?.instansi ? fieldLine('Instansi', peserta.instansi) : ''}
+        ${peserta?.provinsi ? fieldLine('Provinsi', peserta.provinsi) : ''}
+      </table>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #ddd;">
+        <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">Data Kegiatan</div>
+        <table style="width:auto;border-collapse:collapse;">
+          ${fieldLine('Nama Kegiatan', b.nama)}
+          ${fieldLine('Tanggal', `${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)}`)}
+          ${fieldLine('Lokasi', b.lokasi)}
+        </table>
+      </div>
+    </div>`;
+
+  // ── Section B ──
+  const kkm   = b.kkm ?? 60;
+  const pre   = scores?.pretest  ?? null;
+  const post  = scores?.posttest ?? null;
+  const na    = scores?.nilaiAkhir ?? null;
+  const lulus = scores?.lulus ?? false;
+
+  const nilaiRows = [
+    ['Pre Test',    pre,  'Penilaian awal sebelum kegiatan'],
+    ['Post Test',   post, 'Penilaian akhir setelah kegiatan'],
+    [`Nilai Akhir (min. ${kkm})`, na, ''],
+  ].map(([label, nilai, ket]) => `
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px 10px;font-size:11pt;">${label}</td>
+      <td style="padding:6px 10px;font-size:11pt;text-align:center;">${nilai != null ? nilai : '—'}</td>
+      <td style="padding:6px 10px;font-size:10pt;color:#666;">${ket}</td>
+    </tr>`).join('');
+
+  const kehadiranPct     = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
+  const kehadiran_label  = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
+  const kehadiranFakta   = kehadiranDetail
+    ? `${kehadiranDetail.hadir} dari ${kehadiranDetail.total} sesi (${kehadiranDetail.persentase}%)`
+    : (kehadiranPct != null ? `${kehadiranPct}%` : null);
+  const keaktifanLabel   = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
+  const respekLabel      = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
+
+  const deskRows = [
+    ['Kehadiran',       kehadiran_label, kehadiranFakta],
+    ['Keaktifan',       keaktifanLabel,  null],
+    ['Sikap & Respek',  respekLabel,     null],
+  ].filter(([, lbl]) => lbl).map(([komponen, lbl, fakta]) => `
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px 10px;font-size:11pt;">${komponen}</td>
+      <td style="padding:6px 10px;font-size:11pt;">${_esc(lbl)}</td>
+      <td style="padding:6px 10px;font-size:10pt;color:#555;">${fakta ? _esc(fakta) : ''}</td>
+    </tr>`).join('');
+
+  const sectionB = `
+    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">B. Ringkasan Hasil Pembelajaran</div>
+    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">B.1 Nilai Kuantitatif</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
+      <thead>
+        <tr style="background:#f9fafb;">
+          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Komponen</th>
+          <th style="padding:6px 10px;text-align:center;font-size:10pt;">Nilai</th>
+          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${nilaiRows}
+        <tr>
+          <td style="padding:6px 10px;font-size:11pt;font-weight:700;">Status</td>
+          <td style="padding:6px 10px;text-align:center;font-size:11pt;font-weight:700;color:${lulus ? '#166534' : '#991b1b'};">
+            ${lulus ? 'LULUS' : 'BELUM MEMENUHI'}
+          </td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">B.2 Komponen Deskriptif</div>
+    ${deskRows ? `
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
+      <thead>
+        <tr style="background:#f9fafb;">
+          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Komponen</th>
+          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Kategori</th>
+          <th style="padding:6px 10px;text-align:left;font-size:10pt;">Fakta</th>
+        </tr>
+      </thead>
+      <tbody>${deskRows}</tbody>
+    </table>` : '<p style="font-size:10pt;color:#999;">Data komponen deskriptif belum tersedia.</p>'}`;
+
+  // ── Section C ──
+  let ekTableSection = '';
+  if (ekComparison && ekComparison.length > 0) {
+    const ekRows = ekComparison.map(ek => {
+      const delta = ek.delta != null ? `${ek.delta >= 0 ? '+' : ''}${ek.delta}%` : '—';
+      return `
+        <tr style="border-bottom:1px solid #f0f0f0;">
+          <td style="padding:6px 10px;font-size:10pt;">${_esc(ek.ekNama)}</td>
+          <td style="padding:6px 10px;font-size:10pt;text-align:center;">${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
+          <td style="padding:6px 10px;font-size:10pt;text-align:center;">${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
+          <td style="padding:6px 10px;font-size:10pt;text-align:center;color:${ek.delta != null && ek.delta >= 0 ? '#166534' : '#991b1b'};">${delta}</td>
+        </tr>`;
+    }).join('');
+    ekTableSection = `
+      <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.1 Penguasaan per Unit Kompetensi</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;margin-bottom:14px;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:6px 10px;text-align:left;font-size:10pt;">Unit Kompetensi</th>
+            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Pre</th>
+            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Post</th>
+            <th style="padding:6px 10px;text-align:center;font-size:10pt;">Δ</th>
+          </tr>
+        </thead>
+        <tbody>${ekRows}</tbody>
+      </table>`;
+  }
+
+  const narasi      = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, kkm);
+  const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, peserta?.nama, kkm);
+
+  const sectionC = `
+    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">C. Perubahan Kompetensi</div>
+    ${ekTableSection}
+    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.2 Analisis Kompetensi</div>
+    <div style="background:#f0f7ff;border-left:4px solid #2563eb;padding:10px 14px;font-size:11pt;line-height:1.7;margin-bottom:14px;">${narasi}</div>
+    <div style="font-size:11pt;font-weight:600;color:#444;margin-bottom:6px;">C.3 Rekomendasi Tindak Lanjut</div>
+    <div style="background:#fffbeb;border-left:4px solid #d97706;padding:10px 14px;font-size:11pt;line-height:1.7;margin-bottom:14px;">${rekomendasi}</div>`;
+
+  // ── Section D ──
+  const today  = new Date();
+  const tglStr = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const kota   = b.lokasi?.split(',')[0]?.trim() ?? 'Jakarta';
+
+  const sectionD = `
+    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">D. Penutup</div>
+    <div style="font-size:11pt;line-height:1.8;margin-bottom:24px;">
+      Dokumen ini diterbitkan sebagai laporan hasil pembelajaran peserta pada kegiatan bimbingan teknis
+      tersebut di atas. Keberatan atau pertanyaan mengenai isi laporan dapat disampaikan kepada
+      penyelenggara dalam waktu 7 (tujuh) hari kerja sejak tanggal penerbitan.
+    </div>
+    <div style="text-align:right;">
+      <div style="display:inline-block;text-align:center;min-width:180px;">
+        <div style="font-size:11pt;">${_esc(kota)}, ${tglStr}</div>
+        <div style="font-size:11pt;margin-top:4px;">Penyelenggara,</div>
+        <div style="margin:48px 0 6px;border-bottom:1px solid #374151;"></div>
+        <div style="font-size:10pt;color:#6b7280;font-style:italic;">Penanggung Jawab Kegiatan</div>
+      </div>
+    </div>`;
+
+  return `
+    <div style="font-family:'Times New Roman',serif;font-size:12pt;color:#1a1a1a;max-width:700px;margin:0 auto;">
+      ${sectionA}
+      <hr style="border:none;border-top:2px solid #1a1a1a;margin:16px 0;">
+      ${sectionB}
+      <hr style="border:none;border-top:1px solid #ccc;margin:16px 0;">
+      ${sectionC}
+      <hr style="border:none;border-top:1px solid #ccc;margin:16px 0;">
+      ${sectionD}
+    </div>`;
 }
 
 // ─── REPORT HTML TEMPLATE ─────────────────────────────────────────────────────
