@@ -524,8 +524,9 @@ function _buildInlineSessions(exam, sessions) {
 
   const byPeserta = {};
   sessions.forEach(s => {
-    if (!byPeserta[s.noPeserta]) byPeserta[s.noPeserta] = {};
+    if (!byPeserta[s.noPeserta]) byPeserta[s.noPeserta] = { _nama: s.namaPeserta || '' };
     byPeserta[s.noPeserta][s.tipeSession] = s;
+    if (!byPeserta[s.noPeserta]._nama && s.namaPeserta) byPeserta[s.noPeserta]._nama = s.namaPeserta;
   });
 
   const tipeCols = exam.tipe === 'pretest_posttest'
@@ -535,6 +536,7 @@ function _buildInlineSessions(exam, sessions) {
   const thCols = tipeCols.map(t => `<th class="text-left text-xs">${TIPE_LABEL[t] || t}</th>`).join('');
 
   const rows = Object.entries(byPeserta).sort(([a], [b]) => a.localeCompare(b)).map(([noPeserta, sesiMap]) => {
+    const nama = sesiMap._nama;
     const cols = tipeCols.map(tipe => {
       const s = sesiMap[tipe];
       if (!s) return `<td class="text-xs text-gray-500">—</td>`;
@@ -554,6 +556,7 @@ function _buildInlineSessions(exam, sessions) {
 
     return `<tr>
       <td class="text-xs text-gray-400 font-mono">${_esc(noPeserta)}</td>
+      <td class="text-xs text-gray-200">${_esc(nama) || '—'}</td>
       ${cols}
     </tr>`;
   }).join('');
@@ -563,7 +566,8 @@ function _buildInlineSessions(exam, sessions) {
       <table class="btam-table text-xs">
         <thead>
           <tr>
-            <th class="text-left">Peserta</th>
+            <th class="text-left">No Peserta</th>
+            <th class="text-left">Nama</th>
             ${thCols}
           </tr>
         </thead>
