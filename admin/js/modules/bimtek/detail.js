@@ -782,6 +782,7 @@ function _buildTabPeserta() {
       <span class="text-xs text-gray-500">${total} / ${kapasitas} peserta</span>
       <div class="flex gap-2">
         ${penuh ? `<span class="badge badge-yellow">Kapasitas penuh</span>` : ''}
+        ${total > 0 ? `<button id="btn-export-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Export Excel</button>` : ''}
         ${canEdit && !penuh ? `<button id="btn-add-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah Peserta</button>` : ''}
       </div>
     </div>
@@ -802,7 +803,9 @@ async function _loadPeserta(app, el) {
   } else {
     try {
       const { data: all } = await listPeserta({ pageSize: 999 });
-      const enrolled = all.filter(p => pesertaIds.includes(p.noPeserta));
+      const enrolled = all
+        .filter(p => pesertaIds.includes(p.noPeserta))
+        .sort((a, b) => String(a.noPeserta ?? '').localeCompare(String(b.noPeserta ?? ''), undefined, { numeric: true }));
 
       const rows = enrolled.map(p => `
         <tr>
@@ -834,6 +837,35 @@ async function _loadPeserta(app, el) {
             showToast('Peserta dikeluarkan', 'success');
           } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
         });
+      });
+
+      // Bind tombol export excel
+      el.querySelector('#btn-export-peserta')?.addEventListener('click', async e => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = 'Mengekspor…';
+        try {
+          await _loadSheetJS();
+          const rows = enrolled.map(p => ({
+            'No Peserta': p.noPeserta,
+            'Nama':       p.nama,
+            'Instansi':   p.instansi || '',
+            'Jabatan':    p.jabatan  || '',
+          }));
+          const ws = XLSX.utils.json_to_sheet(rows);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Peserta');
+          const namaBimtek = (S.bimtek?.nama ?? 'bimtek').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          const kodeUjian  = S.bimtek?.accessCode ? `-${S.bimtek.accessCode}` : '';
+          XLSX.writeFile(wb, `peserta-${namaBimtek}${kodeUjian}-${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast(`${rows.length} peserta diekspor.`, 'success');
+        } catch (err) {
+          showToast('Export gagal: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
+        }
       });
     } catch (err) {
       listEl.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
@@ -1054,4 +1086,13 @@ function _fmtDate(ts) {
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _loadSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
 }
