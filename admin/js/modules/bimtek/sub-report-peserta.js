@@ -316,8 +316,13 @@ async function _downloadDocxTerpilih(container) {
 let _kopBase64Cache = null;
 async function _getKopBase64() {
   if (_kopBase64Cache) return _kopBase64Cache;
-  const url = S.lembagaSettings?.logoUrl || '../shared/assets/kop_btam.png';
+  const fallback = window.location.origin + '/shared/assets/kop_btam.png';
+  const url = S.lembagaSettings?.logoUrl || fallback;
   _kopBase64Cache = await _imageToBase64(url);
+  // Jika URL settings gagal, coba fallback lokal
+  if (!_kopBase64Cache && url !== fallback) {
+    _kopBase64Cache = await _imageToBase64(fallback);
+  }
   return _kopBase64Cache;
 }
 
@@ -341,10 +346,10 @@ function _buildDocxFullHtml(dataList, kopBase64) {
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: "Times New Roman", serif; font-size: 12pt; color: #1a1a1a; }
+  body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000000; margin: 0; padding: 0; }
   table { border-collapse: collapse; width: 100%; }
-  th, td { font-size: 11pt; vertical-align: top; }
-  hr { border: none; }
+  th, td { font-size: 11pt; vertical-align: top; padding: 5pt 8pt; }
+  p { margin: 0 0 6pt 0; }
 </style>
 </head>
 <body>${pages}</body>
@@ -356,41 +361,42 @@ function _buildDocxPageHtml(data, kopBase64) {
   const b   = S.bimtek;
   const kkm = b.kkm ?? 60;
 
+  const TD  = 'style="padding:4pt 6pt;border:1px solid #000000;"';
+  const TDC = 'style="padding:4pt 6pt;border:1px solid #000000;text-align:center;"';
+  const TH  = 'style="padding:4pt 6pt;border:1px solid #000000;font-weight:bold;text-align:left;"';
+
   const fl = (label, val) => val
     ? `<tr>
-         <td style="width:140px;color:#555;padding:2px 0;white-space:nowrap;">${label}</td>
-         <td style="width:10px;padding:2px 4px;">:</td>
-         <td style="padding:2px 0;">${_esc(val)}</td>
+         <td style="width:38mm;padding:2pt 0;vertical-align:top;">${label}</td>
+         <td style="width:6mm;padding:2pt 3pt;vertical-align:top;">:</td>
+         <td style="padding:2pt 0;">${_esc(val)}</td>
        </tr>`
     : '';
 
   // ── Kop Surat ──
   const kopImg = kopBase64
-    ? `<img src="${kopBase64}" style="width:100%;height:auto;display:block;" />`
-    : `<div style="text-align:center;font-size:14pt;font-weight:bold;padding:12px 0;">BALAI TEKNIK AIR MINUM</div>`;
+    ? `<img src="${kopBase64}" style="width:17cm;height:auto;display:block;" />`
+    : `<div style="text-align:center;font-size:14pt;font-weight:bold;padding:8pt 0;border:1px solid #000000;">BALAI TEKNIK AIR MINUM</div>`;
 
   // ── Judul ──
   const judul = `
-    <div style="text-align:center;margin:16px 0 20px;">
-      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Laporan Hasil Pembelajaran</div>
-      <div style="font-size:10pt;color:#555;margin-top:4px;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
+    <div style="text-align:center;margin:14pt 0 16pt;">
+      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;">LAPORAN HASIL PEMBELAJARAN</div>
+      <div style="font-size:11pt;margin-top:4pt;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
     </div>`;
 
   // ── Section A ──
   const sectionA = `
-    <table style="width:100%;border-collapse:collapse;border:1px solid #d1d5db;margin-bottom:16px;">
-      <tr style="background:#f3f4f6;">
-        <td colspan="3" style="padding:6px 10px;font-weight:600;font-size:11pt;">Identitas Peserta</td>
-      </tr>
-      ${fl('Nama',      peserta?.nama)}
-      ${fl('Jabatan',   peserta?.jabatan)}
-      ${fl('Instansi',  peserta?.instansi)}
-      ${fl('Provinsi',  peserta?.provinsi)}
-      <tr style="background:#f3f4f6;">
-        <td colspan="3" style="padding:6px 10px;font-weight:600;font-size:11pt;border-top:1px solid #d1d5db;">Data Kegiatan</td>
-      </tr>
+    <div style="font-size:12pt;font-weight:bold;margin:0 0 8pt;">A. Identitas</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14pt;">
+      <tr><th ${TH} colspan="3">Identitas Peserta</th></tr>
+      ${fl('Nama',         peserta?.nama)}
+      ${fl('Jabatan',      peserta?.jabatan)}
+      ${fl('Instansi',     peserta?.instansi)}
+      ${fl('Provinsi',     peserta?.provinsi)}
+      <tr><th ${TH} colspan="3">Data Kegiatan</th></tr>
       ${fl('Nama Kegiatan', b.nama)}
-      ${fl('Tanggal',       `${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)}`)}
+      ${fl('Tanggal',       `${_fmtDate(b.periode?.mulai)} s.d. ${_fmtDate(b.periode?.selesai)}`)}
       ${fl('Lokasi',        b.lokasi)}
     </table>`;
 
@@ -403,85 +409,85 @@ function _buildDocxPageHtml(data, kopBase64) {
   const nilaiRows = [
     ['Pre Test',    pre,  'Penilaian awal sebelum kegiatan'],
     ['Post Test',   post, 'Penilaian akhir setelah kegiatan'],
-    [`Nilai Akhir`, na,   `Nilai minimum kelulusan: ${kkm}`],
+    ['Nilai Akhir', na,   `Nilai minimum kelulusan: ${kkm}`],
   ].map(([lbl, val, ket]) => `
-    <tr style="border-bottom:1px solid #e5e7eb;">
-      <td style="padding:6px 10px;">${lbl}</td>
-      <td style="padding:6px 10px;text-align:center;">${val != null ? val : '—'}</td>
-      <td style="padding:6px 10px;color:#666;font-size:10pt;">${ket}</td>
+    <tr>
+      <td ${TD}>${lbl}</td>
+      <td ${TDC}>${val != null ? val : '—'}</td>
+      <td ${TD}>${ket}</td>
     </tr>`).join('');
 
-  const kehadiranPct    = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
-  const kehadiranLabel  = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
-  const kehadiranFakta  = kehadiranDetail
+  const kehadiranPct   = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
+  const kehadiranLabel = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
+  const kehadiranFakta = kehadiranDetail
     ? `${kehadiranDetail.hadir} dari ${kehadiranDetail.total} sesi (${kehadiranDetail.persentase}%)`
     : (kehadiranPct != null ? `${kehadiranPct}%` : null);
-  const keaktifanLabel  = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
-  const respekLabel     = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
+  const keaktifanLabel = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
+  const respekLabel    = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
 
   const deskRows = [
     ['Kehadiran',      kehadiranLabel, kehadiranFakta],
     ['Keaktifan',      keaktifanLabel, null],
     ['Sikap & Respek', respekLabel,    null],
   ].filter(([, l]) => l).map(([k, l, f]) => `
-    <tr style="border-bottom:1px solid #e5e7eb;">
-      <td style="padding:6px 10px;">${k}</td>
-      <td style="padding:6px 10px;">${_esc(l)}</td>
-      <td style="padding:6px 10px;color:#555;font-size:10pt;">${f ? _esc(f) : ''}</td>
+    <tr>
+      <td ${TD}>${k}</td>
+      <td ${TD}>${_esc(l)}</td>
+      <td ${TD}>${f ? _esc(f) : ''}</td>
     </tr>`).join('');
 
   const sectionB = `
-    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">B. Ringkasan Hasil Pembelajaran</div>
-    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">B.1 Nilai Kuantitatif</div>
-    <table style="border:1px solid #d1d5db;margin-bottom:14px;">
+    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">B. Ringkasan Hasil Pembelajaran</div>
+    <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">B.1 Nilai Kuantitatif</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
       <thead>
-        <tr style="background:#f3f4f6;">
-          <th style="padding:6px 10px;text-align:left;">Komponen</th>
-          <th style="padding:6px 10px;text-align:center;">Nilai</th>
-          <th style="padding:6px 10px;text-align:left;">Keterangan</th>
+        <tr>
+          <th ${TH} style="width:35%;">Komponen</th>
+          <th ${TH} style="width:15%;text-align:center;">Nilai</th>
+          <th ${TH}>Keterangan</th>
         </tr>
       </thead>
       <tbody>
         ${nilaiRows}
         <tr>
-          <td style="padding:6px 10px;font-weight:700;">Status</td>
-          <td style="padding:6px 10px;text-align:center;font-weight:700;color:${lulus ? '#166534' : '#991b1b'};">${lulus ? 'LULUS' : 'BELUM MEMENUHI'}</td>
-          <td></td>
+          <td ${TD} style="padding:4pt 6pt;border:1px solid #000000;font-weight:bold;">Status</td>
+          <td ${TDC} style="font-weight:bold;">${lulus ? 'LULUS' : 'BELUM MEMENUHI'}</td>
+          <td ${TD}></td>
         </tr>
       </tbody>
     </table>
-    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">B.2 Komponen Deskriptif</div>
+    <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">B.2 Komponen Deskriptif</div>
     ${deskRows
-      ? `<table style="border:1px solid #d1d5db;margin-bottom:14px;">
-           <thead><tr style="background:#f3f4f6;">
-             <th style="padding:6px 10px;text-align:left;">Komponen</th>
-             <th style="padding:6px 10px;text-align:left;">Kategori</th>
-             <th style="padding:6px 10px;text-align:left;">Fakta</th>
+      ? `<table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
+           <thead><tr>
+             <th ${TH} style="width:30%;">Komponen</th>
+             <th ${TH} style="width:25%;">Kategori</th>
+             <th ${TH}>Fakta</th>
            </tr></thead>
            <tbody>${deskRows}</tbody>
          </table>`
-      : '<p style="color:#999;font-size:10pt;">Data komponen deskriptif belum tersedia.</p>'}`;
+      : '<p style="font-size:10pt;">Data komponen deskriptif belum tersedia.</p>'}`;
 
   // ── Section C ──
   let ekTable = '';
   if (ekComparison?.length) {
     const ekRows = ekComparison.map(ek => {
       const delta = ek.delta != null ? `${ek.delta >= 0 ? '+' : ''}${ek.delta}%` : '—';
-      return `<tr style="border-bottom:1px solid #e5e7eb;">
-        <td style="padding:6px 10px;font-size:10pt;">${_esc(ek.ekNama)}</td>
-        <td style="padding:6px 10px;text-align:center;font-size:10pt;">${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
-        <td style="padding:6px 10px;text-align:center;font-size:10pt;">${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
-        <td style="padding:6px 10px;text-align:center;font-size:10pt;color:${ek.delta != null && ek.delta >= 0 ? '#166534' : '#991b1b'};">${delta}</td>
+      return `<tr>
+        <td ${TD}>${_esc(ek.ekNama)}</td>
+        <td ${TDC}>${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
+        <td ${TDC}>${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
+        <td ${TDC} style="font-weight:bold;">${delta}</td>
       </tr>`;
     }).join('');
     ekTable = `
-      <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.1 Penguasaan per Unit Kompetensi</div>
-      <table style="border:1px solid #d1d5db;margin-bottom:14px;">
-        <thead><tr style="background:#f3f4f6;">
-          <th style="padding:6px 10px;text-align:left;">Unit Kompetensi</th>
-          <th style="padding:6px 10px;text-align:center;">Pre</th>
-          <th style="padding:6px 10px;text-align:center;">Post</th>
-          <th style="padding:6px 10px;text-align:center;">Δ</th>
+      <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">C.1 Penguasaan per Unit Kompetensi</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
+        <thead><tr>
+          <th ${TH}>Unit Kompetensi</th>
+          <th ${TH} style="text-align:center;">Pre (%)</th>
+          <th ${TH} style="text-align:center;">Post (%)</th>
+          <th ${TH} style="text-align:center;">Perubahan</th>
         </tr></thead>
         <tbody>${ekRows}</tbody>
       </table>`;
@@ -491,47 +497,45 @@ function _buildDocxPageHtml(data, kopBase64) {
   const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, na, peserta?.nama, kkm);
 
   const sectionC = `
-    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">C. Perubahan Kompetensi</div>
+    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">C. Perubahan Kompetensi</div>
     ${ekTable}
-    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.2 Analisis Kompetensi</div>
-    <div style="background:#f0f7ff;border-left:4px solid #2563eb;padding:10px 14px;line-height:1.7;margin-bottom:14px;">${narasi}</div>
-    <div style="font-size:11pt;font-weight:600;margin-bottom:6px;">C.3 Rekomendasi Tindak Lanjut</div>
-    <div style="background:#fffbeb;border-left:4px solid #d97706;padding:10px 14px;line-height:1.7;margin-bottom:14px;">${rekomendasi}</div>`;
+    <div style="font-size:11pt;font-weight:bold;margin-bottom:4pt;">C.2 Analisis Kompetensi</div>
+    <div style="border:1pt solid #000000;padding:8pt 10pt;line-height:1.6;margin-bottom:12pt;">${narasi}</div>
+    <div style="font-size:11pt;font-weight:bold;margin-bottom:4pt;">C.3 Rekomendasi Tindak Lanjut</div>
+    <div style="border:1pt solid #000000;padding:8pt 10pt;line-height:1.6;margin-bottom:12pt;">${rekomendasi}</div>`;
 
   // ── Section D ──
   const tglStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   const kota   = b.lokasi?.split(',')[0]?.trim() ?? 'Jakarta';
 
   const sectionD = `
-    <div style="font-size:13pt;font-weight:bold;margin:16px 0 10px;">D. Penutup</div>
-    <div style="line-height:1.8;margin-bottom:32px;">
+    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">D. Penutup</div>
+    <div style="line-height:1.8;margin-bottom:24pt;text-align:justify;">
       Dokumen ini diterbitkan sebagai laporan hasil pembelajaran peserta pada kegiatan bimbingan teknis
       tersebut di atas. Keberatan atau pertanyaan mengenai isi laporan dapat disampaikan kepada
       penyelenggara dalam waktu 7 (tujuh) hari kerja sejak tanggal penerbitan.
     </div>
     <table style="width:100%;border-collapse:collapse;">
       <tr>
-        <td></td>
-        <td style="width:200px;text-align:center;">
+        <td style="padding:4pt 0;"></td>
+        <td style="width:180pt;text-align:center;padding:4pt 0;">
           <div>${_esc(kota)}, ${tglStr}</div>
-          <div style="margin-top:4px;">Penyelenggara,</div>
-          <div style="height:48px;"></div>
-          <div style="border-top:1px solid #374151;padding-top:4px;font-style:italic;font-size:10pt;">Penanggung Jawab Kegiatan</div>
+          <div style="margin-top:4pt;">Penyelenggara,</div>
+          <div style="height:48pt;"></div>
+          <div style="border-top:1pt solid #000000;padding-top:4pt;font-style:italic;">Penanggung Jawab Kegiatan</div>
         </td>
       </tr>
     </table>`;
 
   return `
-    <div style="font-family:'Times New Roman',serif;font-size:12pt;color:#1a1a1a;">
+    <div style="font-family:'Times New Roman',Times,serif;font-size:12pt;color:#000000;line-height:1.5;">
       ${kopImg}
-      <hr style="border-top:2px solid #1a1a1a;margin:12px 0;">
+      <div style="border-top:2.5pt solid #000000;margin:8pt 0 3pt;"></div>
+      <div style="border-top:1pt solid #000000;margin:0 0 10pt;"></div>
       ${judul}
       ${sectionA}
-      <hr style="border-top:2px solid #1a1a1a;margin:16px 0;">
       ${sectionB}
-      <hr style="border-top:1px solid #ccc;margin:16px 0;">
       ${sectionC}
-      <hr style="border-top:1px solid #ccc;margin:16px 0;">
       ${sectionD}
     </div>`;
 }

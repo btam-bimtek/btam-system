@@ -7,6 +7,7 @@ import { confirmDialog } from '../../components/modal.js';
 import {
   listExams, createExam, updateExam, deleteExam, publishExam,
   listSessions, generateSessions, deleteSession, resetSession, extendSession,
+  unlockDeviceSession, setExamWindow,
 } from './exam-api.js';
 import { generateBimtekAccessCode } from './api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -149,6 +150,19 @@ function _render(app, el, S, exams, sessions) {
     if (exam) btn.addEventListener('click', () => _generateLinks(app, el, S, exam));
   });
 
+  // Inline unlock device
+  el.querySelectorAll('.btn-unlock-device').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({ title: 'Buka Kunci Perangkat', message: 'Peserta akan dapat masuk dari perangkat lain. Lanjutkan?', danger: false });
+      if (!ok) return;
+      try {
+        await unlockDeviceSession(btn.dataset.id);
+        await renderTabUjian(app, el, S);
+        showToast('Kunci perangkat dibuka. Peserta dapat masuk dari perangkat lain.', 'success');
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+
   // Inline reset session
   el.querySelectorAll('.btn-reset-session').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -162,7 +176,30 @@ function _render(app, el, S, exams, sessions) {
     });
   });
 
-  // Inline extend session
+  // Toggle window open/close
+  el.querySelectorAll('.btn-toggle-window').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tipe   = btn.dataset.tipe;
+      const isOpen = btn.dataset.open === 'true';
+      const action = isOpen ? 'Tutup' : 'Buka';
+      const label  = TIPE_LABEL[tipe] || tipe;
+      const ok = await confirmDialog({
+        title:   `${action} Ujian ${label}`,
+        message: isOpen
+          ? `Peserta tidak dapat lagi memulai ${label} baru setelah ditutup. Peserta yang sedang mengerjakan tidak terdampak. Lanjutkan?`
+          : `Peserta dapat mulai mengerjakan ${label}. Lanjutkan?`,
+        danger: isOpen,
+      });
+      if (!ok) return;
+      try {
+        await setExamWindow(btn.dataset.id, tipe, !isOpen);
+        await renderTabUjian(app, el, S);
+        showToast(!isOpen ? `${label} dibuka. Peserta dapat memulai ujian.` : `${label} ditutup.`, 'success');
+      } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+    });
+  });
+
+  // Inline extend session
   el.querySelectorAll('.btn-extend-session').forEach(btn => {
     btn.addEventListener('click', async () => {
       const current = parseInt(btn.dataset.ext) || 0;
@@ -217,13 +254,29 @@ function _buildExamCard(exam, sessions, S, canEdit) {
         <span>📋 ${jumlahSoal} soal dipilih → ${exam.jumlahDitampilkan} ditampilkan</span>
         <span>🔗 ${sessionCount} link${submitted ? ` (${submitted} selesai)` : ''}</span>
       </div>
-      <div class="px-4 pb-3 flex gap-2 flex-wrap">
-        ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
+      <div class="px-4 pb-3 flex gap-2 flex-wrap items-center">
+        ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
+        ${_buildWindowToggles(exam)}
       </div>
       ${inlineSessions}
     </div>`;
 }
 
+// ─── WINDOW TOGGLE BUILDER ───────────────────────────────────
+
+function _buildWindowToggles(exam) {
+  const tipes = exam.tipe === 'pretest_posttest' ? ['pretest', 'posttest'] : [exam.tipe];
+  return tipes.map(tipe => {
+    const isOpen  = exam.windowOpen?.[tipe] === true;
+    const label   = TIPE_LABEL[tipe] || tipe;
+    const openCls = 'bg-green-900/50 hover:bg-red-900/50 text-green-300';
+    const clsCls  = 'bg-gray-800 hover:bg-green-900/50 text-gray-400 hover:text-green-300';
+    return `<button class="btn-toggle-window text-xs px-2 py-1 rounded border ${isOpen ? 'border-green-700' : 'border-gray-700'} ${isOpen ? openCls : clsCls} transition-colors"
+      data-id="${exam.id}" data-tipe="${tipe}" data-open="${isOpen}" title="${isOpen ? 'Klik untuk menutup ujian' : 'Klik untuk membuka ujian'}">
+      ${isOpen ? `✓ ${label}: Terbuka` : `✗ ${label}: Tertutup`}
+    </button>`;
+  }).join('');
+}
 // ─── EXAM MODAL (Create / Edit) ───────────────────────────────
 
 async function _showExamModal(app, el, S, exam) {
@@ -493,7 +546,8 @@ function _buildInlineSessions(exam, sessions) {
           <span class="badge ${badge} text-xs">${lbl}</span>
           ${extLabel ? `<span class="text-xs text-amber-400" title="Waktu diperpanjang ${s.timeExtensionMinutes} menit">${extLabel}</span>` : ''}
           ${s.status === 'started' ? `<button class="btn-extend-session text-xs text-amber-500 hover:text-amber-300" data-id="${s.id}" data-ext="${s.timeExtensionMinutes || 0}" title="Perpanjang waktu">+Waktu</button>` : ''}
-          <button class="btn-reset-session text-xs text-gray-500 hover:text-gray-200" data-id="${s.id}" title="Reset session">Reset</button>
+          ${s.status === 'started' && s.deviceToken ? `<button class="btn-unlock-device text-xs text-orange-400 hover:text-orange-200" data-id="${s.id}" title="Buka kunci perangkat">Buka Kunci</button>` : ''}
+          <button class="btn-reset-session" text-xs text-gray-500 hover:text-gray-200" data-id="${s.id}" title="Reset session">Reset</button>
         </div>
       </td>`;
     }).join('');

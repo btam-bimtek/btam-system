@@ -3,7 +3,8 @@
 // Mengelola alur: loading → validasi token → entry screen → instruksi → ujian → result.
 
 import {
-  getSessionByToken, getExam, getSoalList, startSession,
+  getSessionByToken, getExam, getExamFromServer, getSoalList,
+  startSessionWithDevice, claimDeviceForResume,
   getBimtekByAccessCode, getSessionsByBimtekAndPeserta, getExamsByBimtek,
 } from './db.js';
 import { initExamRunner, destroyExamRunner }                     from './exam-runner.js';
@@ -14,6 +15,20 @@ import { EXAM_DEFAULTS }                                          from '../../sh
 let _session  = null;
 let _exam     = null;
 let _soalList = [];
+
+// ─── Device Token ─────────────────────────────────────────────
+// UUID unik per browser tab — dibuat sekali lalu disimpan di sessionStorage
+// sehingga tetap sama saat refresh tapi berbeda di tab/device lain.
+
+function _getOrCreateDeviceToken() {
+  const KEY = 'btam_exam_device_token';
+  let token = sessionStorage.getItem(KEY);
+  if (!token) {
+    token = crypto.randomUUID();
+    sessionStorage.setItem(KEY, token);
+  }
+  return token;
+}
 
 // ─── Boot ─────────────────────────────────────────────────────
 
@@ -81,9 +96,9 @@ async function _bootByToken(token) {
     });
   }
 
-  // ── 4. Load exam config ──
+  // ── 4. Load exam config (dari server, bukan cache — untuk cek window terbaru) ──
   try {
-    _exam = await getExam(_session.examId);
+    _exam = await getExamFromServer(_session.examId);
   } catch (e) {
     return _renderError({
       icon:      '📋',
@@ -99,6 +114,11 @@ async function _bootByToken(token) {
       title: 'Ujian Tidak Ditemukan',
       msg:   'Konfigurasi ujian tidak tersedia. Hubungi panitia.',
     });
+  }
+
+  // ── 4b. Cek window — hanya untuk sesi yang belum dimulai ──
+  if (_session.status === 'issued' && !_isWindowOpen(_exam, _session.tipeSession)) {
+    return _renderExamWindowClosed(_session.tipeSession);
   }
 
   // ── 5a. Resume ──
@@ -400,6 +420,11 @@ function _renderKodeUjianScreen() {
     const sSingle    = sessByExam.find(s => s.tipeSession !== 'pretest' && s.tipeSession !== 'posttest');
     const pretestOK  = sPretest?.status === 'submitted';
 
+    // Status window ujian (dari exam data yang sudah di-load di background)
+    const examData     = _examsL.find(e => e.id === _examIdL);
+    const pretestOpen  = _isWindowOpen(examData, 'pretest');
+    const posttestOpen = _isWindowOpen(examData, 'posttest');
+
     // Ujian single (bukan pretest/posttest) — langsung ke step 5
     if (sSingle && !sPretest && !sPosttest) {
       s4.classList.add('hidden');
@@ -408,36 +433,45 @@ function _renderKodeUjianScreen() {
       return;
     }
 
-    const _buildOpt = (sess, label, locked) => {
+    // lockedByPretest: post-test dikunci karena pre-test belum selesai
+    // adminClosed: panitia belum membuka window ujian (hanya berlaku untuk status 'issued')
+    const _buildOpt = (sess, label, lockedByPretest, adminClosed) => {
       if (!sess) return '';
-      const st    = sess.status;
-      const stTxt = st === 'submitted' ? '✓ Sudah dikumpulkan'
-                  : st === 'started'   ? '⏳ Sedang dikerjakan'
-                  :                      'Belum dikerjakan';
-      const stCls = st === 'submitted' ? 'text-green-600'
-                  : locked             ? 'text-amber-600'
-                  :                      'text-gray-400';
+      const st      = sess.status;
+      const isActive = st === 'started';
+      // Window tertutup hanya memblokir sesi yang belum dimulai
+      const blocked  = lockedByPretest || (adminClosed && st === 'issued');
+      const stTxt = adminClosed && st === 'issued' ? '⏳ Menunggu dibuka panitia'
+                  : st === 'submitted'              ? '✓ Sudah dikumpulkan'
+                  : isActive                        ? '⏳ Sedang dikerjakan'
+                  :                                   'Belum dikerjakan';
+      const stCls = st === 'submitted'              ? 'text-green-600'
+                  : adminClosed && st === 'issued'  ? 'text-gray-500'
+                  : lockedByPretest                 ? 'text-amber-600'
+                  :                                   'text-gray-400';
       const sel   = _tipeL === sess.tipeSession;
       return `
         <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors
-          ${locked
+          ${blocked
             ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200'
             : sel ? 'border-blue-500 bg-blue-50 cursor-pointer'
                   : 'border-gray-200 hover:bg-gray-50 cursor-pointer'}">
           <input type="radio" name="tipe" value="${sess.tipeSession}" class="accent-blue-600 shrink-0"
-            ${locked ? 'disabled' : ''} ${sel ? 'checked' : ''}>
+            ${blocked ? 'disabled' : ''} ${sel ? 'checked' : ''}>
           <div class="flex-1">
             <p class="text-sm font-medium text-gray-900">${label}</p>
             <p class="text-xs ${stCls} mt-0.5">
-              ${locked ? '🔒 Selesaikan Pre-Test terlebih dahulu' : stTxt}
+              ${adminClosed && st === 'issued' ? '🕐 Belum dibuka oleh panitia'
+                : lockedByPretest ? '🔒 Selesaikan Pre-Test terlebih dahulu'
+                : stTxt}
             </p>
           </div>
         </label>`;
     };
 
     opts.innerHTML = [
-      _buildOpt(sPretest,  'Pre-Test',  false),
-      _buildOpt(sPosttest, 'Post-Test', !pretestOK),
+      _buildOpt(sPretest,  'Pre-Test',  false,       !pretestOpen),
+      _buildOpt(sPosttest, 'Post-Test', !pretestOK,  !posttestOpen),
     ].join('');
 
     if (!sPretest && !sPosttest) {
@@ -493,6 +527,19 @@ function _renderKodeUjianScreen() {
       return;
     }
 
+    // Window ujian belum dibuka (hanya untuk sesi yang belum dimulai)
+    const examData = _examsL.find(e => e.id === _examIdL);
+    if (sess.status === 'issued' && !_isWindowOpen(examData, sess.tipeSession)) {
+      body.innerHTML = `
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+          <p class="text-2xl mb-2">🕐</p>
+          <p class="text-sm font-semibold text-amber-700">${_esc(label)} belum dibuka oleh panitia.</p>
+          <p class="text-xs text-gray-500 mt-1">Tunggu instruksi pengawas. Tidak perlu menutup halaman ini.</p>
+        </div>`;
+      s5.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+
     const isResume  = sess.status === 'started';
     const soalCount = sess.soalIds?.length || 0;
     const durasi    = sess.examDurasi      || '—';
@@ -517,7 +564,8 @@ function _renderKodeUjianScreen() {
 
       _session = sess;
       try {
-        _exam = await getExam(sess.examId);
+        // getExamFromServer: bypass SDK cache — pastikan status window terbaru dari server
+        _exam = await getExamFromServer(sess.examId);
       } catch {
         alert('Gagal memuat konfigurasi ujian. Hubungi panitia.');
         btn.disabled = false;
@@ -527,6 +575,14 @@ function _renderKodeUjianScreen() {
       if (!_exam) {
         alert('Konfigurasi ujian tidak ditemukan. Hubungi panitia.');
         btn.disabled = false;
+        return;
+      }
+
+      // Validasi window ujian — selalu dari server, blokir jika panitia belum membuka
+      if (sess.status === 'issued' && !_isWindowOpen(_exam, sess.tipeSession)) {
+        alert('Ujian belum dibuka oleh panitia. Silakan tunggu instruksi pengawas.');
+        btn.disabled    = false;
+        btn.textContent = '🚀 Mulai Ujian';
         return;
       }
 
@@ -718,21 +774,42 @@ function _renderInstructionScreen() {
 // ─── Start / Resume Exam ──────────────────────────────────────
 
 async function _startExam() {
+  const deviceToken = _getOrCreateDeviceToken();
+
+  if (_session.status !== 'started') {
+    // Sesi baru: claim device lock + set status 'started'
+    try {
+      await startSessionWithDevice(_session.id, deviceToken);
+      _session.status      = 'started';
+      _session.startedAt   = new Date();
+      _session.deviceToken = deviceToken;
+    } catch (e) {
+      if (_isDeviceConflict(e)) return _renderDeviceConflictError();
+      // Hanya lanjutkan untuk error jaringan yang jelas (unavailable/deadline)
+      if (!_isNetworkError(e)) {
+        console.error('[App] startSession gagal:', e);
+        return _renderError({ icon: '⚠️', title: 'Gagal Memulai Ujian', msg: 'Terjadi kesalahan saat memulai sesi. Coba lagi atau hubungi panitia.', retryable: true });
+      }
+      console.warn('[App] startSession gagal (jaringan) — lanjut tanpa lock:', e.code);
+    }
+  } else {
+    // Resume: verifikasi device lock
+    try {
+      await claimDeviceForResume(_session.id, deviceToken);
+      _session.deviceToken = deviceToken;
+    } catch (e) {
+      if (_isDeviceConflict(e)) return _renderDeviceConflictError();
+      if (!_isNetworkError(e)) {
+        console.error('[App] claimDevice gagal:', e);
+        return _renderError({ icon: '⚠️', title: 'Gagal Melanjutkan Ujian', msg: 'Terjadi kesalahan saat memverifikasi perangkat. Coba lagi atau hubungi panitia.', retryable: true });
+      }
+      console.warn('[App] claimDevice gagal (jaringan) — lanjut tanpa lock:', e.code);
+    }
+  }
+
   // Tampilkan watermark noPeserta
   const wm = document.getElementById('watermark');
   if (wm) wm.textContent = _session.noPeserta;
-
-  // Update status ke 'started' hanya jika belum
-  if (_session.status !== 'started') {
-    try {
-      await startSession(_session.id);
-      _session.status    = 'started';
-      _session.startedAt = new Date(); // approx — server time dipakai untuk kalkulasi akurat
-    } catch (e) {
-      console.error('[App] startSession gagal:', e);
-      // Lanjutkan tetap — exam runner akan pakai waktu penuh
-    }
-  }
 
   initExamRunner({
     session:    _session,
@@ -850,6 +927,30 @@ function _renderAlreadySubmitted() {
   `;
 }
 
+function _renderDeviceConflictError() {
+  document.getElementById('app').innerHTML = `
+    <div class="w-full max-w-sm mx-auto text-center">
+      <div class="text-6xl mb-4">🔒</div>
+      <h2 class="text-lg font-bold text-gray-900 mb-2">Sesi Aktif di Perangkat Lain</h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Ujian ini sedang dikerjakan di perangkat atau tab lain.<br>
+        Hanya satu perangkat yang diizinkan dalam satu waktu.
+      </p>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-left mb-6">
+        <p class="font-semibold mb-1">Cara melanjutkan ujian:</p>
+        <ol class="list-decimal list-inside space-y-1 text-xs">
+          <li>Tutup tab atau perangkat lain yang sedang mengerjakan ujian ini.</li>
+          <li>Kembali ke halaman ini dan klik "Coba Lagi".</li>
+        </ol>
+      </div>
+      <button onclick="window.location.reload()"
+        class="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+        Coba Lagi
+      </button>
+    </div>
+  `;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 /** Load soal lalu shuffle deterministik berdasarkan token */
@@ -880,6 +981,42 @@ function _deterministicShuffle(arr, token) {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+/**
+ * Cek apakah jendela ujian untuk tipe tertentu sudah dibuka admin.
+ * Default: tertutup (false) jika field belum ada.
+ */
+function _isWindowOpen(exam, tipeSession) {
+  return exam?.windowOpen?.[tipeSession] === true;
+}
+
+function _renderExamWindowClosed(tipeSession) {
+  const label = tipeSession === 'pretest' ? 'Pre-Test'
+              : tipeSession === 'posttest' ? 'Post-Test'
+              : 'Ujian';
+  document.getElementById('app').innerHTML = `
+    <div class="w-full max-w-sm mx-auto text-center">
+      <div class="text-6xl mb-4">🕐</div>
+      <h2 class="text-lg font-bold text-gray-900 mb-2">${_esc(label)} Belum Dibuka</h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Pengawas ujian belum membuka sesi ini.<br>
+        Silakan tunggu instruksi dari pengawas.
+      </p>
+      <button onclick="window.location.reload()"
+        class="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+        Periksa Ulang
+      </button>
+    </div>
+  `;
+}
+
+function _isDeviceConflict(e) {
+  return e?.code === 'DEVICE_CONFLICT' || e?.message === 'DEVICE_CONFLICT';
+}
+
+function _isNetworkError(e) {
+  return ['unavailable', 'deadline-exceeded'].includes(e?.code);
 }
 
 function _toDate(ts) {

@@ -5,8 +5,8 @@
 
 import { db } from '../../shared/firebase-config.js';
 import {
-  doc, getDoc, getDocs, updateDoc, addDoc,
-  collection, query, where, serverTimestamp, arrayUnion,
+  doc, getDoc, getDocFromServer, getDocs, updateDoc, addDoc,
+  collection, query, where, serverTimestamp, arrayUnion, runTransaction,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // Collection names — mirror dari shared/constants.js COL
@@ -73,33 +73,90 @@ export async function getSessionByToken(token) {
 }
 
 /**
- * Update status session ke 'started' dan catat startedAt.
- * Dipanggil sekali saat peserta klik "Mulai Ujian".
- *
- * Firestore rule yang dibutuhkan (perlu update dari default):
- *   allow update: if resource.data.status in ['issued','started'] && ...
+ * Claim session untuk device ini secara atomic.
+ * Dipakai saat status 'issued' → 'started' (mulai ujian baru).
+ * Throw error dengan code='DEVICE_CONFLICT' jika device lain sudah memegang lock.
+ * @param {string} sessionId
+ * @param {string} deviceToken  - UUID unik per browser tab (dari sessionStorage)
  */
-export async function startSession(sessionId) {
-  await updateDoc(doc(db, EXAM_SESSIONS, sessionId), {
-    status:    'started',
-    startedAt: serverTimestamp(),
-    answers:   {},
+export async function startSessionWithDevice(sessionId, deviceToken) {
+  const sessionRef = doc(db, EXAM_SESSIONS, sessionId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(sessionRef);
+    if (!snap.exists()) throw new Error('Session not found');
+    const data = snap.data();
+
+    if (data.deviceToken && data.deviceToken !== deviceToken) {
+      const err = new Error('DEVICE_CONFLICT');
+      err.code = 'DEVICE_CONFLICT';
+      throw err;
+    }
+
+    tx.update(sessionRef, {
+      status:      'started',
+      startedAt:   serverTimestamp(),
+      answers:     {},
+      deviceToken,
+    });
   });
 }
 
 /**
- * Auto-save jawaban + warningCount ke session doc (dipanggil setiap 30 detik).
- * warningCount disimpan agar tidak reset saat peserta refresh.
+ * Claim session yang sudah 'started' untuk device ini (resume).
+ * Throw error dengan code='DEVICE_CONFLICT' jika device lain sudah memegang lock.
  * @param {string} sessionId
- * @param {object} answers       { [soalId]: 'a'|'b'|'c'|'d' }
- * @param {number} warningCount  jumlah peringatan saat ini
+ * @param {string} deviceToken
  */
-export async function autoSaveAnswers(sessionId, answers, warningCount = 0) {
+export async function claimDeviceForResume(sessionId, deviceToken) {
+  const sessionRef = doc(db, EXAM_SESSIONS, sessionId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(sessionRef);
+    if (!snap.exists()) throw new Error('Session not found');
+    const data = snap.data();
+
+    if (data.deviceToken && data.deviceToken !== deviceToken) {
+      const err = new Error('DEVICE_CONFLICT');
+      err.code = 'DEVICE_CONFLICT';
+      throw err;
+    }
+
+    tx.update(sessionRef, { deviceToken });
+  });
+}
+
+/**
+ * Auto-save jawaban + warningCount ke session doc.
+ * Jika deviceToken diberikan, baca token di Firestore sebelum save untuk mendeteksi
+ * apakah admin telah membuka kunci dan device lain sudah mengambil alih.
+ * Token TIDAK ditulis ulang di sini — hanya diubah via transaction (start/resume/unlock admin).
+ *
+ * @param {string} sessionId
+ * @param {object} answers
+ * @param {number} warningCount
+ * @param {string|undefined} deviceToken  - token device ini (dari _session.deviceToken)
+ * @returns {boolean} true jika masih pemilik sah, false jika admin unlock + device lain masuk
+ */
+export async function autoSaveAnswers(sessionId, answers, warningCount = 0, deviceToken) {
+  if (deviceToken) {
+    // Deteksi eviction: jika admin membuka kunci dan device baru sudah mengklaim,
+    // token di Firestore akan berbeda dari milik kita.
+    const snap = await getDoc(doc(db, EXAM_SESSIONS, sessionId));
+    if (snap.exists()) {
+      const current = snap.data().deviceToken;
+      // current berbeda dengan milik kita (termasuk jika current sudah null/undefined
+      // karena admin baru saja membuka kunci tapi device lain belum klaim — biarkan lanjut)
+      if (current && current !== deviceToken) return false;
+    }
+  }
+
   await updateDoc(doc(db, EXAM_SESSIONS, sessionId), {
     answers,
     warningCount,
     lastSavedAt: serverTimestamp(),
+    // deviceToken TIDAK ditulis — lock hanya diubah via startSessionWithDevice /
+    // claimDeviceForResume / unlockDeviceSession (admin)
   });
+  return true;
 }
 
 /** Simpan warningCount + catat jenis pelanggaran ke violationLog. */
@@ -167,6 +224,17 @@ export async function getExamsByBimtek(bimtekId) {
  */
 export async function getExam(examId) {
   const snap = await getDoc(doc(db, EXAMS, examId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+/**
+ * Sama dengan getExam tapi selalu baca dari server (bypass SDK cache).
+ * Dipakai untuk validasi window ujian di saat klik "Mulai" agar selalu
+ * mendapat status terkini meski admin baru saja mengubahnya.
+ */
+export async function getExamFromServer(examId) {
+  const snap = await getDocFromServer(doc(db, EXAMS, examId));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }

@@ -83,7 +83,7 @@ export function destroyExamRunner() {
 function _scheduleSave() {
   clearTimeout(_saveDebounce);
   _saveDebounce = setTimeout(() => {
-    autoSaveAnswers(_session.id, _answers, getWarnCount()).catch(console.warn);
+    autoSaveAnswers(_session.id, _answers, getWarnCount(), _session.deviceToken).catch(console.warn);
   }, 2000);
 }
 
@@ -360,11 +360,35 @@ function _updateTimerDisplay() {
 function _startAutoSave() {
   _saveRef = setInterval(async () => {
     try {
-      await autoSaveAnswers(_session.id, _answers, getWarnCount());
+      // autoSaveAnswers mendeteksi jika admin membuka kunci dan device lain sudah mengklaim.
+      // Token TIDAK diperbarui di sini — lock hanya berubah via transaction atau aksi admin.
+      const stillOwner = await autoSaveAnswers(_session.id, _answers, getWarnCount(), _session.deviceToken);
+      if (stillOwner === false) {
+        // Admin telah membuka kunci dan perangkat lain sudah mengambil alih session ini.
+        _handleDeviceEvicted();
+      }
     } catch (e) {
       console.warn('[AutoSave] Gagal:', e.message);
     }
   }, EXAM_DEFAULTS.AUTOSAVE_DETIK * 1000);
+}
+
+function _handleDeviceEvicted() {
+  clearInterval(_saveRef);
+  clearInterval(_timerRef);
+  destroyAntiCheat();
+  document.getElementById('app').innerHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+        <div class="text-5xl mb-4">🔒</div>
+        <h2 class="text-lg font-bold text-gray-900 mb-2">Sesi Dialihkan</h2>
+        <p class="text-sm text-gray-500">
+          Pengawas ujian telah mengalihkan sesi ini ke perangkat lain.
+          Jawaban Anda sampai saat ini sudah tersimpan.
+          Silakan hubungi pengawas untuk informasi lebih lanjut.
+        </p>
+      </div>
+    </div>`;
 }
 
 // ─── Anti-cheat callbacks ─────────────────────────────────────

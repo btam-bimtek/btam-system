@@ -150,6 +150,26 @@ export async function publishExam(examId, published) {
   await updateDoc(doc(db, COL.EXAMS, examId), { published, updatedAt: serverTimestamp() });
 }
 
+/**
+ * Buka atau tutup jendela ujian untuk tipe tertentu.
+ * Peserta hanya bisa memulai ujian saat window terbuka.
+ * @param {string} examId
+ * @param {string} tipe  - 'pretest' | 'posttest' | 'seleksi_tertulis'
+ * @param {boolean} open
+ */
+export async function setExamWindow(examId, tipe, open) {
+  await updateDoc(doc(db, COL.EXAMS, examId), {
+    [`windowOpen.${tipe}`]: open,
+    updatedAt: serverTimestamp(),
+  });
+  await logAudit({
+    action:     open ? 'open_exam_window' : 'close_exam_window',
+    entityType: 'exam',
+    entityId:   examId,
+    metadata:   { tipe },
+  });
+}
+
 // ─── Exam Sessions (Magic Link) ───────────────────────────────
 
 export async function listSessions(examId) {
@@ -305,6 +325,18 @@ export async function deleteSession(sessionId) {
   await batch.commit();
 }
 
+/**
+ * Hapus kunci perangkat dari session yang sedang 'started'.
+ * Dipakai admin ketika peserta harus berganti perangkat secara sah.
+ */
+export async function unlockDeviceSession(sessionId) {
+  await updateDoc(doc(db, COL.EXAM_SESSIONS, sessionId), {
+    deviceToken: deleteField(),
+    updatedAt:   serverTimestamp(),
+  });
+  await logAudit({ action: 'unlock_device', entityType: 'exam_session', entityId: sessionId });
+}
+
 export async function resetSession(sessionId) {
   const user = getCurrentUser();
 
@@ -334,7 +366,7 @@ export async function resetSession(sessionId) {
     }
   }
 
-  // Reset session ke state awal
+  // Reset session ke state awal (hapus deviceToken agar peserta bisa pakai perangkat baru)
   batch.update(doc(db, COL.EXAM_SESSIONS, sessionId), {
     status:       'issued',
     startedAt:    null,
@@ -343,6 +375,7 @@ export async function resetSession(sessionId) {
     lastSavedAt:  null,
     warningCount: 0,
     violationLog: [],
+    deviceToken:  deleteField(),
     updatedAt:    serverTimestamp(),
     resetBy:      user.uid,
   });
