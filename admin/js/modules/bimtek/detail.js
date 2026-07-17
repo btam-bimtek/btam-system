@@ -11,13 +11,14 @@ import { renderTabPenilaian } from './tab-penilaian.js';
 import { renderTabReport } from './tab-report.js';
 import { renderTabUK } from './tab-uk.js';
 import { showMapelModal } from './form-mapel.js';
-import { BIDANG_LIST } from '../../../../shared/constants.js';
+import { BIDANG_LIST, COL } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
 import { listPeserta } from '../peserta-master/api.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { setPageTitle } from '../../layout/navbar.js';
 import { navigate } from '../../router.js';
+import { db, collection, query, where, getDocs } from '../../../../shared/db.js';
 import { Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
@@ -802,15 +803,19 @@ async function _loadPeserta(app, el) {
     listEl.innerHTML = `<div class="text-center py-10 text-gray-500 text-sm">Belum ada peserta.</div>`;
   } else {
     try {
-      const { data: all } = await listPeserta({ pageSize: 999 });
-      const enrolled = all
-        .filter(p => pesertaIds.includes(p.noPeserta))
-        .sort((a, b) => String(a.noPeserta ?? '').localeCompare(String(b.noPeserta ?? ''), undefined, { numeric: true }));
+      // Fetch langsung berdasarkan noPeserta yang terdaftar di bimtek ini —
+      // JANGAN pakai listPeserta() karena filternya isAlumni==false, sehingga
+      // peserta yang sudah jadi alumni (mis. bimtek ini sendiri sudah completed)
+      // akan hilang dari daftar padahal masih terdaftar di pesertaIds.
+      const enrolled = await _fetchPesertaByIds(pesertaIds);
 
       const rows = enrolled.map(p => `
         <tr>
-          <td class="text-xs text-gray-400">${_esc(p.noPeserta)}</td>
-          <td class="font-medium text-white text-sm">${_esc(p.nama)}</td>
+          <td class="text-xs font-mono ${p._orphan ? 'text-red-400' : 'text-gray-400'}">${_esc(p.noPeserta)}</td>
+          <td class="font-medium text-sm ${p._orphan ? 'text-red-400' : 'text-white'}">
+            ${_esc(p.nama)}
+            ${p._orphan ? '<div class="text-xs text-red-500 font-normal">Tidak ditemukan di master peserta</div>' : ''}
+          </td>
           <td class="text-sm text-gray-400">${_esc(p.instansi || '-')}</td>
           <td class="text-sm text-gray-400">${_esc(p.jabatan || '-')}</td>
           <td>
@@ -1086,6 +1091,33 @@ function _fmtDate(ts) {
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/**
+ * Fetch peserta_master berdasarkan daftar noPeserta, tanpa filter isAlumni/deleted —
+ * dipakai untuk menampilkan peserta yang SUDAH terdaftar di bimtek (beda kebutuhan
+ * dengan listPeserta() yang untuk mencari kandidat baru).
+ * Firestore 'in' max 30 per query, jadi di-chunk.
+ */
+async function _fetchPesertaByIds(ids) {
+  const results = [];
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    const snap = await getDocs(
+      query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
+    );
+    snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }));
+  }
+
+  // Peserta yang ada di pesertaIds tapi tidak ketemu di master — tampilkan sebagai orphan
+  const found = new Set(results.map(p => p.noPeserta));
+  ids.filter(np => !found.has(np)).forEach(np => {
+    results.push({ noPeserta: np, nama: np, instansi: null, jabatan: null, _orphan: true });
+  });
+
+  return results.sort((a, b) =>
+    String(a.noPeserta ?? '').localeCompare(String(b.noPeserta ?? ''), undefined, { numeric: true })
+  );
 }
 
 function _loadSheetJS() {
