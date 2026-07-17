@@ -349,7 +349,10 @@ async function _loadKelulusanChart(allBimtek) {
     const h = Math.max(180, rows.length * 46);
     el.innerHTML = `<div style="height:${h}px;position:relative;"><canvas id="chart-kelulusan"></canvas></div>`;
 
-    const canvas = document.getElementById('chart-kelulusan');
+    // Cari relatif ke `el` (bukan document) — halaman bisa sudah berpindah
+    // saat await di atas selesai, sehingga elemen ini sudah lepas dari DOM aktif.
+    const canvas = el.querySelector('canvas');
+    if (!canvas) return;
     _charts.kelulusan = new Chart(canvas, {
       type: 'bar',
       data: {
@@ -817,7 +820,11 @@ function _renderChartProvinsi(provinsiCount) {
   const h = Math.max(220, sorted.length * 28);
   wrap.innerHTML = `<div style="height:${h}px;position:relative;"><canvas id="chart-provinsi"></canvas></div>`;
 
-  _charts.provinsi = new Chart(document.getElementById('chart-provinsi'), {
+  // Cari relatif ke `wrap` (bukan document) — halaman bisa sudah berpindah
+  // saat data async selesai dimuat, sehingga elemen ini sudah lepas dari DOM aktif.
+  const canvas = wrap.querySelector('canvas');
+  if (!canvas) return;
+  _charts.provinsi = new Chart(canvas, {
     type: 'bar',
     data: {
       labels: sorted.map(([p]) => _truncate(p, 22)),
@@ -859,7 +866,11 @@ function _renderChartInstansi(instansiCount) {
   const h = Math.max(220, sorted.length * 28);
   wrap.innerHTML = `<div style="height:${h}px;position:relative;"><canvas id="chart-instansi"></canvas></div>`;
 
-  _charts.instansi = new Chart(document.getElementById('chart-instansi'), {
+  // Cari relatif ke `wrap` (bukan document) — halaman bisa sudah berpindah
+  // saat data async selesai dimuat, sehingga elemen ini sudah lepas dari DOM aktif.
+  const canvas = wrap.querySelector('canvas');
+  if (!canvas) return;
+  _charts.instansi = new Chart(canvas, {
     type: 'bar',
     data: {
       labels: sorted.map(([inst]) => _truncate(inst, 22)),

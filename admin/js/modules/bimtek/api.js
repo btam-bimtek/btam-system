@@ -53,7 +53,7 @@ function _generateAccessCode() {
 export async function generateBimtekAccessCode(bimtekId) {
   const code = _generateAccessCode();
   await updateDoc(doc(db, COL, bimtekId), { accessCode: code, updatedAt: serverTimestamp() });
-  await logAudit('bimtek', 'generate_access_code', bimtekId, { accessCode: code });
+  await logAudit({ action: 'generate_access_code', entityType: 'bimtek', entityId: bimtekId, metadata: { accessCode: code } });
   return code;
 }
 
@@ -125,7 +125,7 @@ export async function createBimtek(data) {
   };
 
   const ref = await addDoc(collection(db, COL), payload);
-  await logAudit('bimtek', 'create', ref.id, { nama: payload.nama });
+  await logAudit({ action: 'create', entityType: 'bimtek', entityId: ref.id, metadata: { nama: payload.nama } });
   return ref.id;
 }
 
@@ -147,7 +147,7 @@ export async function updateBimtek(bimtekId, data) {
   payload.updatedAt = serverTimestamp();
 
   await updateDoc(doc(db, COL, bimtekId), payload);
-  await logAudit('bimtek', 'update', bimtekId, { fields: Object.keys(payload) });
+  await logAudit({ action: 'update', entityType: 'bimtek', entityId: bimtekId, metadata: { fields: Object.keys(payload) } });
 }
 
 // ─── SOFT DELETE BIMTEK ─────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export async function deleteBimtek(bimtekId) {
     deleted: true,
     updatedAt: serverTimestamp(),
   });
-  await logAudit('bimtek', 'delete', bimtekId, {});
+  await logAudit({ action: 'delete', entityType: 'bimtek', entityId: bimtekId });
 }
 
 // ─── UPDATE STATUS ──────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ export async function updateStatus(bimtekId, status, cancelReason = null) {
     await deleteAlumniByBimtek(bimtekId);
   }
 
-  await logAudit('bimtek', 'status_change', bimtekId, { status });
+  await logAudit({ action: 'status_change', entityType: 'bimtek', entityId: bimtekId, metadata: { status } });
 }
 
 // ─── PESERTA ────────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ export async function addPeserta(bimtekId, noPesertaList) {
     pesertaIds: merged,
     updatedAt: serverTimestamp(),
   });
-  await logAudit('bimtek', 'peserta_add', bimtekId, { count: toAdd.length });
+  await logAudit({ action: 'peserta_add', entityType: 'bimtek', entityId: bimtekId, metadata: { count: toAdd.length } });
 }
 
 export async function removePeserta(bimtekId, noPeserta) {
@@ -214,7 +214,7 @@ export async function removePeserta(bimtekId, noPeserta) {
     pesertaIds: updated,
     updatedAt: serverTimestamp(),
   });
-  await logAudit('bimtek', 'peserta_remove', bimtekId, { noPeserta });
+  await logAudit({ action: 'peserta_remove', entityType: 'bimtek', entityId: bimtekId, metadata: { noPeserta } });
 }
 
 // ─── MAPEL SUB-COLLECTION ───────────────────────────────────────────────────
@@ -258,7 +258,7 @@ export async function createMapel(bimtekId, data) {
   };
 
   const ref = await addDoc(collection(db, COL, bimtekId, 'mapel'), payload);
-  await logAudit('bimtek_mapel', 'create', `${bimtekId}/${ref.id}`, { nama: payload.nama });
+  await logAudit({ action: 'create', entityType: 'bimtek_mapel', entityId: `${bimtekId}/${ref.id}`, metadata: { nama: payload.nama } });
   return ref.id;
 }
 
@@ -275,12 +275,12 @@ export async function updateMapel(bimtekId, mapelId, data) {
   payload.updatedAt = serverTimestamp();
 
   await updateDoc(doc(db, COL, bimtekId, 'mapel', mapelId), payload);
-  await logAudit('bimtek_mapel', 'update', `${bimtekId}/${mapelId}`, {});
+  await logAudit({ action: 'update', entityType: 'bimtek_mapel', entityId: `${bimtekId}/${mapelId}` });
 }
 
 export async function deleteMapel(bimtekId, mapelId) {
   await deleteDoc(doc(db, COL, bimtekId, 'mapel', mapelId));
-  await logAudit('bimtek_mapel', 'delete', `${bimtekId}/${mapelId}`, {});
+  await logAudit({ action: 'delete', entityType: 'bimtek_mapel', entityId: `${bimtekId}/${mapelId}` });
 }
 
 // Reorder urutan mapel setelah delete

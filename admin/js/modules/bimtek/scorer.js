@@ -282,7 +282,9 @@ export function hitungNilaiAkhir(scores, bimtek) {
   const hasPresentasi = bimtek.hasPresentasi || false;
 
   // Redistribusi bobot
-  let bobotPengajarEfektif = w.pengajar || 0.20;
+  // Pakai ?? (bukan ||) — bobot 0 yang sengaja di-set admin harus tetap 0,
+  // bukan fallback ke default 0.20 (0 dianggap falsy oleh ||).
+  let bobotPengajarEfektif = w.pengajar ?? 0.20;
   if (!hasTugas) bobotPengajarEfektif += w.tugas || 0;
   if (!hasPresentasi) bobotPengajarEfektif += w.presentasi || 0;
 
@@ -300,10 +302,34 @@ export function hitungNilaiAkhir(scores, bimtek) {
 }
 
 /**
- * Cek kelulusan berdasarkan nilai akhir, KKM, dan syarat kehadiran minimum 90%.
+ * Kategori kelulusan berdasarkan nilai akhir — batas tetap (bukan KKM per-bimtek).
+ * Lulus: Sangat Baik (≥86), Baik (71-85), Cukup (61-70)
+ * Tidak Lulus: Kurang (51-60), Sangat Kurang (≤50)
+ */
+export const KATEGORI_NILAI = [
+  { min: 86, kategori: 'Sangat Baik',   lulus: true  },
+  { min: 71, kategori: 'Baik',          lulus: true  },
+  { min: 61, kategori: 'Cukup',         lulus: true  },
+  { min: 51, kategori: 'Kurang',        lulus: false },
+  { min: 0,  kategori: 'Sangat Kurang', lulus: false },
+];
+
+/**
+ * Dapatkan kategori kelulusan dari nilai akhir (0-100).
+ * @returns {{ kategori: string, lulus: boolean }}
+ */
+export function kategoriNilai(nilaiAkhir) {
+  const n = nilaiAkhir ?? 0;
+  return KATEGORI_NILAI.find(k => n >= k.min);
+}
+
+/**
+ * Cek kelulusan berdasarkan nilai akhir (batas tetap 60) dan syarat kehadiran minimum 90%.
  * Jika kehadiranPct tersedia dan < 90, peserta otomatis belum lulus.
+ * Parameter kkm dipertahankan untuk kompatibilitas signature lama tapi tidak lagi
+ * dipakai — kriteria kelulusan sekarang memakai kategori nilai dengan batas tetap.
  */
 export function cekKelulusan(nilaiAkhir, kkm, kehadiranPct = null) {
   if (kehadiranPct !== null && kehadiranPct < 90) return false;
-  return nilaiAkhir >= (kkm || 60);
+  return kategoriNilai(nilaiAkhir).lulus;
 }

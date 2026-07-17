@@ -130,12 +130,12 @@ export async function renderBimtekForm({ id } = {}) {
 
         <div class="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-4">
           <h2 class="text-sm font-semibold text-gray-300 mb-4">Konfigurasi Penilaian</h2>
+          <p class="text-xs text-gray-500 mb-4">
+            Kriteria kelulusan memakai kategori nilai baku: Sangat Baik (≥86), Baik (71-85),
+            Cukup (61-70) dinyatakan Lulus; Kurang (51-60), Sangat Kurang (≤50) Tidak Lulus.
+          </p>
           <div class="flex items-start gap-8">
-            <div>
-              <label class="block text-xs text-gray-400 mb-1.5">KKM</label>
-              <input type="number" id="kkm" class="form-input w-24" min="0" max="100" value="${d?.kkm ?? 60}">
-            </div>
-            <div class="space-y-2 pt-5">
+            <div class="space-y-2">
               <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-400">
                 <input type="checkbox" id="has-tugas" class="w-4 h-4 rounded" ${hasTugas ? 'checked' : ''}>
                 Komponen Tugas aktif
@@ -349,7 +349,6 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
   const lokasi   = app.querySelector('#lokasi').value.trim();
   const pm       = app.querySelector('#periode-mulai').value;
   const ps       = app.querySelector('#periode-selesai').value;
-  const kkm      = Number(app.querySelector('#kkm').value) || 60;
   const ht       = app.querySelector('#has-tugas').checked;
   const hp       = app.querySelector('#has-presentasi').checked;
   const bidangIds = _readBidangIds();
@@ -378,7 +377,7 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
 
   try {
     const payload = {
-      nama, deskripsi, tipe, mode, lokasi, kkm, weights,
+      nama, deskripsi, tipe, mode, lokasi, weights,
       hasTugas: ht, hasPresentasi: hp, bidangIds,
       kapasitas: kap || (mode === 'online' ? 25 : 17),
       periode: { mulai: pm, selesai: ps },

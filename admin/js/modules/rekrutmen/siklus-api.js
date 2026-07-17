@@ -67,7 +67,7 @@ export async function createSiklus(data, adminEmail) {
   };
 
   await setDoc(docRef, payload);
-  await logAudit('siklus_seleksi', 'create', String(tahun), { tahun });
+  await logAudit({ action: 'create', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { tahun } });
   return { id: String(tahun), ...payload };
 }
 
@@ -81,7 +81,7 @@ export async function updateSiklus(tahun, changes, adminEmail) {
   _convertPhaseDates(payload);
 
   await updateDoc(docRef, payload);
-  await logAudit('siklus_seleksi', 'update', String(tahun), changes);
+  await logAudit({ action: 'update', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: changes });
 }
 
 // ─── Status Transition ───────────────────────────────────────
@@ -89,7 +89,7 @@ export async function updateSiklus(tahun, changes, adminEmail) {
 export async function setSiklusStatus(tahun, status, adminEmail) {
   const docRef = doc(db, COL.SIKLUS_SELEKSI, String(tahun));
   await updateDoc(docRef, { status, updatedAt: Timestamp.now() });
-  await logAudit('siklus_seleksi', 'status_change', String(tahun), { status });
+  await logAudit({ action: 'status_change', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { status } });
 }
 
 // Buka/tutup pendaftaran publik
@@ -99,7 +99,7 @@ export async function togglePendaftaran(tahun, published, adminEmail) {
     'phases.pendaftaran.published': published,
     updatedAt: Timestamp.now()
   });
-  await logAudit('siklus_seleksi', published ? 'buka_pendaftaran' : 'tutup_pendaftaran', String(tahun), {});
+  await logAudit({ action: published ? 'buka_pendaftaran' : 'tutup_pendaftaran', entityType: 'siklus_seleksi', entityId: String(tahun) });
 }
 
 // ─── Kuota ───────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export async function togglePendaftaran(tahun, published, adminEmail) {
 export async function updateKuota(tahun, bimtekPilihan, adminEmail) {
   const docRef = doc(db, COL.SIKLUS_SELEKSI, String(tahun));
   await updateDoc(docRef, { bimtekPilihan, updatedAt: Timestamp.now() });
-  await logAudit('siklus_seleksi', 'update_kuota', String(tahun), { count: bimtekPilihan.length });
+  await logAudit({ action: 'update_kuota', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { count: bimtekPilihan.length } });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────

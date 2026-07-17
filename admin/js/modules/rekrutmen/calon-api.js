@@ -60,7 +60,7 @@ export async function setStatusAdmin(docId, status, alasan, adminEmail) {
     updatedAt:         ts
   });
   await _syncStatusLookup(docId, { statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts });
-  await logAudit('calon_peserta', 'seleksi_admin', docId, { status, alasan });
+  await logAudit({ action: 'seleksi_admin', entityType: 'calon_peserta', entityId: docId, metadata: { status, alasan } });
 }
 
 /**
@@ -127,7 +127,7 @@ export async function applyAdminRules(tahun, bimtekPilihan, adminEmail) {
     }
   }
 
-  await logAudit('siklus_seleksi', 'apply_admin_rules', String(tahun), { lulus, gugur, totalRules, bimtekCount: (bimtekPilihan||[]).length });
+  await logAudit({ action: 'apply_admin_rules', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { lulus, gugur, totalRules, bimtekCount: (bimtekPilihan||[]).length } });
   return { lulus, gugur, errors };
 }
 
@@ -165,7 +165,7 @@ export async function bulkSetStatusAdmin(docIds, status, alasan, adminEmail) {
     });
     await _syncStatusLookup(id, { statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts });
   }));
-  await logAudit('calon_peserta', 'bulk_seleksi_admin', 'batch', { count: docIds.length, status });
+  await logAudit({ action: 'bulk_seleksi_admin', entityType: 'calon_peserta', entityId: 'batch', metadata: { count: docIds.length, status } });
 }
 
 // ─── Hapus Calon Peserta ──────────────────────────────────────
@@ -182,7 +182,7 @@ export async function deleteCalonPeserta(docId, adminEmail) {
   await deleteDoc(doc(db, COL.CALON_PESERTA, docId));
   if (pendaftarId) await deleteDoc(doc(db, COL.STATUS_LOOKUP, pendaftarId)).catch(() => {});
 
-  await logAudit('calon_peserta', 'delete', docId, { pendaftarId });
+  await logAudit({ action: 'delete', entityType: 'calon_peserta', entityId: docId, metadata: { pendaftarId } });
 }
 
 /**

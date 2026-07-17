@@ -3,6 +3,7 @@
 
 import { getPesertaReportData } from './report-api.js';
 import { mapToLabel, generateNarasi, generateNarasiDeskriptif, generateRekomendasi } from './report-narrative.js';
+import { kategoriNilai } from './scorer.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
@@ -405,11 +406,12 @@ function _buildDocxPageHtml(data, kopBase64) {
   const post  = scores?.posttest ?? null;
   const na    = scores?.nilaiAkhir ?? null;
   const lulus = scores?.lulus ?? false;
+  const kat   = kategoriNilai(na);
 
   const nilaiRows = [
     ['Pre Test',    pre,  'Penilaian awal sebelum kegiatan'],
     ['Post Test',   post, 'Penilaian akhir setelah kegiatan'],
-    ['Nilai Akhir', na,   `Nilai minimum kelulusan: ${kkm}`],
+    ['Nilai Akhir', na,   'Kategori: Sangat Baik (≥86), Baik (71-85), Cukup (61-70), Kurang (51-60), Sangat Kurang (≤50)'],
   ].map(([lbl, val, ket]) => `
     <tr>
       <td ${TD}>${lbl}</td>
@@ -451,7 +453,7 @@ function _buildDocxPageHtml(data, kopBase64) {
         ${nilaiRows}
         <tr>
           <td ${TD} style="padding:4pt 6pt;border:1px solid #000000;font-weight:bold;">Status</td>
-          <td ${TDC} style="font-weight:bold;">${lulus ? 'LULUS' : 'BELUM MEMENUHI'}</td>
+          <td ${TDC} style="font-weight:bold;">${kat.kategori.toUpperCase()} (${lulus ? 'LULUS' : 'TIDAK LULUS'})</td>
           <td ${TD}></td>
         </tr>
       </tbody>
@@ -618,17 +620,17 @@ function _buildSectionA(peserta, b) {
 // ── Section B ─────────────────────────────────────────────────────────────────
 
 function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
-  const kkm = b.kkm ?? 60;
   const pre  = scores?.pretest  ?? null;
   const post = scores?.posttest ?? null;
   const na   = scores?.nilaiAkhir ?? null;
   const lulus = scores?.lulus ?? false;
+  const kat  = kategoriNilai(na);
 
   // B.1 — Nilai kuantitatif
   const nilaiRows = [
     { label: 'Pre Test',    nilai: pre,  ket: 'Penilaian awal sebelum kegiatan' },
     { label: 'Post Test',   nilai: post, ket: 'Penilaian akhir setelah kegiatan' },
-    { label: 'Nilai Akhir', nilai: na,   ket: `Nilai minimum kelulusan: ${kkm}`, bold: true },
+    { label: 'Nilai Akhir', nilai: na,   ket: 'Sangat Baik ≥86 · Baik 71-85 · Cukup 61-70 · Kurang 51-60 · Sangat Kurang ≤50', bold: true },
   ];
 
   const nilaiTableRows = nilaiRows.map(r => `
@@ -646,7 +648,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
       <td style="padding:8px 12px; text-align:center;">
         <span style="background:${lulus ? '#dcfce7' : '#fee2e2'}; color:${lulus ? '#166534' : '#991b1b'};
           padding:2px 12px; border-radius:999px; font-size:12px; font-weight:600;">
-          ${lulus ? 'LULUS' : 'BELUM MEMENUHI'}
+          ${kat.kategori.toUpperCase()} (${lulus ? 'LULUS' : 'TIDAK LULUS'})
         </span>
       </td>
       <td></td>
@@ -680,13 +682,13 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
   };
 
   const tidakLulusAlasan = !lulus && na != null
-    ? (na >= kkm ? 'kehadiran' : 'nilai')
+    ? (kat.lulus ? 'kehadiran' : 'nilai')
     : null;
   const tidakLulusMsg = tidakLulusAlasan ? `
     <div style="background:#fef3c7; border-left:4px solid #f59e0b; border-radius:0 4px 4px 0; padding:12px 16px; margin-top:16px; font-size:12px; color:#78350f; line-height:1.6;">
       ${tidakLulusAlasan === 'kehadiran'
-        ? `Nilai akhir yang diperoleh (${na}) telah memenuhi nilai minimum kelulusan (${kkm}), namun kehadiran peserta tidak memenuhi syarat minimum 90% yang ditetapkan.`
-        : `Nilai akhir yang diperoleh (${na}) belum mencapai nilai minimum kelulusan yang ditetapkan (${kkm}).`
+        ? `Nilai akhir yang diperoleh (${na}) berkategori "${kat.kategori}" dan telah memenuhi syarat nilai kelulusan, namun kehadiran peserta tidak memenuhi syarat minimum 90% yang ditetapkan.`
+        : `Nilai akhir yang diperoleh (${na}) berkategori "${kat.kategori}" — belum mencapai kategori minimum kelulusan (Cukup, ≥61).`
       }
     </div>` : '';
 

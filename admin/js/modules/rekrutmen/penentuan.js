@@ -316,7 +316,7 @@ async function _aktivasiBimtek(bimtekId, calonList, email) {
   }
 
   await batch.commit();
-  await logAudit('rekrutmen', 'aktivasi_peserta', String(tahun), { bimtekId, count: calonList.length });
+  await logAudit({ action: 'aktivasi_peserta', entityType: 'rekrutmen', entityId: String(tahun), metadata: { bimtekId, count: calonList.length } });
   showToast(`${calonList.length} peserta diaktivasi untuk bimtek ini`, 'success');
 }
 

@@ -3,7 +3,7 @@
 // Konfigurasi threshold deskriptif per bimtek
 
 import { updateBimtek } from './api.js';
-import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
+import { hitungNilaiAkhir, cekKelulusan, kategoriNilai } from './scorer.js';
 import { showToast } from '../../components/toast.js';
 import { confirmDialog } from '../../components/modal.js';
 import { db, collection, query, where, getDocs } from '../../../../shared/db.js';
@@ -32,10 +32,24 @@ const DEFAULT_THRESHOLDS = {
 
 const BLACKLIST_WORDS = ['kurang', 'buruk', 'jelek', 'gagal', 'lemah', 'tidak'];
 
+const KATEGORI_BADGE = {
+  'Sangat Baik':   'badge-green',
+  'Baik':          'badge-green',
+  'Cukup':         'badge-green',
+  'Kurang':        'badge-red',
+  'Sangat Kurang': 'badge-red',
+};
+
 export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
   const lulus = scores.filter(s => s.lulus);
   const tidakLulus = scores.filter(s => !s.lulus);
-  const kkm = bimtek.kkm || 60;
+
+  // Ringkasan per kategori (Sangat Baik/Baik/Cukup/Kurang/Sangat Kurang)
+  const kategoriCount = {};
+  scores.forEach(s => {
+    const k = kategoriNilai(s.nilaiAkhir).kategori;
+    kategoriCount[k] = (kategoriCount[k] || 0) + 1;
+  });
 
   // Fetch nama peserta
   const namaMap = {};
@@ -62,7 +76,11 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
 
   const _val = v => (v !== null && v !== undefined) ? v : '—';
 
-  const _buildRow = (s) => `
+  const _buildRow = (s) => {
+    const kat = kategoriNilai(s.nilaiAkhir);
+    // Kehadiran <90% membuat peserta tidak lulus walau nilai akhir cukup — tandai alasannya
+    const gagalKehadiran = !s.lulus && kat.lulus;
+    return `
     <tr>
       <td class="sticky left-0 bg-gray-950 z-10 whitespace-nowrap">
         <div class="font-medium text-sm text-gray-200">${_esc(namaMap[s.noPeserta] ?? s.noPeserta)}</div>
@@ -71,16 +89,16 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
       ${komponen.map(k => `<td class="text-center text-sm">${_val(s[k.id])}</td>`).join('')}
       <td class="text-center font-bold">${s.nilaiAkhir}</td>
       <td class="text-center">
-        ${s.lulus
-          ? '<span class="badge badge-green text-xs">LULUS</span>'
-          : `<span class="badge badge-red text-xs">BELUM</span>`}
+        <span class="badge ${KATEGORI_BADGE[kat.kategori]} text-xs">${kat.kategori}</span>
+        ${gagalKehadiran ? '<div class="text-xs text-amber-400 mt-0.5">Kehadiran &lt;90%</div>' : ''}
       </td>
     </tr>
   `;
+  };
 
   container.innerHTML = `
     <!-- Summary -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
       <div class="bg-gray-800 p-4 rounded-lg">
         <div class="text-xs text-gray-400">Total Peserta</div>
         <div class="text-2xl font-bold text-white mt-1">${scores.length}</div>
@@ -90,31 +108,46 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
         <div class="text-2xl font-bold text-green-400 mt-1">${lulus.length}</div>
       </div>
       <div class="bg-red-900 bg-opacity-30 p-4 rounded-lg">
-        <div class="text-xs text-red-300">Belum Memenuhi</div>
+        <div class="text-xs text-red-300">Tidak Lulus</div>
         <div class="text-2xl font-bold text-red-400 mt-1">${tidakLulus.length}</div>
       </div>
     </div>
 
-    <!-- KKM & Threshold Config -->
-    <div class="bg-gray-800 p-4 rounded-lg mb-6">
-      <h3 class="font-medium text-white mb-4">⚙️ Konfigurasi Kelulusan</h3>
-      <div class="space-y-4">
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">KKM (Kriteria Ketuntasan Minimal)</label>
-          <input type="number" id="kkm-input" class="form-input w-24" min="0" max="100" value="${kkm}" />
+    <!-- Breakdown per kategori -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      ${['Sangat Baik', 'Baik', 'Cukup', 'Kurang', 'Sangat Kurang'].map(k => `
+        <div class="bg-gray-800/60 p-3 rounded-lg text-center">
+          <div class="text-xs text-gray-400">${k}</div>
+          <div class="text-lg font-bold ${KATEGORI_BADGE[k] === 'badge-green' ? 'text-green-400' : 'text-red-400'} mt-0.5">${kategoriCount[k] || 0}</div>
         </div>
-        <button id="btn-config-threshold" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors">
-          Konfigurasi Threshold Deskriptif
-        </button>
-        <button id="btn-save-config" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
-          Simpan Konfigurasi
-        </button>
+      `).join('')}
+    </div>
+
+    <!-- Kriteria kelulusan (informasi, batas tetap) -->
+    <div class="bg-gray-800 p-4 rounded-lg mb-6">
+      <h3 class="font-medium text-white mb-3">Kriteria Kelulusan</h3>
+      <p class="text-xs text-gray-400 mb-3">
+        Nilai akhir menentukan kategori. Peserta dengan kehadiran &lt;90% otomatis
+        Tidak Lulus meskipun nilai akhir mencukupi.
+      </p>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs mb-4">
+        <div class="bg-gray-900 rounded px-3 py-2"><span class="text-green-400 font-medium">Sangat Baik</span><br><span class="text-gray-500">≥ 86</span></div>
+        <div class="bg-gray-900 rounded px-3 py-2"><span class="text-green-400 font-medium">Baik</span><br><span class="text-gray-500">71 – 85</span></div>
+        <div class="bg-gray-900 rounded px-3 py-2"><span class="text-green-400 font-medium">Cukup</span><br><span class="text-gray-500">61 – 70</span></div>
+        <div class="bg-gray-900 rounded px-3 py-2"><span class="text-red-400 font-medium">Kurang</span><br><span class="text-gray-500">51 – 60</span></div>
+        <div class="bg-gray-900 rounded px-3 py-2"><span class="text-red-400 font-medium">Sangat Kurang</span><br><span class="text-gray-500">≤ 50</span></div>
       </div>
+      <button id="btn-config-threshold" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors">
+        Konfigurasi Threshold Deskriptif
+      </button>
+      <button id="btn-save-config" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
+        Simpan Konfigurasi
+      </button>
     </div>
 
     <!-- Tabel semua peserta dengan semua komponen -->
     <div class="mb-6">
-      <h3 class="font-medium text-white mb-3">Rekapitulasi Nilai (KKM: ${kkm})</h3>
+      <h3 class="font-medium text-white mb-3">Rekapitulasi Nilai</h3>
       ${scores.length === 0 ? '<div class="text-xs text-gray-400">Belum ada data peserta.</div>' : `
         <div class="overflow-x-auto">
           <table class="btam-table">
@@ -190,8 +223,6 @@ function _showThresholdModal(container, bimtek) {
 
 async function _saveConfig(bimtekId, container, bimtek) {
   try {
-    const kkm = parseInt(container.querySelector('#kkm-input').value) || 60;
-
     // Collect threshold dari input
     const thresholds = {};
     ['kehadiran', 'keaktifan', 'respek'].forEach(key => {
@@ -230,7 +261,6 @@ async function _saveConfig(bimtekId, container, bimtek) {
     btn.textContent = 'Menyimpan...';
 
     await updateBimtek(bimtekId, {
-      kkm,
       reportThresholds: thresholds
     });
 
