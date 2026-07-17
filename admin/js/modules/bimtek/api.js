@@ -136,7 +136,7 @@ export async function updateBimtek(bimtekId, data) {
     'nama', 'deskripsi', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
     'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'ukIds', 'kkm', 'weights',
     'hasTugas', 'hasPresentasi', 'reportThresholds', 'status', 'cancelReason',
-    'preTestExamId', 'postTestExamId', 'accessCode',
+    'preTestExamId', 'postTestExamId', 'accessCode', 'noSertifikat',
   ];
   const payload = {};
   for (const key of allowed) {

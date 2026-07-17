@@ -8,6 +8,8 @@ import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
 import { listBimtekScores } from './penilaian-api.js';
+import { updateBimtek } from './api.js';
+import { showToast } from '../../components/toast.js';
 
 // Chart instances untuk Section C peserta
 const _charts = {};
@@ -91,13 +93,22 @@ function _renderList(container) {
 
   container.innerHTML = `
     <div id="peserta-list-section">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
         <div class="text-xs text-gray-400">${S.pesertaList.length} peserta · Klik Preview untuk melihat, Print untuk cetak</div>
         <button id="btn-docx-terpilih" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors flex items-center gap-1.5">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
           </svg>
           Download Terpilih (.docx)
+        </button>
+      </div>
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-3 mb-3 flex items-center gap-2 flex-wrap">
+        <label class="text-xs text-gray-400 shrink-0" for="input-no-sertifikat-bimtek">Nomor Sertifikat (berlaku untuk semua peserta bimtek ini)</label>
+        <input id="input-no-sertifikat-bimtek" type="text" value="${_esc(S.bimtek?.noSertifikat ?? '')}"
+          placeholder="Isi manual, mis. 123/BTAM/2026"
+          class="form-input text-sm flex-1 min-w-40" style="max-width:260px">
+        <button id="btn-save-no-sertifikat-bimtek" class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+          Simpan
         </button>
       </div>
       <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
@@ -119,6 +130,24 @@ function _renderList(container) {
     <!-- Preview panel (hidden by default) -->
     <div id="report-preview-panel" class="hidden mt-6"></div>
   `;
+
+  // Bind nomor sertifikat (per bimtek)
+  container.querySelector('#btn-save-no-sertifikat-bimtek')?.addEventListener('click', async () => {
+    const btn = container.querySelector('#btn-save-no-sertifikat-bimtek');
+    const val = container.querySelector('#input-no-sertifikat-bimtek').value;
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+    try {
+      await updateBimtek(S.bimtekId, { noSertifikat: val?.trim() || null });
+      S.bimtek.noSertifikat = val?.trim() || null;
+      showToast('Nomor sertifikat disimpan', 'success');
+    } catch (err) {
+      showToast('Gagal simpan: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Simpan';
+    }
+  });
 
   // Bind preview buttons
   container.querySelectorAll('.btn-preview-peserta').forEach(btn => {
@@ -1262,7 +1291,10 @@ function _buildCertHTML(data) {
   const jabatanPenanda   = lembaga.jabatanPenandaTangan || 'Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan';
   const logoUrl          = lembaga.logoUrl              ?? null;
   const certBgUrl        = lembaga.certBgUrl            ?? null;
-  const noCert           = `${peserta?.noPeserta ?? ''}/${new Date().getFullYear()}`;
+  // Nomor sertifikat diisi manual oleh admin, berlaku untuk semua peserta bimtek ini
+  const noCert           = b.noSertifikat || '—';
+  // Kualifikasi diisi dari kategori kelulusan (Sangat Baik/Baik/Cukup/Kurang/Sangat Kurang)
+  const kualifikasi      = kategoriNilai(scores?.nilaiAkhir).kategori;
 
   const certRow = (label, val) => `
     <tr>
@@ -1303,13 +1335,18 @@ function _buildCertHTML(data) {
               </div>`}
         </div>
 
+        <!-- Nomor Sertifikat -->
+        <div style="position:absolute;top:63mm;left:130mm;${F}font-size:14px;color:#374151;z-index:10;">
+          Nomor : ${_esc(noCert)}
+        </div>
+
         <!-- Diberikan Kepada -->
-        <div style="position:absolute;top:65mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
+        <div style="position:absolute;top:70mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
           Diberikan Kepada :
         </div>
 
         <!-- Fields table -->
-        <div style="position:absolute;top:80mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;line-height:1.3;">
+        <div style="position:absolute;top:85mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;line-height:1.3;">
           <table style="border-collapse:collapse;width:100%;${F}line-height:1.3;">
             <colgroup><col style="width:44mm;"><col style="width:5mm;"><col></colgroup>
             ${[
@@ -1318,7 +1355,7 @@ function _buildCertHTML(data) {
               ['Tempat, Tanggal Lahir', ttl],
               ['Jabatan',               _esc(peserta?.jabatan)],
               ['Instansi',              _esc(peserta?.instansi)],
-              ['Kualifikasi',           _esc(peserta?.kualifikasi)],
+              ['Kualifikasi',           _esc(kualifikasi)],
             ].map(([lbl, val]) => `
               <tr>
                 <td style="padding:0;white-space:nowrap;color:#374151;vertical-align:top;">${lbl}</td>
@@ -1329,19 +1366,19 @@ function _buildCertHTML(data) {
         </div>
 
         <!-- Bimtek text -->
-        <div style="position:absolute;top:126mm;left:32mm;right:32mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
+        <div style="position:absolute;top:131mm;left:32mm;right:32mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
           Pada Bimbingan Teknis <strong>${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
         </div>
 
         <!-- TTD -->
-        <div style="position:absolute;top:148mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;z-index:10;">
+        <div style="position:absolute;top:153mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;z-index:10;">
           ${_esc(kota)}, ${_esc(tglTTD)}
         </div>
-        <div style="position:absolute;top:157mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;line-height:1.4;z-index:10;">
+        <div style="position:absolute;top:162mm;left:193mm;width:95mm;text-align:center;${F}color:#1a1a1a;line-height:1.4;z-index:10;">
           ${_esc(jabatanPenanda)}
         </div>
-        <div style="position:absolute;top:183mm;left:193mm;width:95mm;text-align:center;${F}font-weight:700;color:#1a1a1a;z-index:10;">
+        <div style="position:absolute;top:188mm;left:193mm;width:95mm;text-align:center;${F}font-weight:700;color:#1a1a1a;z-index:10;">
           ${_esc(penanda)}
         </div>
       </div>
@@ -1412,7 +1449,7 @@ function _buildCertHTML(data) {
             ${certRow('Tempat, Tanggal Lahir', ttl)}
             ${certRow('Jabatan', _esc(peserta?.jabatan))}
             ${certRow('Instansi', _esc(peserta?.instansi))}
-            ${certRow('Kualifikasi', _esc(peserta?.kualifikasi))}
+            ${certRow('Kualifikasi', _esc(kualifikasi))}
           </table>
         </div>
 
