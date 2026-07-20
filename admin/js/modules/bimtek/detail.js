@@ -783,6 +783,7 @@ function _buildTabPeserta() {
       <span class="text-xs text-gray-500">${total} / ${kapasitas} peserta</span>
       <div class="flex gap-2">
         ${penuh ? `<span class="badge badge-yellow">Kapasitas penuh</span>` : ''}
+        ${total > 0 ? `<button id="btn-wa-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-green-700 hover:bg-green-600 text-white transition-colors">Kirim WA Terpilih</button>` : ''}
         ${total > 0 ? `<button id="btn-export-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Export Excel</button>` : ''}
         ${canEdit && !penuh ? `<button id="btn-add-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah Peserta</button>` : ''}
       </div>
@@ -811,10 +812,15 @@ async function _loadPeserta(app, el) {
 
       const rows = enrolled.map(p => `
         <tr>
+          <td class="text-center w-8">
+            <input type="checkbox" class="chk-peserta-wa accent-green-500 w-3.5 h-3.5"
+              data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}" data-nohp="${_esc(p.noHp || '')}">
+          </td>
           <td class="text-xs font-mono ${p._orphan ? 'text-red-400' : 'text-gray-400'}">${_esc(p.noPeserta)}</td>
           <td class="font-medium text-sm ${p._orphan ? 'text-red-400' : 'text-white'}">
             ${_esc(p.nama)}
             ${p._orphan ? '<div class="text-xs text-red-500 font-normal">Tidak ditemukan di master peserta</div>' : ''}
+            ${!p._orphan && !p.noHp ? '<div class="text-xs text-yellow-500 font-normal">No. HP belum diisi</div>' : ''}
           </td>
           <td class="text-sm text-gray-400">${_esc(p.instansi || '-')}</td>
           <td class="text-sm text-gray-400">${_esc(p.jabatan || '-')}</td>
@@ -825,9 +831,16 @@ async function _loadPeserta(app, el) {
 
       listEl.innerHTML = `
         <table class="btam-table">
-          <thead><tr><th>No</th><th>Nama</th><th>Instansi</th><th>Jabatan</th><th></th></tr></thead>
+          <thead><tr>
+            <th class="text-center w-8"><input type="checkbox" id="chk-all-peserta-wa" class="accent-green-500 w-3.5 h-3.5"></th>
+            <th>No</th><th>Nama</th><th>Instansi</th><th>Jabatan</th><th></th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
+
+      listEl.querySelector('#chk-all-peserta-wa')?.addEventListener('change', e => {
+        listEl.querySelectorAll('.chk-peserta-wa').forEach(c => { c.checked = e.target.checked; });
+      });
 
       listEl.querySelectorAll('.btn-rm-peserta').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -880,6 +893,117 @@ async function _loadPeserta(app, el) {
   // Bind tombol tambah peserta
   el.querySelector('#btn-add-peserta')?.addEventListener('click', async () => {
     await _showAddPesertaModal(app, el);
+  });
+
+  // Bind tombol kirim WA massal
+  el.querySelector('#btn-wa-peserta')?.addEventListener('click', () => {
+    _showKirimWaModal(el);
+  });
+}
+
+/**
+ * Normalisasi nomor HP Indonesia ke format wa.me (62xxxxxxxxxx, tanpa spasi/simbol).
+ */
+function _normalizeNoHp(raw) {
+  let n = String(raw ?? '').replace(/[^0-9]/g, '');
+  if (!n) return null;
+  if (n.startsWith('0'))  n = '62' + n.slice(1);
+  else if (n.startsWith('8')) n = '62' + n;
+  return n;
+}
+
+const _WA_TEMPLATE_GRUP = `Halo {nama},
+
+Silakan bergabung ke grup WhatsApp Bimtek melalui link berikut:
+https://chat.whatsapp.com/
+
+Terima kasih.`;
+
+const _WA_TEMPLATE_KODE_UJIAN = `Halo {nama},
+
+Berikut data untuk mengikuti ujian pada Bimtek {namaBimtek}:
+Nomor Peserta : {noPeserta}
+Kode Ujian    : {kodeUjian}
+
+Mohon disimpan dan digunakan saat login ujian. Terima kasih.`;
+
+/**
+ * Modal kirim WA massal: admin isi template pesan, sistem generate daftar
+ * link wa.me per peserta terpilih (dibuka satu per satu — tidak ada API pihak ketiga).
+ * Placeholder yang didukung: {nama}, {noPeserta}, {kodeUjian}, {namaBimtek}
+ */
+function _showKirimWaModal(listEl) {
+  const checked = [...listEl.querySelectorAll('.chk-peserta-wa:checked')]
+    .map(c => ({ noPeserta: c.dataset.nopeserta, nama: c.dataset.nama, noHp: c.dataset.nohp }));
+
+  if (checked.length === 0) { showToast('Pilih minimal satu peserta terlebih dahulu', 'info'); return; }
+
+  const tanpaHp = checked.filter(p => !p.noHp);
+  const bisaKirim = checked.filter(p => p.noHp);
+  const kodeUjian = S.bimtek?.accessCode || '';
+  const namaBimtek = S.bimtek?.nama || '';
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
+  modal.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh]">
+      <div class="p-5 border-b border-gray-800">
+        <h3 class="font-semibold text-white">Kirim WhatsApp Massal</h3>
+        <p class="text-xs text-gray-500 mt-1">${bisaKirim.length} peserta punya No. HP${tanpaHp.length ? `, ${tanpaHp.length} tidak punya No. HP (dilewati)` : ''}.</p>
+      </div>
+      <div class="p-5 space-y-3 overflow-y-auto flex-1">
+        <div class="flex gap-2">
+          <button id="wa-preset-grup" type="button" class="text-xs px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Template: Ajakan Grup</button>
+          <button id="wa-preset-kode" type="button" class="text-xs px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Template: Nomor Peserta & Kode Ujian</button>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Template Pesan (gunakan <code>{nama}</code>, <code>{noPeserta}</code>, <code>{kodeUjian}</code>, <code>{namaBimtek}</code>)</label>
+          <textarea id="wa-template" rows="7" class="form-input text-sm w-full" placeholder="Tulis pesan atau pilih salah satu template di atas">${_WA_TEMPLATE_GRUP}</textarea>
+        </div>
+        <div id="wa-link-list" class="space-y-1.5"></div>
+      </div>
+      <div class="p-5 border-t border-gray-800 flex justify-end gap-2">
+        <button id="wa-cancel" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
+        <button id="wa-generate" class="px-3 py-1.5 text-sm rounded-lg bg-green-700 hover:bg-green-600 text-white transition-colors">Generate Link</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#wa-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelector('#wa-preset-grup').addEventListener('click', () => {
+    modal.querySelector('#wa-template').value = _WA_TEMPLATE_GRUP;
+  });
+  modal.querySelector('#wa-preset-kode').addEventListener('click', () => {
+    if (!kodeUjian) { showToast('Bimtek ini belum punya Kode Ujian (accessCode)', 'info'); }
+    modal.querySelector('#wa-template').value = _WA_TEMPLATE_KODE_UJIAN;
+  });
+
+  modal.querySelector('#wa-generate').addEventListener('click', () => {
+    const template = modal.querySelector('#wa-template').value.trim();
+    if (!template) { showToast('Isi template pesan terlebih dahulu', 'info'); return; }
+
+    const linkListEl = modal.querySelector('#wa-link-list');
+    linkListEl.innerHTML = bisaKirim.map(p => {
+      const pesan = template
+        .replaceAll('{nama}', p.nama)
+        .replaceAll('{noPeserta}', p.noPeserta)
+        .replaceAll('{kodeUjian}', kodeUjian)
+        .replaceAll('{namaBimtek}', namaBimtek);
+      const hp = _normalizeNoHp(p.noHp);
+      const url = `https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`;
+      return `
+        <div class="flex items-center justify-between gap-2 bg-gray-800 rounded-lg px-3 py-2">
+          <span class="text-sm text-white truncate">${_esc(p.nama)}</span>
+          <a href="${url}" target="_blank" rel="noopener" class="shrink-0 text-xs px-2.5 py-1 rounded bg-green-700 hover:bg-green-600 text-white transition-colors">Buka WA</a>
+        </div>`;
+    }).join('');
+
+    if (tanpaHp.length) {
+      linkListEl.innerHTML += `<div class="text-xs text-yellow-500 pt-1">Dilewati (tidak ada No. HP): ${tanpaHp.map(p => _esc(p.nama)).join(', ')}</div>`;
+    }
   });
 }
 

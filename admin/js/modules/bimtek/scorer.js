@@ -117,7 +117,19 @@ export async function scoreAllSubmissions(bimtekId, examId) {
     const submissionsSnap = await getDocs(
       query(collection(db, COL.EXAM_SUBMISSIONS), where('examId', '==', examId))
     );
-    const submissions = snapToArray(submissionsSnap);
+    const allSubmissions = snapToArray(submissionsSnap);
+
+    // Dedupe: per (noPeserta, tipeSession) hanya ambil submission dengan submittedAt terakhir
+    // (peserta yang di-reset dan mengerjakan ulang punya >1 dokumen submission)
+    const latestByKey = new Map();
+    for (const s of allSubmissions) {
+      const key = `${s.noPeserta}__${s.tipeSession}`;
+      const existing = latestByKey.get(key);
+      const sTime = s.submittedAt?.toMillis?.() ?? s.submittedAt ?? 0;
+      const eTime = existing ? (existing.submittedAt?.toMillis?.() ?? existing.submittedAt ?? 0) : -Infinity;
+      if (!existing || sTime > eTime) latestByKey.set(key, s);
+    }
+    const submissions = Array.from(latestByKey.values());
 
     // 4. Score per submission (batch write)
     const batch = writeBatch(db);
@@ -196,8 +208,14 @@ export async function scoreSubmission(bimtekId, examId, noPeserta) {
       )
     );
     if (submSnap.empty) throw new Error('Submission tidak ditemukan');
-    const submDoc    = submSnap.docs[0];
-    const submission = { id: submDoc.id, ...submDoc.data() };
+    // Bisa ada >1 submission (peserta di-reset lalu mengerjakan ulang) — pakai yang submittedAt paling akhir
+    const submDocs = snapToArray(submSnap);
+    const submDoc  = submDocs.reduce((latest, s) => {
+      const sTime = s.submittedAt?.toMillis?.() ?? s.submittedAt ?? 0;
+      const lTime = latest.submittedAt?.toMillis?.() ?? latest.submittedAt ?? 0;
+      return sTime > lTime ? s : latest;
+    });
+    const submission = submDoc;
 
     // Ambil exam, soal, answers, dan custom bloom bobot
     const examSnap = await getDoc(doc(db, COL.EXAMS, examId));
