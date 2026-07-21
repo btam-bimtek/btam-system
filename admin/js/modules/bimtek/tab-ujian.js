@@ -7,7 +7,7 @@ import { confirmDialog } from '../../components/modal.js';
 import {
   listExams, createExam, updateExam, deleteExam, publishExam,
   listSessions, generateSessions, deleteSession, resetSession, extendSession,
-  unlockDeviceSession, setExamWindow,
+  unlockDeviceSession, setExamWindow, fixSessionsExpiry,
 } from './exam-api.js';
 import { generateBimtekAccessCode } from './api.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
@@ -150,6 +150,11 @@ function _render(app, el, S, exams, sessions) {
     if (exam) btn.addEventListener('click', () => _generateLinks(app, el, S, exam));
   });
 
+  el.querySelectorAll('.btn-fix-expiry').forEach(btn => {
+    const exam = exams.find(e => e.id === btn.dataset.id);
+    if (exam) btn.addEventListener('click', () => _fixExpiry(app, el, S, exam));
+  });
+
   // Inline unlock device
   el.querySelectorAll('.btn-unlock-device').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -256,6 +261,7 @@ function _buildExamCard(exam, sessions, S, canEdit) {
       </div>
       <div class="px-4 pb-3 flex gap-2 flex-wrap items-center">
         ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
+        <button class="btn-fix-expiry text-xs px-2 py-1 rounded bg-amber-900/50 hover:bg-amber-800 text-amber-300 transition-colors" data-id="${exam.id}">Perbaiki Kadaluarsa</button>
         ${_buildWindowToggles(exam)}
       </div>
       ${inlineSessions}
@@ -497,6 +503,20 @@ async function _showExamModal(app, el, S, exam) {
 
 // ─── GENERATE MAGIC LINK ─────────────────────────────────────
 
+function _defaultExpiryForTipe(tipeSession, bimtek) {
+  const dateStr = tipeSession === 'posttest' ? bimtek?.periode?.selesai : bimtek?.periode?.mulai;
+  if (dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d, 23, 59);
+  }
+  return new Date(Date.now() + 72 * 60 * 60 * 1000);
+}
+
+function _toDatetimeLocalValue(dt) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
 async function _generateLinks(app, el, S, exam) {
   const pesertaIds = S.bimtek?.pesertaIds || [];
   if (pesertaIds.length === 0) {
@@ -504,17 +524,114 @@ async function _generateLinks(app, el, S, exam) {
     return;
   }
 
-  const ok = await confirmDialog({
-    title:   'Generate Sesi Ujian',
-    message: `Generate sesi ujian untuk ${pesertaIds.length} peserta? Sesi yang sudah ada tidak akan diganti.`,
-  });
-  if (!ok) return;
+  const tipes = exam.tipe === 'pretest_posttest' ? ['pretest', 'posttest'] : [exam.tipe];
 
-  try {
-    const { created, skipped } = await generateSessions(exam, pesertaIds);
-    await renderTabUjian(app, el, S);
-    showToast(`${created} sesi dibuat, ${skipped} sudah ada (dilewati)`, 'success');
-  } catch (err) { showToast('Gagal: ' + err.message, 'error'); }
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
+  modal.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md mx-4">
+      <div class="p-5 border-b border-gray-800">
+        <h3 class="font-semibold text-white">Generate Sesi Ujian</h3>
+        <p class="text-xs text-gray-500 mt-1">Untuk ${pesertaIds.length} peserta. Sesi yang sudah ada tidak akan diganti.</p>
+      </div>
+      <div class="p-5 space-y-3">
+        ${tipes.map(t => `
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Kadaluarsa ${TIPE_LABEL[t] || t}</label>
+            <input type="datetime-local" id="gen-expiry-${t}" class="form-input text-sm w-full"
+              value="${_toDatetimeLocalValue(_defaultExpiryForTipe(t, S.bimtek))}">
+          </div>`).join('')}
+      </div>
+      <div class="p-5 border-t border-gray-800 flex justify-end gap-2">
+        <button id="gen-cancel" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Batal</button>
+        <button id="gen-submit" class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">Generate</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#gen-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelector('#gen-submit').addEventListener('click', async () => {
+    const expiredAt = {};
+    for (const t of tipes) {
+      const val = modal.querySelector(`#gen-expiry-${t}`).value;
+      if (!val) { showToast(`Isi kadaluarsa ${TIPE_LABEL[t] || t}`, 'info'); return; }
+      expiredAt[t] = new Date(val);
+    }
+
+    const btn = modal.querySelector('#gen-submit');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+    try {
+      const { created, skipped } = await generateSessions(exam, pesertaIds, expiredAt);
+      close();
+      await renderTabUjian(app, el, S);
+      showToast(`${created} sesi dibuat, ${skipped} sudah ada (dilewati)`, 'success');
+    } catch (err) {
+      showToast('Gagal: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Generate';
+    }
+  });
+}
+
+async function _fixExpiry(app, el, S, exam) {
+  const tipes = exam.tipe === 'pretest_posttest' ? ['pretest', 'posttest'] : [exam.tipe];
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
+  modal.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md mx-4">
+      <div class="p-5 border-b border-gray-800">
+        <h3 class="font-semibold text-white">Perbaiki Kadaluarsa Sesi</h3>
+        <p class="text-xs text-gray-500 mt-1">Menimpa waktu kadaluarsa semua sesi yang sudah ada untuk ujian ini, per tipe.</p>
+      </div>
+      <div class="p-5 space-y-3">
+        ${tipes.map(t => `
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Kadaluarsa ${TIPE_LABEL[t] || t}</label>
+            <input type="datetime-local" id="fix-expiry-${t}" class="form-input text-sm w-full"
+              value="${_toDatetimeLocalValue(_defaultExpiryForTipe(t, S.bimtek))}">
+          </div>`).join('')}
+      </div>
+      <div class="p-5 border-t border-gray-800 flex justify-end gap-2">
+        <button id="fix-cancel" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Batal</button>
+        <button id="fix-submit" class="px-3 py-1.5 text-sm rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors">Perbaiki</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#fix-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelector('#fix-submit').addEventListener('click', async () => {
+    const expiredAt = {};
+    for (const t of tipes) {
+      const val = modal.querySelector(`#fix-expiry-${t}`).value;
+      if (!val) { showToast(`Isi kadaluarsa ${TIPE_LABEL[t] || t}`, 'info'); return; }
+      expiredAt[t] = new Date(val);
+    }
+
+    const ok = await confirmDialog({
+      title:   'Perbaiki Kadaluarsa Sesi',
+      message: `Timpa kadaluarsa semua sesi (${tipes.map(t => TIPE_LABEL[t] || t).join(', ')}) untuk ujian ini? Tindakan ini tidak bisa dibatalkan.`,
+      danger:  true,
+    });
+    if (!ok) return;
+
+    const btn = modal.querySelector('#fix-submit');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+    try {
+      const { updated } = await fixSessionsExpiry(exam.id, expiredAt);
+      close();
+      await renderTabUjian(app, el, S);
+      showToast(`${updated} sesi diperbarui kadaluarsanya`, 'success');
+    } catch (err) {
+      showToast('Gagal: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Perbaiki';
+    }
+  });
 }
 
 // ─── INLINE SESSIONS TABLE ───────────────────────────────────

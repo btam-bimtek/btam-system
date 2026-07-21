@@ -196,12 +196,21 @@ export async function listSessionsByBimtek(bimtekId) {
  *
  * @param {object} exam   - exam doc dari getExam/listExams
  * @param {string[]} pesertaIds - array noPeserta
- * @param {number} expiredJam  - jam sebelum expired (default 72)
+ * @param {Date|Object.<string,Date>} expiredAt - waktu kadaluarsa sesi.
+ *   Boleh berupa satu Date (dipakai untuk semua tipeSession), atau object
+ *   { pretest: Date, posttest: Date, ... } agar tiap tipeSession punya
+ *   kadaluarsa sendiri (pretest di awal bimtek, posttest di akhir bimtek).
+ *   Default: 72 jam dari sekarang untuk semua tipe.
  * @returns {{ created: number, skipped: number }}
  */
-export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
-  const user      = getCurrentUser();
-  const expiredAt = new Date(Date.now() + expiredJam * 60 * 60 * 1000);
+export async function generateSessions(exam, pesertaIds, expiredAt = null) {
+  const user = getCurrentUser();
+  const defaultExpiredAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+  const expiredAtFor = (tipeSession) => {
+    if (expiredAt instanceof Date) return expiredAt;
+    if (expiredAt && typeof expiredAt === 'object') return expiredAt[tipeSession] || defaultExpiredAt;
+    return defaultExpiredAt;
+  };
 
   // Fetch info peserta untuk disimpan di session (agar exam app tidak perlu akses peserta_master)
   const pesertaMap = {};
@@ -249,7 +258,7 @@ export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
         tipeSession,
         soalIds,
         token,
-        expiredAt,
+        expiredAt:       expiredAtFor(tipeSession),
         status:          'issued',
         startedAt:       null,
         submittedAt:     null,
@@ -272,6 +281,39 @@ export async function generateSessions(exam, pesertaIds, expiredJam = 72) {
   });
 
   return { created, skipped };
+}
+
+/**
+ * Perbaiki expiredAt pada sesi yang SUDAH ADA (mis. sesi lama yang
+ * terlanjur dibuat dengan expiredAt pretest = posttest sebelum bug diperbaiki).
+ * Hanya menimpa field expiredAt, tidak menyentuh field lain.
+ * @param {string} examId
+ * @param {Object.<string,Date>} expiredAtByTipe - { pretest: Date, posttest: Date, ... }
+ * @returns {{ updated: number }}
+ */
+export async function fixSessionsExpiry(examId, expiredAtByTipe) {
+  const sessions = await listSessions(examId);
+  const targets   = sessions.filter(s => expiredAtByTipe[s.tipeSession]);
+
+  const BATCH_LIMIT = 490;
+  for (let i = 0; i < targets.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    targets.slice(i, i + BATCH_LIMIT).forEach(s => {
+      batch.update(doc(db, COL.EXAM_SESSIONS, s.id), {
+        expiredAt: expiredAtByTipe[s.tipeSession],
+      });
+    });
+    await batch.commit();
+  }
+
+  if (targets.length > 0) {
+    await logAudit({
+      action: 'fix_sessions_expiry', entityType: 'exam', entityId: examId,
+      metadata: { updated: targets.length }
+    });
+  }
+
+  return { updated: targets.length };
 }
 
 /**
