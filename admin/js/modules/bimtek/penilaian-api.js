@@ -14,9 +14,14 @@ import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
 
 /**
  * List bimtek_scores untuk satu bimtek.
+ * @param {string} bimtekId
+ * @param {string[]|null} pesertaIds  kalau diisi, hasil difilter supaya hanya
+ *   peserta yang masih terdaftar di bimtek.pesertaIds saat ini — mencegah
+ *   dokumen bimtek_scores "hantu" (sisa dari peserta yang sudah dikeluarkan
+ *   dari bimtek tapi dokumen skornya tidak ikut terhapus) tetap tampil.
  * @returns [{noPeserta, pretest, posttest, pengajar, kehadiran, keaktifan, respek, tugas, presentasi, nilaiAkhir, lulus}]
  */
-export async function listBimtekScores(bimtekId) {
+export async function listBimtekScores(bimtekId, pesertaIds = null) {
   const snap = await getDocs(
     query(
       collection(db, COL.BIMTEK_SCORES),
@@ -24,7 +29,8 @@ export async function listBimtekScores(bimtekId) {
       orderBy('noPeserta', 'asc')
     )
   );
-  const scores = snapToArray(snap);
+  let scores = snapToArray(snap);
+  if (pesertaIds) scores = scores.filter(s => pesertaIds.includes(s.noPeserta));
 
   // Enrich dengan nilaiAkhir + lulus
   const bimtek = await getDoc(doc(db, COL.BIMTEK, bimtekId));
@@ -39,6 +45,45 @@ export async function listBimtekScores(bimtekId) {
       lulus
     };
   });
+}
+
+/**
+ * Pastikan setiap noPeserta di bimtek.pesertaIds punya dokumen bimtek_scores
+ * (create kosong kalau belum ada) — supaya peserta yang baru ditambahkan ke
+ * bimtek langsung muncul di tab Penilaian, bukan menunggu admin input nilai
+ * pertama kali.
+ */
+export async function ensureBimtekScoresForPeserta(bimtekId, pesertaIds = []) {
+  if (!pesertaIds.length) return;
+
+  const existingSnap = await getDocs(
+    query(collection(db, COL.BIMTEK_SCORES), where('bimtekId', '==', bimtekId))
+  );
+  const existingIds = new Set(existingSnap.docs.map(d => d.data().noPeserta));
+  const missing = pesertaIds.filter(id => !existingIds.has(id));
+  if (!missing.length) return;
+
+  const batch = writeBatch(db);
+  for (const noPeserta of missing) {
+    const docId = `${bimtekId}__${noPeserta}`;
+    batch.set(doc(db, COL.BIMTEK_SCORES, docId), {
+      bimtekId,
+      noPeserta,
+      pretest: null,
+      posttest: null,
+      pengajar: null,
+      kehadiran: null,
+      keaktifan: null,
+      respek: null,
+      tugas: null,
+      presentasi: null,
+      pretest_src: null,
+      posttest_src: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+  await batch.commit();
 }
 
 /**

@@ -2,7 +2,7 @@
 // Orchestrator tab "Penilaian" dengan 5 sub-tab: Kehadiran, Nilai Manual, Pre/Post, Kelulusan, Pelanggaran
 // Dipakai oleh detail.js
 
-import { listBimtekScores } from './penilaian-api.js';
+import { listBimtekScores, ensureBimtekScoresForPeserta } from './penilaian-api.js';
 import { listSesi } from './api.js';
 import { renderSubKehadiran } from './sub-kehadiran.js';
 import { renderSubNilaiManual } from './sub-nilai-manual.js';
@@ -30,8 +30,13 @@ export async function renderTabPenilaian(container, bimtekId, bimtek) {
 
   // Load data
   try {
+    const pesertaIds = bimtek.pesertaIds || [];
+    // Sinkronkan dulu: pastikan tiap peserta terdaftar punya dokumen
+    // bimtek_scores (biar peserta baru langsung muncul), lalu filter hasil
+    // list supaya peserta yang sudah dikeluarkan dari bimtek tidak nyantol.
+    await ensureBimtekScoresForPeserta(bimtekId, pesertaIds);
     const [scores, sesis] = await Promise.all([
-      listBimtekScores(bimtekId),
+      listBimtekScores(bimtekId, pesertaIds),
       listSesi(bimtekId)
     ]);
     S.scores = scores;
@@ -80,7 +85,7 @@ function _render(container) {
   switch (S.subTab) {
     case 'kehadiran':
       renderSubKehadiran(contentDiv, S.bimtekId, S.bimtek, S.scores, S.sesis, async () => {
-        S.scores = await listBimtekScores(S.bimtekId);
+        S.scores = await listBimtekScores(S.bimtekId, S.bimtek.pesertaIds || []);
         S.subTab = 'kelulusan';
         _render(container);
       });
@@ -91,7 +96,7 @@ function _render(container) {
     case 'prepost':
       renderSubPrePost(contentDiv, S.bimtekId, S.bimtek, S.scores, async () => {
         // Setelah sync berhasil: refresh scores lalu pindah ke tab kelulusan
-        S.scores = await listBimtekScores(S.bimtekId);
+        S.scores = await listBimtekScores(S.bimtekId, S.bimtek.pesertaIds || []);
         S.subTab = 'kelulusan';
         _render(container);
       });
@@ -104,7 +109,7 @@ function _render(container) {
       break;
     case 'import':
       renderSubImportNilai(contentDiv, S.bimtekId, async () => {
-        S.scores = await listBimtekScores(S.bimtekId);
+        S.scores = await listBimtekScores(S.bimtekId, S.bimtek.pesertaIds || []);
         S.subTab = 'kelulusan';
         _render(container);
       }, S.bimtek);
