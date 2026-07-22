@@ -161,7 +161,7 @@ function _renderTab(app) {
   if (S.tab === 'ujian')     { renderTabUjian(app, el, S); }
   if (S.tab === 'penilaian') { renderTabPenilaian(el, S.id, S.bimtek); }
   if (S.tab === 'uk')        { renderTabUK(el, S.id); }
-  if (S.tab === 'evaluasi')  { renderTabEvaluasi(el, S.id, S.bimtek); }
+  if (S.tab === 'evaluasi')  { renderTabEvaluasi(el, S.id, S.bimtek, S.mapels); }
   if (S.tab === 'report')    { renderTabReport(el, S.id, S.bimtek, S.mapels, S.pengajars); }
 }
 

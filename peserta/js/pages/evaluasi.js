@@ -3,7 +3,7 @@
 // Portal Peserta). Jawaban tersimpan dengan noPeserta (untuk audit manual),
 // tapi UI admin yang menampilkan hasil evaluasi tidak menampilkan identitas.
 
-import { getBimtek, getPengajar, sudahEvaluasi, submitEvaluasi } from '../api.js';
+import { getBimtek, getPengajar, getPengajarIdsBimtek, sudahEvaluasi, submitEvaluasi } from '../api.js';
 import {
   RATING_LABEL, PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../shared/evaluasi-questions.js';
@@ -45,9 +45,8 @@ export async function renderEvaluasi(app, session, bimtekId) {
       return;
     }
 
-    const pengajarList = await Promise.all(
-      (bimtek.pengajarIds || []).map(id => getPengajar(id))
-    );
+    const pengajarIds = await getPengajarIdsBimtek(bimtekId);
+    const pengajarList = await Promise.all(pengajarIds.map(id => getPengajar(id)));
     const pengajarValid = pengajarList.filter(Boolean);
 
     content.innerHTML = `

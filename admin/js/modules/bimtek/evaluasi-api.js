@@ -12,6 +12,16 @@ import {
   PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../../shared/evaluasi-questions.js';
 
+/**
+ * Union pengajarId dari semua mapel di sebuah bimtek. Pengajar sebenarnya
+ * diassign per mata pelajaran (mapel.pengajarIds), bukan di bimtek.pengajarIds
+ * (field itu jarang diisi) — jadi ini sumber kebenaran untuk "siapa saja yang
+ * mengajar di bimtek ini" dipakai oleh evaluasi.
+ */
+export function unionPengajarIds(mapels = []) {
+  return [...new Set(mapels.flatMap(m => m.pengajarIds || []))];
+}
+
 export async function listEvaluasiByBimtek(bimtekId) {
   const snap = await getDocs(
     query(collection(db, COL.EVALUASI_PENGAJAR_RESPONSE), where('bimtekId', '==', bimtekId))

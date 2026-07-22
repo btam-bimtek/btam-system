@@ -3,8 +3,8 @@
 // Evaluasi per-bimtek (lihat ../bimtek/tab-evaluasi.js), tapi diagregasi
 // lintas banyak bimtek sekaligus. Anonim di UI (lihat evaluasi-api.js).
 
-import { listBimtek } from '../bimtek/api.js';
-import { listEvaluasiByBimtek, aggregateEvaluasi } from '../bimtek/evaluasi-api.js';
+import { listBimtek, listMapel } from '../bimtek/api.js';
+import { listEvaluasiByBimtek, aggregateEvaluasi, unionPengajarIds } from '../bimtek/evaluasi-api.js';
 import {
   PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../../shared/evaluasi-questions.js';
@@ -76,9 +76,12 @@ async function _loadReport(content, dariStr, sampaiStr) {
       return;
     }
 
-    const responsesPerBimtek = await Promise.all(inRange.map(b => listEvaluasiByBimtek(b.id)));
+    const [responsesPerBimtek, mapelsPerBimtek] = await Promise.all([
+      Promise.all(inRange.map(b => listEvaluasiByBimtek(b.id))),
+      Promise.all(inRange.map(b => listMapel(b.id))),
+    ]);
     const allResponses = responsesPerBimtek.flat();
-    const allPengajarIds = [...new Set(inRange.flatMap(b => b.pengajarIds || []))];
+    const allPengajarIds = unionPengajarIds(mapelsPerBimtek.flat());
 
     if (!allResponses.length) {
       content.innerHTML = `<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center text-sm text-gray-500">Belum ada evaluasi masuk untuk ${inRange.length} bimtek pada periode ini.</div>`;

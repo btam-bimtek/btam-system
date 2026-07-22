@@ -2,7 +2,7 @@
 // Tab Evaluasi di detail bimtek — rata-rata skor + komentar dari peserta.
 // Anonim di UI: tidak menampilkan noPeserta sama sekali (lihat evaluasi-api.js).
 
-import { listEvaluasiByBimtek, aggregateEvaluasi } from './evaluasi-api.js';
+import { listEvaluasiByBimtek, aggregateEvaluasi, unionPengajarIds } from './evaluasi-api.js';
 import {
   PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../../shared/evaluasi-questions.js';
@@ -13,15 +13,16 @@ import { renderEvaluasiGroupCard } from './evaluasi-ui.js';
  * @param {HTMLElement} el        - container #tab-content
  * @param {string}      bimtekId
  * @param {object}      bimtek
+ * @param {object[]}    mapels    - S.mapels dari detail.js, untuk union pengajarIds
  */
-export async function renderTabEvaluasi(el, bimtekId, bimtek) {
+export async function renderTabEvaluasi(el, bimtekId, bimtek, mapels = []) {
   el.innerHTML = `
     <div class="flex justify-center py-8">
       <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   try {
-    const pengajarIds = bimtek.pengajarIds || [];
+    const pengajarIds = unionPengajarIds(mapels);
     const [responses, pengajarList] = await Promise.all([
       listEvaluasiByBimtek(bimtekId),
       pengajarIds.length ? Promise.all(pengajarIds.map(id => _getPengajarSafe(id))) : [],
