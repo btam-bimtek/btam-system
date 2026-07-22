@@ -36,7 +36,8 @@ const NAV_ITEMS = [
   {
     section: 'Analitik',
     items: [
-      { label: 'Data Historis', icon: 'clock', href: '/historis' }
+      { label: 'Data Historis',    icon: 'clock',    href: '/historis' },
+      { label: 'Laporan Evaluasi', icon: 'clipboard', href: '/laporan-evaluasi' }
     ]
   },
   {

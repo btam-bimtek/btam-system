@@ -44,6 +44,14 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // Doc 'lembaga' (nama instansi, kota, penanda tangan, logo, background
+    // sertifikat) dibuka get publik khusus untuk Portal Peserta merender
+    // sertifikat sendiri. Doc settings lain ('bloom_bobot', 'thresholds')
+    // tetap admin-only lewat rule di atas.
+    match /app_settings/lembaga {
+      allow get: if true;
+    }
+
     // ─── Bidang (public read — exam app butuh) ────────────────
     match /bidang/{doc} {
       allow read:  if true;
@@ -62,15 +70,23 @@ service cloud.firestore {
     }
 
     // ─── Peserta Master ───────────────────────────────────────
+    // get (per-dokumen, doc ID = noPeserta) dibuka publik untuk Portal Peserta
+    // (login noPeserta + tanggalLahir, dicocokkan client-side — lihat OPUSPLAN
+    // bab Portal Peserta untuk trade-off keamanannya). list tetap admin-only
+    // supaya data peserta tidak bisa di-enumerate massal.
     match /peserta_master/{doc} {
-      allow read:           if isAdmin();
+      allow get:            if true;
+      allow list:           if isAdmin();
       allow create, update: if canWrite();
       allow delete:         if isSuperAdmin();
     }
 
     // ─── Pengajar Master ──────────────────────────────────────
+    // get publik: Portal Peserta perlu tampilkan nama pengajar (dari
+    // bimtek.pengajarIds yang sudah publicly readable) di form evaluasi.
     match /pengajar_master/{doc} {
-      allow read:           if isAdmin();
+      allow get:            if true;
+      allow list:           if isAdmin();
       allow create, update: if canWrite();
       allow delete:         if isSuperAdmin();
     }
@@ -101,7 +117,9 @@ service cloud.firestore {
     }
 
 		match /unit_kompetensi/{id} {
-  		allow read, write: if isAdmin();
+  		allow get:   if true;   // Portal Peserta: getPesertaReportData butuh baseline UK untuk sertifikat/laporan
+  		allow list:  if isAdmin();
+  		allow write: if isAdmin();
 		}
 
 
@@ -112,15 +130,18 @@ service cloud.firestore {
       allow create, update: if canWrite();
       allow delete:         if isSuperAdmin();
 
-      // Sub-collection: mapel (mata pelajaran)
+      // Sub-collection: mapel (mata pelajaran) — read (get+list) publik untuk
+      // Portal Peserta (getPesertaReportData butuh listSesi/listExams untuk
+      // render sertifikat). Tidak menambah eksposur berarti: bimtek induknya
+      // sendiri sudah publicly listable (lihat match /bimtek/{docId} di bawah).
       match /mapel/{mapelId} {
-        allow read:  if isAdmin();
+        allow read:  if true;
         allow write: if canWrite();
       }
 
       // Sub-collection: sesi (blok waktu jadwal)
       match /sesi/{sesiId} {
-        allow read:  if isAdmin();
+        allow read:  if true;
         allow write: if canWrite();
       }
     }
@@ -131,13 +152,19 @@ service cloud.firestore {
     }
 
 
+    // get (doc ID = bimtekId__noPeserta) dibuka publik untuk Portal Peserta —
+    // peserta harus tahu bimtekId+noPeserta persis untuk baca 1 dokumen ini,
+    // sama model kepercayaannya dengan magic link ujian (lihat catatan di
+    // atas file). list tetap admin-only.
     match /bimtek_scores/{doc} {
-      allow read:  if isAdmin();
+      allow get:   if true;
+      allow list:  if isAdmin();
       allow write: if canWrite();
     }
 
     match /bimtek_attendance/{doc} {
-      allow read:  if isAdmin();
+      allow get:   if true;
+      allow list:  if isAdmin();
       allow write: if canWrite();
     }
 
@@ -172,9 +199,12 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
-    // Exam results: admin only
+    // Exam results: doc ID = examId__noPeserta__pretest|posttest — get publik
+    // untuk Portal Peserta (getPesertaReportData baca hasil pretest/posttest
+    // langsung by ID). list tetap admin-only.
     match /exam_results/{doc} {
-      allow read:  if isAdmin();
+      allow get:   if true;
+      allow list:  if isAdmin();
       allow write: if canWrite();
     }
 
@@ -241,9 +271,15 @@ service cloud.firestore {
       allow write: if canWrite();
     }
 
+    // Doc ID = bimtekId__noPeserta: get publik dipakai Portal Peserta untuk cek
+    // "sudah isi evaluasi belum" (gate submit ganda) sebelum tampilkan form.
+    // "Anonim" untuk evaluasi ini adalah level UI admin (kolom noPeserta
+    // disembunyikan di tampilan) — bukan level data, field noPeserta tetap
+    // tersimpan supaya bisa diaudit manual lewat Firestore console.
     match /evaluasi_pengajar_response/{doc} {
-      allow read:   if isAdmin();
-      allow create: if true; // anonim, peserta bisa submit tanpa auth
+      allow get:    if true;
+      allow list:   if isAdmin();
+      allow create: if true; // peserta submit tanpa auth
       allow update, delete: if isSuperAdmin();
     }
 

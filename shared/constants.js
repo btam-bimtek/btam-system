@@ -193,7 +193,8 @@ export const COL = {
   SIKLUS_SELEKSI:     'siklus_seleksi',
   CALON_PESERTA:      'calon_peserta',
   PENENTUAN_PESERTA:  'penentuan_peserta',
-  STATUS_LOOKUP:      'status_lookup'
+  STATUS_LOOKUP:      'status_lookup',
+  EVALUASI_PENGAJAR_RESPONSE: 'evaluasi_pengajar_response'
 };
 
 // ─── Alumni Historis — nilai enum yang valid ──────────────────

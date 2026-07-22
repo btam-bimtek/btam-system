@@ -26,6 +26,26 @@ Dokumen ini adalah **blueprint definitif** untuk membangun sistem BTAM terpadu m
 
 ---
 
+### 📌 Revisi 21 Jul 2026 — Perbaikan Penilaian Ujian & Kadaluarsa Sesi + Fitur WhatsApp Massal
+
+Sistem sudah berjalan pasca-Phase 1 (production, dipakai untuk bimtek riil). Perubahan berikut adalah bugfix + fitur tambahan berbasis kebutuhan operasional nyata, di luar scope milestone asli:
+
+**Bugfix — sinkronisasi nilai ujian setelah reset (`admin/js/modules/bimtek/scorer.js`):**
+- Root cause: peserta yang di-reset lalu mengerjakan ulang punya >1 dokumen di `exam_submissions` (reset sengaja tidak menghapus submission lama, untuk arsip), tapi `scoreSubmission()`/`scoreAllSubmissions()` mengambil submission secara sembarang (bukan berdasar `submittedAt` terbaru), sehingga nilai attempt lama bisa menimpa nilai attempt baru.
+- Fix: kedua fungsi sekarang selalu memilih submission dengan `submittedAt` paling akhir per (noPeserta, tipeSession) sebelum dihitung.
+
+**Bugfix — kadaluarsa sesi pretest = posttest (`admin/js/modules/bimtek/exam-api.js`, `tab-ujian.js`):**
+- Root cause: `generateSessions()` menghitung `expiredAt` sekali (default now+72 jam) di luar loop tipeSession, sehingga pretest dan posttest yang digenerate bersamaan (`exam.tipe === 'pretest_posttest'`) selalu dapat timestamp identik — tidak mengacu ke periode bimtek sama sekali.
+- Fix: `generateSessions()` sekarang menerima `expiredAt` per tipeSession (object `{pretest, posttest}`). Modal generate sesi di tab Ujian punya input tanggal terpisah untuk Pre-Test dan Post-Test, default mengikuti `periode.mulai`/`periode.selesai` bimtek.
+- Tambahan: fungsi `fixSessionsExpiry()` + tombol **"Perbaiki Kadaluarsa"** di tab Ujian untuk menimpa `expiredAt` sesi LAMA yang sudah terlanjur salah (tersedia di semua status bimtek, termasuk `ongoing`, bukan hanya draft/planned — supaya bisa dipakai memperbaiki post test yang sudah expired padahal bimtek masih berjalan).
+
+**Fitur baru — Kirim WhatsApp Massal ke peserta (`admin/js/modules/bimtek/detail.js`, tab Peserta):**
+- Checkbox pilih peserta (per-baris + pilih semua) di tab Peserta pada halaman detail bimtek.
+- Tombol "Kirim WA Terpilih" membuka modal dengan template pesan yang bisa diedit, dua preset siap pakai: ajakan gabung grup WhatsApp, dan info nomor peserta + kode ujian (placeholder `{nama}`, `{noPeserta}`, `{kodeUjian}`, `{namaBimtek}`).
+- Generate menghasilkan link `https://wa.me/62...` per peserta (nomor HP dari `peserta_master.noHp`, dinormalisasi `08xxx`/`8xxx` → `62xxx`), dibuka satu per satu secara manual — **tidak ada integrasi WhatsApp Business API/pihak ketiga** (belum ada di codebase, keputusan: tetap pakai wa.me gratis, bukan Fonnte/Wablas berbayar).
+
+---
+
 ## Daftar Isi
 
 1. [Ringkasan Eksekutif](#1-ringkasan-eksekutif)

@@ -10,6 +10,7 @@ import { renderTabUjian } from './tab-ujian.js';
 import { renderTabPenilaian } from './tab-penilaian.js';
 import { renderTabReport } from './tab-report.js';
 import { renderTabUK } from './tab-uk.js';
+import { renderTabEvaluasi } from './tab-evaluasi.js';
 import { showMapelModal } from './form-mapel.js';
 import { BIDANG_LIST, COL } from '../../../../shared/constants.js';
 import { listPengajar } from '../pengajar-master/api.js';
@@ -116,6 +117,7 @@ function _render(app) {
       ${_buildTabBtn('ujian',   'Ujian')}
       ${_buildTabBtn('penilaian', 'Penilaian')}
       ${_buildTabBtn('uk',      'Kompetensi')}
+      ${_buildTabBtn('evaluasi', 'Evaluasi')}
       ${_buildTabBtn('report',  'Report')}
     </div>
 
@@ -159,6 +161,7 @@ function _renderTab(app) {
   if (S.tab === 'ujian')     { renderTabUjian(app, el, S); }
   if (S.tab === 'penilaian') { renderTabPenilaian(el, S.id, S.bimtek); }
   if (S.tab === 'uk')        { renderTabUK(el, S.id); }
+  if (S.tab === 'evaluasi')  { renderTabEvaluasi(el, S.id, S.bimtek); }
   if (S.tab === 'report')    { renderTabReport(el, S.id, S.bimtek, S.mapels, S.pengajars); }
 }
 
@@ -784,6 +787,7 @@ function _buildTabPeserta() {
       <div class="flex gap-2">
         ${penuh ? `<span class="badge badge-yellow">Kapasitas penuh</span>` : ''}
         ${total > 0 ? `<button id="btn-wa-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-green-700 hover:bg-green-600 text-white transition-colors">Kirim WA Terpilih</button>` : ''}
+        ${total > 0 ? `<button id="btn-email-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-indigo-700 hover:bg-indigo-600 text-white transition-colors">Kirim Email Terpilih</button>` : ''}
         ${total > 0 ? `<button id="btn-export-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Export Excel</button>` : ''}
         ${canEdit && !penuh ? `<button id="btn-add-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah Peserta</button>` : ''}
       </div>
@@ -814,7 +818,7 @@ async function _loadPeserta(app, el) {
         <tr>
           <td class="text-center w-8">
             <input type="checkbox" class="chk-peserta-wa accent-green-500 w-3.5 h-3.5"
-              data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}" data-nohp="${_esc(p.noHp || '')}">
+              data-nopeserta="${_esc(p.noPeserta)}" data-nama="${_esc(p.nama)}" data-nohp="${_esc(p.noHp || '')}" data-email="${_esc(p.email || '')}">
           </td>
           <td class="text-xs font-mono ${p._orphan ? 'text-red-400' : 'text-gray-400'}">${_esc(p.noPeserta)}</td>
           <td class="font-medium text-sm ${p._orphan ? 'text-red-400' : 'text-white'}">
@@ -898,6 +902,11 @@ async function _loadPeserta(app, el) {
   // Bind tombol kirim WA massal
   el.querySelector('#btn-wa-peserta')?.addEventListener('click', () => {
     _showKirimWaModal(el);
+  });
+
+  // Bind tombol kirim Email massal
+  el.querySelector('#btn-email-peserta')?.addEventListener('click', () => {
+    _showKirimEmailModal(el);
   });
 }
 
@@ -1003,6 +1012,108 @@ function _showKirimWaModal(listEl) {
 
     if (tanpaHp.length) {
       linkListEl.innerHTML += `<div class="text-xs text-yellow-500 pt-1">Dilewati (tidak ada No. HP): ${tanpaHp.map(p => _esc(p.nama)).join(', ')}</div>`;
+    }
+  });
+}
+
+const _EMAIL_TEMPLATE_KODE_UJIAN = `Halo {nama},
+
+Berikut data untuk mengikuti ujian pada Bimtek {namaBimtek}:
+Nomor Peserta : {noPeserta}
+Kode Ujian    : {kodeUjian}
+
+Mohon disimpan dan digunakan saat login ujian. Terima kasih.`;
+
+/**
+ * Modal kirim Email massal: sama pola dengan kirim WA — admin isi template pesan,
+ * sistem generate link mailto: per peserta yang punya email, dibuka manual satu-satu
+ * (client email default admin). Tidak ada API pengiriman pihak ketiga.
+ * Placeholder yang didukung: {nama}, {noPeserta}, {kodeUjian}, {namaBimtek}
+ */
+function _showKirimEmailModal(listEl) {
+  const checked = [...listEl.querySelectorAll('.chk-peserta-wa:checked')]
+    .map(c => ({ noPeserta: c.dataset.nopeserta, nama: c.dataset.nama, email: c.dataset.email }));
+
+  if (checked.length === 0) { showToast('Pilih minimal satu peserta terlebih dahulu', 'info'); return; }
+
+  const tanpaEmail = checked.filter(p => !p.email);
+  const bisaKirim  = checked.filter(p => p.email);
+  const kodeUjian  = S.bimtek?.accessCode || '';
+  const namaBimtek = S.bimtek?.nama || '';
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
+  modal.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh]">
+      <div class="p-5 border-b border-gray-800">
+        <h3 class="font-semibold text-white">Kirim Email Massal</h3>
+        <p class="text-xs text-gray-500 mt-1">${bisaKirim.length} peserta punya email${tanpaEmail.length ? `, ${tanpaEmail.length} tidak punya email (dilewati)` : ''}.</p>
+      </div>
+      <div class="p-5 space-y-3 overflow-y-auto flex-1">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Subjek Email</label>
+          <input id="email-subjek" type="text" class="form-input text-sm w-full" value="Data Ujian Bimtek {namaBimtek}">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Template Pesan (gunakan <code>{nama}</code>, <code>{noPeserta}</code>, <code>{kodeUjian}</code>, <code>{namaBimtek}</code>)</label>
+          <textarea id="email-template" rows="7" class="form-input text-sm w-full" placeholder="Tulis pesan">${_EMAIL_TEMPLATE_KODE_UJIAN}</textarea>
+        </div>
+        <div id="email-link-list" class="space-y-1.5"></div>
+      </div>
+      <div class="p-5 border-t border-gray-800 flex justify-end gap-2">
+        <button id="email-cancel" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
+        <button id="email-generate" class="px-3 py-1.5 text-sm rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors">Generate Link</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#email-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelector('#email-generate').addEventListener('click', () => {
+    if (!kodeUjian) { showToast('Bimtek ini belum punya Kode Ujian (accessCode)', 'info'); }
+    const template = modal.querySelector('#email-template').value.trim();
+    const subjekTemplate = modal.querySelector('#email-subjek').value.trim();
+    if (!template) { showToast('Isi template pesan terlebih dahulu', 'info'); return; }
+
+    const fill = (str, p) => str
+      .replaceAll('{nama}', p.nama)
+      .replaceAll('{noPeserta}', p.noPeserta)
+      .replaceAll('{kodeUjian}', kodeUjian)
+      .replaceAll('{namaBimtek}', namaBimtek);
+
+    const generated = bisaKirim.map(p => ({
+      nama: p.nama, email: p.email,
+      pesan: fill(template, p),
+      subjek: fill(subjekTemplate, p),
+    }));
+
+    const linkListEl = modal.querySelector('#email-link-list');
+    linkListEl.innerHTML = generated.map((p, i) => {
+      const url = `mailto:${encodeURIComponent(p.email)}?subject=${encodeURIComponent(p.subjek)}&body=${encodeURIComponent(p.pesan)}`;
+      return `
+        <div class="flex items-center justify-between gap-2 bg-gray-800 rounded-lg px-3 py-2">
+          <span class="text-sm text-white truncate">${_esc(p.nama)}</span>
+          <div class="shrink-0 flex gap-1.5">
+            <button type="button" class="btn-copy-email text-xs px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors" data-idx="${i}">Salin</button>
+            <a href="${url}" class="text-xs px-2.5 py-1 rounded bg-indigo-700 hover:bg-indigo-600 text-white transition-colors">Buka Email</a>
+          </div>
+        </div>`;
+    }).join('');
+
+    linkListEl.querySelectorAll('.btn-copy-email').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const p = generated[Number(btn.dataset.idx)];
+        try {
+          await navigator.clipboard.writeText(`Kepada: ${p.email}\nSubjek: ${p.subjek}\n\n${p.pesan}`);
+          showToast(`Pesan untuk ${p.nama} disalin`, 'success');
+        } catch { showToast('Gagal menyalin ke clipboard', 'error'); }
+      });
+    });
+
+    if (tanpaEmail.length) {
+      linkListEl.innerHTML += `<div class="text-xs text-yellow-500 pt-1">Dilewati (tidak ada email): ${tanpaEmail.map(p => _esc(p.nama)).join(', ')}</div>`;
     }
   });
 }

@@ -1,0 +1,40 @@
+/* peserta/styles/main.css — Portal Peserta (tema light, mirip pendaftar/exam) */
+
+.form-input {
+  width: 100%;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+
+.btn-primary {
+  background: #1d4ed8; color: #fff; padding: 0.625rem 1.5rem; border-radius: 0.5rem;
+  font-size: 0.875rem; font-weight: 500; transition: background .15s; cursor: pointer; border: none;
+}
+.btn-primary:hover { background: #1e40af; }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn-secondary {
+  background: #f3f4f6; color: #374151; padding: 0.625rem 1.5rem; border-radius: 0.5rem;
+  font-size: 0.875rem; font-weight: 500; transition: background .15s; cursor: pointer; border: 1px solid #d1d5db;
+}
+.btn-secondary:hover { background: #e5e7eb; }
+
+/* ─── Print: sertifikat ──────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+
+  body.printing-cert #app > *:not(main) { display: none !important; }
+  body.printing-cert main > *:not(.cert-doc):not(#cert-content) { display: none !important; }
+  body.printing-cert #cert-content > *:not(.cert-doc) { display: none !important; }
+  body.printing-cert .cert-doc { display: block !important; }
+
+  @page { margin: 0; }
+}

@@ -169,10 +169,16 @@ function _registerRoutes() {
     import('./modules/historis/index.js').then(m => m.renderHistoris());
   });
 
-  route('/alumni', ({ query }) => {
+  route('/alumni', () => {
     _setLoginMode(false);
     if (!_guardRoute()) return;
-    import('./modules/alumni/index.js').then(m => m.renderAlumni({ tab: query.tab ?? 'riwayat' }));
+    import('./modules/alumni/index.js').then(m => m.renderAlumni());
+  });
+
+  route('/laporan-evaluasi', () => {
+    _setLoginMode(false);
+    if (!_guardRoute()) return;
+    import('./modules/laporan-evaluasi/index.js').then(m => m.renderLaporanEvaluasi());
   });
 
   // ── Rekrutmen ──
