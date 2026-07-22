@@ -13,7 +13,6 @@ import { collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp
 import { COL } from '../../shared/constants.js';
 import { getPesertaReportData } from '../../admin/js/modules/bimtek/report-api.js';
 import { listMapel } from '../../admin/js/modules/bimtek/api.js';
-import { unionPengajarIds } from '../../admin/js/modules/bimtek/evaluasi-api.js';
 
 const SESSION_KEY = 'btam_peserta_session';
 
@@ -60,11 +59,8 @@ export async function getBimtek(bimtekId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-/** Union pengajarId dari semua mapel di bimtek — sumber kebenaran untuk form evaluasi. */
-export async function getPengajarIdsBimtek(bimtekId) {
-  const mapels = await listMapel(bimtekId);
-  return unionPengajarIds(mapels);
-}
+/** Mapel + pengajarIds masing-masing — dipakai form evaluasi (per mapel per pengajar). */
+export { listMapel };
 
 export async function listBimtekDiikuti(noPeserta) {
   const snap = await getDocs(

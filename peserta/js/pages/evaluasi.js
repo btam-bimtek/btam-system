@@ -1,9 +1,10 @@
 // peserta/js/pages/evaluasi.js
 // Form evaluasi fixed-question (bukan template builder dinamis — lihat plan
-// Portal Peserta). Jawaban tersimpan dengan noPeserta (untuk audit manual),
-// tapi UI admin yang menampilkan hasil evaluasi tidak menampilkan identitas.
+// Portal Peserta). Pengajar dinilai per mata pelajaran (1 pengajar yang
+// mengajar 2 mapel dinilai 2x, terpisah per mapel). Jawaban tersimpan dengan
+// noPeserta (untuk audit manual), tapi UI admin tidak menampilkan identitas.
 
-import { getBimtek, getPengajar, getPengajarIdsBimtek, sudahEvaluasi, submitEvaluasi } from '../api.js';
+import { getBimtek, getPengajar, listMapel, sudahEvaluasi, submitEvaluasi } from '../api.js';
 import {
   RATING_LABEL, PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../shared/evaluasi-questions.js';
@@ -45,9 +46,13 @@ export async function renderEvaluasi(app, session, bimtekId) {
       return;
     }
 
-    const pengajarIds = await getPengajarIdsBimtek(bimtekId);
-    const pengajarList = await Promise.all(pengajarIds.map(id => getPengajar(id)));
-    const pengajarValid = pengajarList.filter(Boolean);
+    const mapels = await listMapel(bimtekId);
+    // 1 baris per (mapel, pengajar) — pengajar yang mengajar 2 mapel dinilai terpisah 2x.
+    const pairs = mapels.flatMap(m => (m.pengajarIds || []).map(pengajarId => ({ mapel: m, pengajarId })));
+    const uniquePengajarIds = [...new Set(pairs.map(p => p.pengajarId))];
+    const pengajarList = await Promise.all(uniquePengajarIds.map(id => getPengajar(id)));
+    const pengajarMap = Object.fromEntries(pengajarList.filter(Boolean).map(p => [p.id, p]));
+    const validPairs = pairs.filter(p => pengajarMap[p.pengajarId]);
 
     content.innerHTML = `
       <h1 class="text-xl font-bold text-gray-800 mb-1">Evaluasi Bimtek</h1>
@@ -57,7 +62,11 @@ export async function renderEvaluasi(app, session, bimtekId) {
       <form id="eval-form" class="space-y-6">
         ${_section('Penyelenggara', 'penyelenggara', PERTANYAAN_PENYELENGGARA)}
         ${_section('Kepuasan Peserta', 'kepuasan', PERTANYAAN_KEPUASAN)}
-        ${pengajarValid.map(p => _section(`Pengajar — ${_esc(p.nama)}`, `pengajar_${p.id}`, PERTANYAAN_PENGAJAR)).join('')}
+        ${validPairs.map(({ mapel, pengajarId }) => _section(
+          `Pengajar — ${_esc(pengajarMap[pengajarId].nama)} · Mapel: ${_esc(mapel.nama)}`,
+          _pairField(mapel.id, pengajarId),
+          PERTANYAAN_PENGAJAR
+        )).join('')}
 
         <div id="eval-error" class="hidden text-xs text-red-600"></div>
         <button type="submit" id="btn-submit-eval" class="btn-primary w-full">Kirim Evaluasi</button>
@@ -77,7 +86,7 @@ export async function renderEvaluasi(app, session, bimtekId) {
       const groups = [
         { field: 'penyelenggara', pertanyaan: PERTANYAAN_PENYELENGGARA },
         { field: 'kepuasan',      pertanyaan: PERTANYAAN_KEPUASAN },
-        ...pengajarValid.map(p => ({ field: `pengajar_${p.id}`, pertanyaan: PERTANYAAN_PENGAJAR })),
+        ...validPairs.map(({ mapel, pengajarId }) => ({ field: _pairField(mapel.id, pengajarId), pertanyaan: PERTANYAAN_PENGAJAR })),
       ];
 
       const missing = groups.some(g => g.pertanyaan.some(q =>
@@ -91,10 +100,16 @@ export async function renderEvaluasi(app, session, bimtekId) {
 
       btn.disabled = true; btn.textContent = 'Mengirim…';
 
-      const payload = { penyelenggara: _readGroup(form, 'penyelenggara', PERTANYAAN_PENYELENGGARA), kepuasan: _readGroup(form, 'kepuasan', PERTANYAAN_KEPUASAN) };
-      if (pengajarValid.length) {
-        payload.pengajar = {};
-        for (const p of pengajarValid) payload.pengajar[p.id] = _readGroup(form, `pengajar_${p.id}`, PERTANYAAN_PENGAJAR);
+      const payload = {
+        penyelenggara: _readGroup(form, 'penyelenggara', PERTANYAAN_PENYELENGGARA),
+        kepuasan:      _readGroup(form, 'kepuasan', PERTANYAAN_KEPUASAN),
+      };
+      if (validPairs.length) {
+        payload.pengajarPerMapel = {};
+        for (const { mapel, pengajarId } of validPairs) {
+          payload.pengajarPerMapel[mapel.id] ??= {};
+          payload.pengajarPerMapel[mapel.id][pengajarId] = _readGroup(form, _pairField(mapel.id, pengajarId), PERTANYAAN_PENGAJAR);
+        }
       }
 
       try {
@@ -114,6 +129,10 @@ export async function renderEvaluasi(app, session, bimtekId) {
   } catch (e) {
     content.innerHTML = `<p class="text-sm text-red-600 py-8 text-center">Gagal memuat: ${_esc(e.message)}</p>`;
   }
+}
+
+function _pairField(mapelId, pengajarId) {
+  return `pengajar_${mapelId}_${pengajarId}`;
 }
 
 function _section(title, field, pertanyaan) {

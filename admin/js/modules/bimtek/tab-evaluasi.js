@@ -1,11 +1,11 @@
 // admin/js/modules/bimtek/tab-evaluasi.js
 // Tab Evaluasi di detail bimtek — rata-rata skor + komentar dari peserta.
-// Anonim di UI: tidak menampilkan noPeserta sama sekali (lihat evaluasi-api.js).
+// Pengajar ditampilkan per mapel (1 pengajar bisa dinilai terpisah untuk tiap
+// mapel yang dia ajar). Untuk skor kumulatif pengajar lintas bimtek, lihat
+// menu Laporan Evaluasi. Anonim di UI: tidak menampilkan noPeserta sama sekali.
 
-import { listEvaluasiByBimtek, aggregateEvaluasi, unionPengajarIds } from './evaluasi-api.js';
-import {
-  PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
-} from '../../../../shared/evaluasi-questions.js';
+import { listEvaluasiByBimtek, aggregateEvaluasi, aggregateEvaluasiPerMapel, unionPengajarIds } from './evaluasi-api.js';
+import { PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR } from '../../../../shared/evaluasi-questions.js';
 import { getPengajar } from '../pengajar-master/api.js';
 import { renderEvaluasiGroupCard } from './evaluasi-ui.js';
 
@@ -13,7 +13,7 @@ import { renderEvaluasiGroupCard } from './evaluasi-ui.js';
  * @param {HTMLElement} el        - container #tab-content
  * @param {string}      bimtekId
  * @param {object}      bimtek
- * @param {object[]}    mapels    - S.mapels dari detail.js, untuk union pengajarIds
+ * @param {object[]}    mapels    - S.mapels dari detail.js
  */
 export async function renderTabEvaluasi(el, bimtekId, bimtek, mapels = []) {
   el.innerHTML = `
@@ -37,7 +37,8 @@ export async function renderTabEvaluasi(el, bimtekId, bimtek, mapels = []) {
       return;
     }
 
-    const agg = aggregateEvaluasi(responses, pengajarIds);
+    const agg = aggregateEvaluasi(responses, []); // hanya butuh Penyelenggara/Kepuasan di sini
+    const perMapel = aggregateEvaluasiPerMapel(responses, mapels);
     const pengajarMap = Object.fromEntries(pengajarList.filter(Boolean).map(p => [p.id, p]));
 
     el.innerHTML = `
@@ -45,9 +46,9 @@ export async function renderTabEvaluasi(el, bimtekId, bimtek, mapels = []) {
       <div class="space-y-4">
         ${renderEvaluasiGroupCard('Penyelenggara', agg.penyelenggara, PERTANYAAN_PENYELENGGARA)}
         ${renderEvaluasiGroupCard('Kepuasan Peserta', agg.kepuasan, PERTANYAAN_KEPUASAN)}
-        ${pengajarIds.map(id => renderEvaluasiGroupCard(
-          `Pengajar — ${pengajarMap[id]?.nama ?? id}`,
-          agg.pengajar[id],
+        ${perMapel.map(({ mapel, pengajarId, agg: pAgg }) => renderEvaluasiGroupCard(
+          `Pengajar — ${pengajarMap[pengajarId]?.nama ?? pengajarId} · Mapel: ${_esc(mapel.nama)}`,
+          pAgg,
           PERTANYAAN_PENGAJAR
         )).join('')}
       </div>
@@ -61,3 +62,4 @@ async function _getPengajarSafe(id) {
   try { return await getPengajar(id); } catch { return null; }
 }
 
+function _esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
