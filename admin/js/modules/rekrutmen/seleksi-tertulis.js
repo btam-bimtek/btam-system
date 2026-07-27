@@ -4,9 +4,9 @@
 import { setPageTitle }  from '../../layout/navbar.js';
 import { openModal }     from '../../components/modal.js';
 import { showToast }     from '../../components/toast.js';
-import { navigate }      from '../../router.js';
 import { getState }      from '../../store.js';
 import { listSiklus, getSiklus, updateSiklus } from './siklus-api.js';
+import { generateSeleksiSessions, listSeleksiSessions, scoreSeleksiSubmissions } from './seleksi-exam-api.js';
 import { db }            from '../../../../shared/firebase-config.js';
 import {
   collection, doc, getDoc, getDocs, query, where, orderBy, updateDoc, Timestamp
@@ -54,16 +54,17 @@ async function _renderContent() {
   const window_s = _S.siklus.phases?.tertulis?.start;
   const window_e = _S.siklus.phases?.tertulis?.end;
 
-  // Hitung lulus administrasi
-  let lulusAdminCount = 0;
+  // Lulus administrasi
+  let lulusAdminList = [];
   try {
     const snap = await getDocs(query(
       collection(db, COL.CALON_PESERTA),
       where('tahun', '==', _S.tahun),
       where('statusAdmin', '==', 'lulus')
     ));
-    lulusAdminCount = snap.size;
+    lulusAdminList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {}
+  const lulusAdminCount = lulusAdminList.length;
 
   // Exam info
   let examInfo = null;
@@ -74,14 +75,14 @@ async function _renderContent() {
     } catch (e) {}
   }
 
-  // Stat sesi
-  let statSesi = { issued: 0, started: 0, submitted: 0, expired: 0 };
+  // Sesi seleksi tertulis (dipakai untuk stat + daftar link per calon)
+  let sesiList = [];
   if (examId) {
-    try {
-      const snap = await getDocs(query(collection(db, COL.EXAM_SESSIONS), where('examId', '==', examId)));
-      snap.docs.forEach(d => { const s = d.data().status; statSesi[s] = (statSesi[s] ?? 0) + 1; });
-    } catch (e) {}
+    try { sesiList = await listSeleksiSessions(examId); } catch (e) {}
   }
+  const sesiByNoPeserta = Object.fromEntries(sesiList.map(s => [s.noPeserta, s]));
+  const statSesi = { issued: 0, started: 0, submitted: 0, expired: 0 };
+  sesiList.forEach(s => { statSesi[s.status] = (statSesi[s.status] ?? 0) + 1; });
 
   content.innerHTML = `
     <div class="space-y-4">
@@ -106,9 +107,9 @@ async function _renderContent() {
         ${examInfo ? `
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm text-gray-200 font-medium">${_esc(examInfo.nama)}</p>
+              <p class="text-sm text-gray-200 font-medium">${_esc(examInfo.judul)}</p>
               <p class="text-xs text-gray-500 mt-0.5">
-                ${examInfo.durasiMenit} menit ·
+                ${examInfo.durasi} menit ·
                 ${examInfo.published ? '<span class="text-green-400">Published</span>' : '<span class="text-yellow-400">Draft</span>'}
               </p>
             </div>
@@ -165,7 +166,12 @@ async function _renderContent() {
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-white">Monitor Ujian</h2>
-            <button id="btn-refresh-stat" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">↻ Refresh</button>
+            <div class="flex gap-2">
+              <button id="btn-sync-nilai" class="px-3 py-1.5 rounded-lg text-xs bg-green-700 hover:bg-green-600 text-white transition-colors">
+                Sinkronkan Nilai
+              </button>
+              <button id="btn-refresh-stat" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">↻ Refresh</button>
+            </div>
           </div>
           <div class="grid grid-cols-4 gap-2 text-center text-xs">
             <div class="bg-gray-800 rounded-lg p-2">
@@ -185,14 +191,37 @@ async function _renderContent() {
               <p class="text-gray-500">Kadaluarsa</p>
             </div>
           </div>
-          <div class="mt-3 flex gap-2">
-            <a href="#/bimtek" class="text-xs text-blue-400 hover:underline">
-              → Lihat hasil lengkap di modul Bimtek
-            </a>
-          </div>
+          <p class="text-xs text-gray-600 mt-2">
+            "Sinkronkan Nilai" menghitung skor dari jawaban yang sudah disubmit dan mengisi kolom Nilai Tertulis calon peserta.
+          </p>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h2 class="text-sm font-semibold text-white mb-3">Link Ujian per Calon (${lulusAdminList.length} lulus administrasi)</h2>
+          ${lulusAdminList.length === 0 ? `
+            <p class="text-sm text-gray-500">Belum ada calon yang lulus administrasi.</p>` : `
+            <div class="max-h-80 overflow-y-auto space-y-1.5">
+              ${lulusAdminList.map(c => {
+                const s = sesiByNoPeserta[c.pendaftarId];
+                return `
+                <div class="flex items-center justify-between gap-3 bg-gray-800/60 rounded-lg px-3 py-2">
+                  <div class="min-w-0">
+                    <p class="text-sm text-gray-200 truncate">${_esc(c.nama)}</p>
+                    <p class="text-xs text-gray-500 truncate">${_esc(c.pendaftarId)} · ${_esc(c.instansi || '—')}</p>
+                  </div>
+                  ${s
+                    ? `<button class="btn-copy-link shrink-0 text-xs px-2.5 py-1 rounded-lg bg-blue-800 hover:bg-blue-700 text-blue-200 transition-colors" data-token="${_esc(s.token)}">Salin Link</button>`
+                    : `<span class="shrink-0 text-xs text-gray-600">Belum ada sesi</span>`}
+                </div>`;
+              }).join('')}
+            </div>`}
         </div>` : ''}
 
     </div>`;
+
+  _S.examId = examId;
+  _S.examInfo = examInfo;
+  _S.lulusAdminList = lulusAdminList;
 
   _bindContentEvents();
 }
@@ -217,10 +246,81 @@ function _bindContentEvents() {
   document.getElementById('btn-link-exam')?.addEventListener('click', _openExamPicker);
   document.getElementById('btn-change-exam')?.addEventListener('click', _openExamPicker);
 
-  document.getElementById('btn-gen-links')?.addEventListener('click', () => {
-    const examId = _S.siklus?.phases?.tertulis?.examId;
-    if (examId) navigate(`/bimtek`); // Link ke exam system yang sudah ada
+  document.getElementById('btn-gen-links')?.addEventListener('click', _openGenerateLinksModal);
+
+  document.getElementById('btn-sync-nilai')?.addEventListener('click', async () => {
+    const examId = _S.examId;
+    if (!examId) return;
+    const btn = document.getElementById('btn-sync-nilai');
+    btn.disabled = true; btn.textContent = 'Memproses...';
+    try {
+      const { processed, failed } = await scoreSeleksiSubmissions(examId);
+      showToast(`${processed} nilai disinkronkan${failed ? `, ${failed} gagal` : ''}`, failed ? 'info' : 'success');
+      _renderContent();
+    } catch (e) {
+      showToast('Gagal sinkronkan nilai: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = 'Sinkronkan Nilai';
+    }
   });
+
+  document.querySelectorAll('.btn-copy-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const token = btn.dataset.token;
+      const url = `${window.location.origin}${window.location.pathname.replace(/admin\/.*$/, '')}exam/?token=${token}`;
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('Link disalin', 'success'))
+        .catch(() => showToast('Gagal menyalin link', 'error'));
+    });
+  });
+}
+
+function _openGenerateLinksModal() {
+  const examId = _S.examId;
+  const exam   = _S.examInfo;
+  if (!examId || !exam) return;
+
+  const calonList = _S.lulusAdminList || [];
+  if (calonList.length === 0) {
+    showToast('Belum ada calon yang lulus administrasi.', 'info');
+    return;
+  }
+
+  const body = `
+    <div class="space-y-3">
+      <p class="text-sm text-gray-400">Generate sesi ujian untuk ${calonList.length} calon yang lulus administrasi. Calon yang sudah punya sesi dilewati.</p>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Kadaluarsa Sesi</label>
+        <input id="inp-gen-expiry" type="datetime-local" class="form-input w-full"
+          value="${_toDatetimeLocalValue(new Date(Date.now() + 72 * 60 * 60 * 1000))}">
+      </div>
+    </div>`;
+
+  const modal = openModal({
+    title: 'Generate Sesi Ujian Seleksi Tertulis',
+    body,
+    size: 'sm',
+    actions: [
+      { label: 'Batal', type: 'secondary', onClick: () => modal.close() },
+      {
+        label: 'Generate', type: 'primary',
+        onClick: async () => {
+          const val = document.getElementById('inp-gen-expiry')?.value;
+          if (!val) { showToast('Isi waktu kadaluarsa', 'info'); return; }
+          try {
+            const { created, skipped } = await generateSeleksiSessions(exam, calonList, new Date(val));
+            modal.close();
+            showToast(`${created} sesi dibuat, ${skipped} sudah ada (dilewati)`, 'success');
+            _renderContent();
+          } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+        }
+      }
+    ]
+  });
+}
+
+function _toDatetimeLocalValue(dt) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
 
 function _openExamPicker() {
