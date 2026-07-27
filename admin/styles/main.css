@@ -1,6 +1,78 @@
 /* admin/styles/main.css */
 /* Custom styles yang tidak bisa di-cover dengan Tailwind utility saja. */
 
+/* ─── P&ID / Diagram Proses (Dashboard) — lihat DESIGN.md ────
+   Bahasa visual piping & instrumentation diagram: unit proses
+   bergaya instrumen bernomor kode, pipa alur data mengalir,
+   readout instrumen di sambungan. Latar gelap teknis, aksen cyan. */
+.pid-mono  { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.pid-sans  { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+.pid-label { letter-spacing: 0.06em; text-transform: uppercase; }
+
+.pid-panel {
+  background: #12181c;
+  border: 1px solid #1e3a3f;
+  border-radius: 0.375rem;
+}
+
+/* Unit proses — kotak instrumen bergaya P&ID dengan kode label */
+.pid-unit {
+  background: #0d1416;
+  border: 2px solid #2dd4bf;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 3px rgba(45,212,191,0.08);
+}
+.pid-unit-code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  color: #2dd4bf;
+}
+
+/* Pipa alur — garis penghubung antar unit proses dengan animasi mengalir */
+.pid-pipe {
+  height: 3px;
+  background-image: repeating-linear-gradient(90deg, #2dd4bf 0 8px, transparent 8px 16px);
+  background-size: 32px 3px;
+  animation: pid-flow 1.2s linear infinite;
+  opacity: 0.75;
+}
+@keyframes pid-flow {
+  from { background-position: 0 0; }
+  to   { background-position: 32px 0; }
+}
+
+/* Pipa vertikal — penghubung antar baris unit dalam kolom kanan */
+.pid-pipe-vertical {
+  width: 3px;
+  height: 20px;
+  background-image: repeating-linear-gradient(180deg, #2dd4bf 0 8px, transparent 8px 16px);
+  background-size: 3px 32px;
+  animation: pid-flow-vertical 1.2s linear infinite;
+  opacity: 0.75;
+}
+@keyframes pid-flow-vertical {
+  from { background-position: 0 0; }
+  to   { background-position: 0 32px; }
+}
+
+.pid-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.pid-dot-green  { background: #34d399; box-shadow: 0 0 5px rgba(52,211,153,0.6); }
+.pid-dot-amber  { background: #fbbf24; box-shadow: 0 0 5px rgba(251,191,36,0.6); animation: pid-pulse 2s ease-in-out infinite; }
+.pid-dot-red    { background: #f87171; box-shadow: 0 0 5px rgba(248,113,113,0.6); }
+.pid-dot-idle   { background: #374151; }
+
+@keyframes pid-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
 /* ─── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar        { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track  { background: transparent; }

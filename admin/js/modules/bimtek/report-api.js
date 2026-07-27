@@ -83,7 +83,7 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
   const ekDataAll = await _calcEKDataAll(examResults, exams);
 
   // Per-soal error rate
-  const soalErrorData = await _buildSoalErrorData(examResults, exams);
+  const soalErrorData = await buildSoalErrorData(examResults, exams);
 
   // Per-pengajar data
   const pengajarData = _buildPengajarData(enriched, mapels, pengajars);
@@ -372,7 +372,7 @@ function _buildPengajarData(scores, mapels, pengajars) {
     .filter(pg => pg.mapels.length > 0);
 }
 
-async function _buildSoalErrorData(examResults, exams) {
+export async function buildSoalErrorData(examResults, exams) {
   if (!examResults.length || !exams.length) return [];
 
   const allSoalIds = [...new Set(exams.flatMap(e => e.soalIds ?? []))];

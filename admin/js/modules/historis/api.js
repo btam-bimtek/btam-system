@@ -103,6 +103,7 @@ export async function getAlumniStats() {
   const provinsiByYear    = {};  // { tahun: { provinsi: count } }
   const provinsiByYearTipe = { all: {}, reguler: {}, pnbp: {} }; // { tipe: { tahun: { provinsi: count } } }
   const instansiCount     = {};  // { instansi: count }
+  const instansiByYearTipe = { all: {}, reguler: {}, pnbp: {} }; // { tipe: { tahun: { instansi: count } } }
 
   rows.forEach(r => {
     const yr = r.tahun;
@@ -133,8 +134,15 @@ export async function getAlumniStats() {
       }
     }
 
-    // Instansi
-    if (r.instansi) instansiCount[r.instansi] = (instansiCount[r.instansi] || 0) + 1;
+    // Instansi (aggregate + per-tahun + per-tipe)
+    if (r.instansi) {
+      instansiCount[r.instansi] = (instansiCount[r.instansi] || 0) + 1;
+      const tipeKey = r.tipe === 'pnbp' ? 'pnbp' : 'reguler';
+      for (const key of ['all', tipeKey]) {
+        if (!instansiByYearTipe[key][yr]) instansiByYearTipe[key][yr] = {};
+        instansiByYearTipe[key][yr][r.instansi] = (instansiByYearTipe[key][yr][r.instansi] || 0) + 1;
+      }
+    }
   });
 
   // Convert bimtekByYear Set → count
@@ -154,6 +162,7 @@ export async function getAlumniStats() {
     provinsiByYear,
     provinsiByYearTipe,
     instansiCount,
+    instansiByYearTipe,
   };
 }
 
