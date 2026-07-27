@@ -10,6 +10,7 @@ import {
 import { initExamRunner, destroyExamRunner }                     from './exam-runner.js';
 import { requestFullscreen }                                      from './anti-cheat.js';
 import { EXAM_DEFAULTS }                                          from '../../shared/constants.js';
+import { showErrorModal }                                         from './ui-modal.js';
 
 // ─── State ────────────────────────────────────────────────────
 let _session  = null;
@@ -567,20 +568,20 @@ function _renderKodeUjianScreen() {
         // getExamFromServer: bypass SDK cache — pastikan status window terbaru dari server
         _exam = await getExamFromServer(sess.examId);
       } catch {
-        alert('Gagal memuat konfigurasi ujian. Hubungi panitia.');
+        showErrorModal('Gagal Memuat Konfigurasi', 'Konfigurasi ujian tidak dapat dimuat. Hubungi panitia.');
         btn.disabled = false;
         btn.textContent = isResume ? '↩ Lanjutkan Ujian' : '🚀 Mulai Ujian';
         return;
       }
       if (!_exam) {
-        alert('Konfigurasi ujian tidak ditemukan. Hubungi panitia.');
+        showErrorModal('Konfigurasi Tidak Ditemukan', 'Konfigurasi ujian tidak ditemukan. Hubungi panitia.');
         btn.disabled = false;
         return;
       }
 
       // Validasi window ujian — selalu dari server, blokir jika panitia belum membuka
       if (sess.status === 'issued' && !_isWindowOpen(_exam, sess.tipeSession)) {
-        alert('Ujian belum dibuka oleh panitia. Silakan tunggu instruksi pengawas.');
+        showErrorModal('Ujian Belum Dibuka', 'Ujian belum dibuka oleh panitia. Silakan tunggu instruksi pengawas.');
         btn.disabled    = false;
         btn.textContent = '🚀 Mulai Ujian';
         return;
@@ -589,7 +590,7 @@ function _renderKodeUjianScreen() {
       try {
         _soalList = await _loadAndShuffleSoal();
       } catch {
-        alert('Gagal memuat soal. Periksa koneksi dan coba lagi.');
+        showErrorModal('Gagal Memuat Soal', 'Periksa koneksi dan coba lagi.');
         btn.disabled = false;
         return;
       }
@@ -610,7 +611,9 @@ function _renderKodeUjianScreen() {
 // ─── Entry Screen ─────────────────────────────────────────────
 
 function _renderEntryScreen() {
-  const tipeLabel = _session.tipeSession === 'pretest' ? 'Pre-Test' : 'Post-Test';
+  const tipeLabel = _session.tipeSession === 'pretest' ? 'Pre-Test'
+    : _session.tipeSession === 'posttest' ? 'Post-Test'
+    : 'Seleksi Tertulis';
 
   document.getElementById('app').innerHTML = `
     <div class="w-full max-w-md mx-auto">
@@ -635,12 +638,12 @@ function _renderEntryScreen() {
         </p>
 
         <label class="block text-sm font-medium text-gray-700 mb-1.5">
-          Nomor Peserta
+          ${_session.tipeSession === 'seleksi_tertulis' ? 'Nomor Pendaftaran' : 'Nomor Peserta'}
         </label>
         <input
           id="input-nopeserta"
           type="text"
-          placeholder="Masukkan nomor peserta Anda"
+          placeholder="${_session.tipeSession === 'seleksi_tertulis' ? 'Masukkan nomor pendaftaran Anda' : 'Masukkan nomor peserta Anda'}"
           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
           class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm
                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
@@ -693,7 +696,7 @@ function _renderEntryScreen() {
     } catch (e) {
       btn.disabled    = false;
       btn.textContent = 'Verifikasi & Lanjut';
-      alert('Gagal memuat soal. Periksa koneksi dan coba lagi.');
+      showErrorModal('Gagal Memuat Soal', 'Periksa koneksi dan coba lagi.');
     }
   }
 }
@@ -706,7 +709,10 @@ function _renderInstructionScreen() {
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 class="text-base font-bold text-gray-900 mb-4">📋 Petunjuk Ujian</h2>
 
-        <ul class="space-y-3 text-sm text-gray-600 mb-6">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          Waktu &amp; Penyimpanan
+        </p>
+        <ul class="space-y-3 text-sm text-gray-600 mb-5">
           <li class="flex gap-2">
             <span class="text-blue-500 mt-0.5 shrink-0 font-bold">•</span>
             <span>
@@ -722,6 +728,12 @@ function _renderInstructionScreen() {
               Jika ada gangguan jaringan, buka kembali tautan yang sama untuk melanjutkan.
             </span>
           </li>
+        </ul>
+
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          Aturan Selama Ujian
+        </p>
+        <ul class="space-y-3 text-sm text-gray-600 mb-6">
           <li class="flex gap-2">
             <span class="text-red-500 mt-0.5 shrink-0 font-bold">•</span>
             <span>

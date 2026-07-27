@@ -4,6 +4,7 @@
 import { autoSaveAnswers, saveWarningCount, submitExam } from './db.js';
 import { initAntiCheat, destroyAntiCheat, getWarnCount, pauseAntiCheat, resumeAntiCheat } from './anti-cheat.js';
 import { EXAM_DEFAULTS } from '../../shared/constants.js';
+import { showConfirmModal, showErrorModal } from './ui-modal.js';
 
 // ─── State ────────────────────────────────────────────────────
 let _session      = null;
@@ -19,6 +20,7 @@ let _saveDebounce = null; // debounce save setelah jawaban berubah
 let _onComplete   = null;
 let _submitting   = false;
 let _violationLog = [];       // riwayat jenis pelanggaran
+let _saveFailStreak = 0;      // save gagal berturut-turut — untuk trigger banner koneksi
 
 // ─── Public API ───────────────────────────────────────────────
 
@@ -34,6 +36,7 @@ export function initExamRunner({ session, exam, soalList, onComplete }) {
   _submitting = false;
   _currentIdx = 0;
   _flagged    = new Set();
+  _saveFailStreak = 0;
 
   // Restore jawaban jika resume
   _answers = session.answers ? { ...session.answers } : {};
@@ -56,6 +59,7 @@ export function initExamRunner({ session, exam, soalList, onComplete }) {
   _renderNavGrid();
   _startTimer();
   _startAutoSave();
+  document.addEventListener('keydown', _handleKeydown);
 
   // Restore warning count dari session — penting saat resume setelah refresh
   const restoredWarnCount = session.warningCount || 0;
@@ -76,15 +80,46 @@ export function destroyExamRunner() {
   clearInterval(_timerRef);
   clearInterval(_saveRef);
   clearTimeout(_saveDebounce);
+  document.removeEventListener('keydown', _handleKeydown);
   destroyAntiCheat();
 }
 
 /** Jadwalkan save segera setelah jawaban berubah (debounce 2 detik). */
 function _scheduleSave() {
   clearTimeout(_saveDebounce);
+  _updateSaveStatus('saving');
   _saveDebounce = setTimeout(() => {
-    autoSaveAnswers(_session.id, _answers, getWarnCount(), _session.deviceToken).catch(console.warn);
+    autoSaveAnswers(_session.id, _answers, getWarnCount(), _session.deviceToken)
+      .then(() => { _saveFailStreak = 0; _updateSaveStatus('saved'); })
+      .catch(err => { console.warn(err); _handleSaveFailure(); });
   }, 2000);
+}
+
+/** Update indikator status simpan di header ("Tersimpan ✓ hh:mm:ss" / "Menyimpan..." / "Gagal menyimpan"). */
+function _updateSaveStatus(state) {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  if (state === 'saving') {
+    el.textContent = 'Menyimpan...';
+    el.className   = 'text-[11px] text-gray-400 leading-none mt-0.5';
+  } else if (state === 'saved') {
+    const now = new Date();
+    const hms = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+    el.textContent = `Tersimpan ✓ ${hms}`;
+    el.className   = 'text-[11px] text-green-600 leading-none mt-0.5';
+  } else {
+    el.textContent = 'Gagal menyimpan';
+    el.className   = 'text-[11px] text-red-500 font-medium leading-none mt-0.5';
+  }
+}
+
+/** Hitung save gagal berturut-turut; tampilkan banner koneksi sekali saat mencapai ambang. */
+function _handleSaveFailure() {
+  _saveFailStreak++;
+  _updateSaveStatus('error');
+  if (_saveFailStreak === 2) {
+    _showToast('⚠️ Koneksi Bermasalah', 'Jawaban belum tersimpan. Periksa koneksi internet Anda.', 'red');
+  }
 }
 
 // ─── Shell (struktur statis) ──────────────────────────────────
@@ -100,11 +135,14 @@ function _renderShell() {
   <div class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm z-50">
     <div class="max-w-2xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
 
-      <div class="flex items-center gap-1.5">
-        <span class="text-gray-300 text-base">⏱</span>
-        <span id="timer-display" class="text-xl font-bold tabular-nums text-gray-900 leading-none">
-          --:--
-        </span>
+      <div class="flex flex-col">
+        <div class="flex items-center gap-1.5">
+          <span class="text-gray-300 text-base">⏱</span>
+          <span id="timer-display" class="text-xl font-bold tabular-nums text-gray-900 leading-none">
+            --:--
+          </span>
+        </div>
+        <span id="save-status" class="text-[11px] text-gray-400 leading-none mt-0.5"></span>
       </div>
 
       <span class="text-xs text-gray-400 font-medium">
@@ -241,14 +279,7 @@ function _renderQuestion() {
 
   // Bind pilihan jawaban
   card.querySelectorAll('input[name="jawaban"]').forEach(radio => {
-    radio.addEventListener('change', e => {
-      _answers[soal.id] = e.target.value;
-      // Update visual selected state tanpa re-render penuh
-      card.querySelectorAll('.option-card').forEach(el => el.classList.remove('selected'));
-      e.target.closest('.option-card').classList.add('selected');
-      _renderNavGrid();
-      _scheduleSave();
-    });
+    radio.addEventListener('change', e => _selectOption(soal.id, e.target.value));
   });
 
   // Update header progress
@@ -271,6 +302,28 @@ function _renderQuestion() {
       btnFlag.className   = 'py-2.5 px-3 rounded-xl border border-amber-300 text-amber-700 font-medium text-sm hover:bg-amber-50 whitespace-nowrap';
     }
   }
+}
+
+/** Set jawaban untuk soal aktif dan update UI terkait (radio, nav grid, autosave). */
+function _selectOption(soalId, opsiId) {
+  _answers[soalId] = opsiId;
+  const card = document.getElementById('question-card');
+  if (card) {
+    const radio = card.querySelector(`input[name="jawaban"][value="${opsiId}"]`);
+    if (radio) radio.checked = true;
+    card.querySelectorAll('.option-card').forEach(el => el.classList.remove('selected'));
+    radio?.closest('.option-card')?.classList.add('selected');
+  }
+  _renderNavGrid();
+  _scheduleSave();
+}
+
+function _goPrev() {
+  if (_currentIdx > 0) { _currentIdx--; _renderQuestion(); _renderNavGrid(); }
+}
+
+function _goNext() {
+  if (_currentIdx < _soalList.length - 1) { _currentIdx++; _renderQuestion(); _renderNavGrid(); }
 }
 
 // ─── Grid navigasi ────────────────────────────────────────────
@@ -305,13 +358,8 @@ function _renderNavGrid() {
 // ─── Event binding ────────────────────────────────────────────
 
 function _bindStaticEvents() {
-  document.getElementById('btn-prev')?.addEventListener('click', () => {
-    if (_currentIdx > 0) { _currentIdx--; _renderQuestion(); _renderNavGrid(); }
-  });
-
-  document.getElementById('btn-next')?.addEventListener('click', () => {
-    if (_currentIdx < _soalList.length - 1) { _currentIdx++; _renderQuestion(); _renderNavGrid(); }
-  });
+  document.getElementById('btn-prev')?.addEventListener('click', _goPrev);
+  document.getElementById('btn-next')?.addEventListener('click', _goNext);
 
   document.getElementById('btn-flag')?.addEventListener('click', () => {
     const soalId = _soalList[_currentIdx]?.id;
@@ -323,6 +371,28 @@ function _bindStaticEvents() {
   });
 
   document.getElementById('btn-submit')?.addEventListener('click', _handleSubmitClick);
+}
+
+/**
+ * Navigasi & pilih jawaban via keyboard: 1-4/A-D pilih opsi,
+ * ←/PageUp soal sebelumnya, →/PageDown soal berikutnya.
+ */
+function _handleKeydown(e) {
+  if (document.getElementById('exam-modal')) return; // jangan intercept saat modal terbuka
+
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); _goPrev(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); _goNext(); return; }
+
+  const soal = _soalList[_currentIdx];
+  if (!soal) return;
+
+  let idx = -1;
+  if (/^[1-4]$/.test(e.key)) idx = Number(e.key) - 1;
+  else if (/^[a-dA-D]$/.test(e.key)) idx = e.key.toUpperCase().charCodeAt(0) - 65;
+  if (idx < 0) return;
+
+  const opsiAcak = _shuffleOpsi(soal.opsi || [], soal.id, _session.token);
+  if (idx < opsiAcak.length) { e.preventDefault(); _selectOption(soal.id, opsiAcak[idx].id); }
 }
 
 // ─── Timer ────────────────────────────────────────────────────
@@ -366,9 +436,13 @@ function _startAutoSave() {
       if (stillOwner === false) {
         // Admin telah membuka kunci dan perangkat lain sudah mengambil alih session ini.
         _handleDeviceEvicted();
+        return;
       }
+      _saveFailStreak = 0;
+      _updateSaveStatus('saved');
     } catch (e) {
       console.warn('[AutoSave] Gagal:', e.message);
+      _handleSaveFailure();
     }
   }, EXAM_DEFAULTS.AUTOSAVE_DETIK * 1000);
 }
@@ -376,6 +450,7 @@ function _startAutoSave() {
 function _handleDeviceEvicted() {
   clearInterval(_saveRef);
   clearInterval(_timerRef);
+  document.removeEventListener('keydown', _handleKeydown);
   destroyAntiCheat();
   document.getElementById('app').innerHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -442,15 +517,19 @@ function _showToast(title, body, color = 'amber', extra = null) {
 
 async function _handleSubmitClick() {
   if (_submitting) return;
-  const belum     = _soalList.filter(s => !_answers[s.id]).length;
-  const konfirmasi = belum > 0
-    ? `Masih ada ${belum} soal yang belum dijawab.\n\nYakin ingin mengumpulkan?`
-    : 'Yakin ingin mengumpulkan jawaban?\nUjian tidak dapat dilanjutkan setelah dikumpulkan.';
+  const belum = _soalList.filter(s => !_answers[s.id]).length;
 
-  // Pause anti-cheat sementara — confirm() dialog bisa trigger blur/visibilitychange
+  // Pause anti-cheat sementara — modal bisa trigger blur/visibilitychange
   // yang menyebabkan false warning saat peserta belum benar-benar curang
   pauseAntiCheat();
-  const ok = confirm(konfirmasi);
+  const ok = await showConfirmModal({
+    title:        belum > 0 ? `Masih ada ${belum} soal belum dijawab` : 'Kumpulkan jawaban?',
+    body:         belum > 0
+      ? `Masih ada ${belum} soal yang belum dijawab.\n\nYakin ingin mengumpulkan?`
+      : 'Yakin ingin mengumpulkan jawaban?\nUjian tidak dapat dilanjutkan setelah dikumpulkan.',
+    confirmLabel: 'Ya, Kumpulkan',
+    danger:       belum > 0,
+  });
   resumeAntiCheat();
 
   if (!ok) return;
@@ -491,6 +570,7 @@ async function _doSubmit(reason) {
 
   clearInterval(_timerRef);
   clearInterval(_saveRef);
+  document.removeEventListener('keydown', _handleKeydown);
   destroyAntiCheat();
 
   const btnSubmit = document.getElementById('btn-submit');
@@ -515,7 +595,7 @@ async function _doSubmit(reason) {
     _submitting = false;
     document.getElementById('submit-overlay')?.remove();
     if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '✓ Kumpulkan Jawaban'; }
-    alert('Gagal mengumpulkan jawaban.\nPeriksa koneksi dan coba lagi. Jika masalah berlanjut, hubungi pengawas.');
+    showErrorModal('Gagal Mengumpulkan Jawaban', 'Periksa koneksi dan coba lagi.\nJika masalah berlanjut, hubungi pengawas.');
   }
 }
 
