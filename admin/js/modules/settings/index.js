@@ -149,7 +149,7 @@ function _renderLembaga(container) {
       </div>
 
       <div class="flex justify-end">
-        <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
           Simpan
         </button>
       </div>
@@ -217,7 +217,7 @@ function _renderBloom(container) {
           Reset ke default (1-6)
         </button>
         <button type="submit"
-          class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+          class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
           Simpan
         </button>
       </div>
@@ -328,7 +328,7 @@ function _renderThreshold(container) {
 
       <div class="flex justify-end">
         <button type="submit"
-          class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+          class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
           Simpan
         </button>
       </div>
@@ -423,7 +423,7 @@ function _renderLogo(container) {
 
         <div class="mt-4">
           <button id="btn-upload-logo" disabled
-            class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Upload & Simpan
           </button>
         </div>
@@ -465,7 +465,7 @@ function _renderLogo(container) {
 
         <div class="mt-4">
           <button id="btn-upload-cert-bg" disabled
-            class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Upload & Simpan
           </button>
         </div>

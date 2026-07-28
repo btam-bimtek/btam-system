@@ -210,7 +210,7 @@ async function _renderAlumniTab() {
           Baris pertama harus header kolom.
         </p>
         <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg
-                       bg-blue-600 hover:bg-blue-500 text-white text-sm transition-colors">
+                       bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] text-sm transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -487,8 +487,8 @@ function _renderValidationResult(valid, invalid, withWarn, enumErrs) {
           Data yang sudah ada sebelumnya akan diperbarui (tidak duplikat).
         </p>
         <button id="btn-do-import-alumni"
-                class="px-5 py-2.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500
-                       text-white font-medium transition-colors">
+                class="px-5 py-2.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6]
+                       text-[#f0fdfa] font-medium transition-colors">
           Mulai Import ${valid.length.toLocaleString('id-ID')} Baris
         </button>
         <div id="import-progress" class="hidden mt-3">
@@ -596,7 +596,7 @@ async function _renderKinerjaTab() {
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <h2 class="text-sm font-semibold text-white mb-3">Upload File CSV Kinerja</h2>
         <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg
-                       bg-blue-600 hover:bg-blue-500 text-white text-sm transition-colors">
+                       bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] text-sm transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>

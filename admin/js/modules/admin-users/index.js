@@ -27,7 +27,7 @@ export async function renderAdminUsers() {
           <h1 class="text-lg font-bold text-white">Admin Users</h1>
           <p class="text-xs text-gray-500 mt-0.5">Kelola akses admin sistem — superadmin only</p>
         </div>
-        <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-2">
+        <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors flex items-center gap-2">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>

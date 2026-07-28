@@ -36,7 +36,7 @@ export async function renderLaporanEvaluasi() {
         <label class="block text-xs text-gray-500 mb-1">sampai</label>
         <input type="date" id="filter-sampai" class="form-input text-xs py-1.5 w-40" value="${akhirTahun}">
       </div>
-      <button id="btn-tampilkan" class="px-4 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Tampilkan</button>
+      <button id="btn-tampilkan" class="px-4 py-1.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Tampilkan</button>
     </div>
 
     <div id="laporan-content" class="px-6 pb-8"></div>

@@ -31,8 +31,8 @@ export async function renderSiklusList() {
           <h1 class="text-lg font-bold text-white">Siklus Seleksi</h1>
           <p class="text-xs text-gray-500 mt-0.5">Kelola periode rekrutmen peserta bimtek per tahun</p>
         </div>
-        <button id="btn-baru" class="px-3 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500
-                                     text-white transition-colors flex items-center gap-2">
+        <button id="btn-baru" class="px-3 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6]
+                                     text-[#f0fdfa] transition-colors flex items-center gap-2">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
@@ -315,7 +315,7 @@ async function _openDetailModal(siklus) {
             `<option value="${v}" ${siklus.status === v ? 'selected' : ''}>${l}</option>`
           ).join('')}
         </select>
-        <button id="btn-save-status" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+        <button id="btn-save-status" class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
           Simpan Status
         </button>
       </div>
@@ -442,7 +442,7 @@ function _renderTabPeriode(s) {
           <input id="tp-penentuan" type="date" value="${_tsToInput(s.phases?.penentuan?.deadline)}" class="form-input w-full text-sm" />
         </div>
       </div>
-      <button id="btn-save-periode" class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+      <button id="btn-save-periode" class="px-4 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
         Simpan Periode
       </button>
     </div>`;
@@ -492,7 +492,7 @@ function _renderTabKuota(s) {
         </svg>
         Tambah Bimtek
       </button>
-      <button id="btn-save-kuota" class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+      <button id="btn-save-kuota" class="px-4 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
         Simpan
       </button>
     </div>`;

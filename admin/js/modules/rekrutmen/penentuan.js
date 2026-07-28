@@ -71,7 +71,7 @@ async function _renderContent() {
       <div class="flex items-center justify-between">
         <p class="text-sm text-gray-400">${calons.length} calon lulus administrasi · ${bimteks.length} bimtek tersedia</p>
         <div class="flex gap-2">
-          <button id="btn-auto-rank" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+          <button id="btn-auto-rank" class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
             Ranking Otomatis
           </button>
           <button id="btn-aktivasi-semua" class="px-3 py-1.5 rounded-lg text-xs bg-green-700 hover:bg-green-600 text-white transition-colors">

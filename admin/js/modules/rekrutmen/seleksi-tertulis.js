@@ -117,7 +117,7 @@ async function _renderContent() {
               <button id="btn-change-exam" class="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
                 Ganti Exam
               </button>
-              <button id="btn-gen-links" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+              <button id="btn-gen-links" class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
                 Generate Magic Link
               </button>
             </div>
@@ -125,7 +125,7 @@ async function _renderContent() {
           <div class="flex items-center justify-between gap-4">
             <p class="text-sm text-gray-500">Belum ada ujian yang ditentukan untuk siklus ini.</p>
             <div class="flex gap-2">
-              <button id="btn-link-exam" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+              <button id="btn-link-exam" class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
                 Pilih Exam
               </button>
               <button id="btn-buat-exam" class="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors"
@@ -140,7 +140,7 @@ async function _renderContent() {
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-white">Window Ujian</h2>
-          <button id="btn-save-window" class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+          <button id="btn-save-window" class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
             Simpan
           </button>
         </div>

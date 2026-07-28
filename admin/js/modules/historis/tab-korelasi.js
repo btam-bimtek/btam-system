@@ -365,7 +365,7 @@ function _renderK3() {
             ${Y_OPTIONS.map(o => `<option value="${o.v}"${_k3y === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}
           </select>
         </div>
-        <button id="k3-plot" class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+        <button id="k3-plot" class="px-4 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
           Tampilkan
         </button>
       </div>

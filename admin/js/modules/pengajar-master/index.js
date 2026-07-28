@@ -24,8 +24,8 @@ export async function renderPengajarList({ query = {} } = {}) {
           <p class="text-xs text-gray-500 mt-0.5">Data pengajar & fasilitator Bimtek</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors">Export</button>
-          <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-2">
+          <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors">Export</button>
+          <button id="btn-add" class="px-3 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
