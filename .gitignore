@@ -2,6 +2,7 @@
 .impeccable/
 .vite/
 graphify-out/
+.superpowers/
 
 # Lockfile yatim piatu (tidak ada package.json di repo ini)
 package-lock.json
