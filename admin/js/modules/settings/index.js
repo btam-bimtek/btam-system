@@ -3,15 +3,16 @@
 
 import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
-import { loadAllSettings, saveAppSetting, uploadLogo, uploadCertBg, listAuditLog } from './api.js';
+import { loadAllSettings, saveAppSetting, getAppSetting, uploadLogo, uploadCertBg, listAuditLog } from './api.js';
 import { BLOOM_LEVELS } from '../../../../shared/constants.js';
+import { deleteField } from '../../../../shared/db.js';
 
 const DEFAULT_BLOOM = { C1: 1, C2: 2, C3: 3, C4: 4, C5: 5, C6: 6 };
 const DEFAULT_THRESHOLDS = { kkm: 60, kehadiranMin: 80 };
 
 let S = {
   tab:         'lembaga',
-  settings:    { lembaga: null, bloomBobot: null, thresholds: null },
+  settings:    { lembaga: null, bloomBobot: null, thresholds: null, targetTahunan: null },
   auditLog:    [],
   auditFilter: { action: '', entityType: '' }
 };
@@ -54,6 +55,7 @@ export async function renderSettings() {
 
   try {
     S.settings = await loadAllSettings();
+    S.settings.targetTahunan = await getAppSetting('target_tahunan');
     _renderTab(app.querySelector('#settings-content'));
   } catch (err) {
     app.querySelector('#settings-content').innerHTML =
@@ -259,7 +261,20 @@ function _renderBloom(container) {
 // ─── TAB: THRESHOLD DEFAULT ───────────────────────────────────────────────────
 
 function _renderThreshold(container) {
-  const d = S.settings.thresholds ?? DEFAULT_THRESHOLDS;
+  const d        = S.settings.thresholds ?? DEFAULT_THRESHOLDS;
+  const thisYear = new Date().getFullYear();
+  // getAppSetting() menyisipkan field 'id'/'updatedAt' ke doc yang sama dengan data
+  // tahun — saring supaya cuma key tahun (angka) yang dipakai sebagai target map.
+  const targetMap = Object.fromEntries(
+    Object.entries(S.settings.targetTahunan ?? {}).filter(([k]) => /^\d+$/.test(k))
+  );
+
+  // Rentang tahun yang bisa dipilih: 1 tahun lalu s.d. 2 tahun ke depan,
+  // ditambah tahun mana pun yang sudah punya target tersimpan (agar tidak hilang dari daftar).
+  const yearOptions = [...new Set([
+    thisYear - 1, thisYear, thisYear + 1, thisYear + 2,
+    ...Object.keys(targetMap).map(Number),
+  ])].sort((a, b) => a - b);
 
   container.innerHTML = `
     <form id="form-threshold" class="space-y-5">
@@ -290,6 +305,27 @@ function _renderThreshold(container) {
         </div>
       </div>
 
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-5">
+        <h2 class="text-sm font-semibold text-white mb-2">Target Peserta per Tahun</h2>
+        <p class="text-xs text-gray-500 -mt-2 mb-4">
+          Dipakai sebagai pembanding realisasi peserta di Dashboard. Pilih tahun untuk melihat/mengubah targetnya.
+        </p>
+        <div class="grid grid-cols-2 gap-4 max-w-md">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Tahun</label>
+            <select name="targetYear" id="sel-target-year" class="form-input">
+              ${yearOptions.map(yr => `<option value="${yr}" ${yr === thisYear ? 'selected' : ''}>${yr}${yr === thisYear ? ' (berjalan)' : ''}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Target Peserta</label>
+            <input name="targetValue" id="inp-target-value" type="number" min="0" class="form-input"
+                   value="${targetMap[thisYear] ?? ''}" placeholder="Misal: 500">
+          </div>
+        </div>
+        <p class="text-xs text-gray-600">Kosongkan lalu simpan untuk menghapus target tahun tersebut.</p>
+      </div>
+
       <div class="flex justify-end">
         <button type="submit"
           class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
@@ -298,14 +334,24 @@ function _renderThreshold(container) {
       </div>
     </form>`;
 
+  // Ganti tahun -> tampilkan target tahun itu tanpa render ulang seluruh form
+  container.querySelector('#sel-target-year')?.addEventListener('change', e => {
+    const yr = Number(e.target.value);
+    container.querySelector('#inp-target-value').value = targetMap[yr] ?? '';
+  });
+
   container.querySelector('#form-threshold').addEventListener('submit', async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const kkm = parseInt(fd.get('kkm'), 10);
     const kehadiranMin = parseInt(fd.get('kehadiranMin'), 10);
+    const targetYear = Number(fd.get('targetYear'));
+    const targetRaw  = fd.get('targetValue');
+    const target = targetRaw === '' ? null : parseInt(targetRaw, 10);
 
     if (isNaN(kkm) || kkm < 0 || kkm > 100) { showToast('KKM harus 0-100', 'error'); return; }
     if (isNaN(kehadiranMin) || kehadiranMin < 0 || kehadiranMin > 100) { showToast('Kehadiran min harus 0-100', 'error'); return; }
+    if (target !== null && (isNaN(target) || target < 0)) { showToast('Target peserta harus angka positif', 'error'); return; }
 
     const btn = e.target.querySelector('[type=submit]');
     btn.disabled = true;
@@ -313,6 +359,16 @@ function _renderThreshold(container) {
     try {
       await saveAppSetting('thresholds', { kkm, kehadiranMin });
       S.settings.thresholds = { kkm, kehadiranMin };
+
+      // saveAppSetting pakai setDoc(..., {merge:true}) — menghapus key dari objek JS lalu
+      // merge-save TIDAK menghapusnya di Firestore. Pakai deleteField() sentinel untuk itu.
+      const payload = { ...targetMap };
+      const localMap = { ...targetMap };
+      if (target === null) { payload[targetYear] = deleteField(); delete localMap[targetYear]; }
+      else { payload[targetYear] = target; localMap[targetYear] = target; }
+      await saveAppSetting('target_tahunan', payload);
+      S.settings.targetTahunan = localMap;
+
       showToast('Threshold disimpan', 'success');
     } catch (err) {
       showToast('Gagal simpan: ' + err.message, 'error');

@@ -225,6 +225,10 @@ export async function openSoalForm(soalId = null, onSaved) {
     title:  isEdit ? 'Edit Soal' : 'Tambah Soal',
     body,
     size:   'xl',
+    // Form soal panjang (pertanyaan + opsi) — jangan tertutup tak sengaja
+    // karena klik di luar atau Escape, isian yang belum tersimpan bisa hilang.
+    closeOnBackdrop: false,
+    closeOnEscape:   false,
     actions: [
       { label: 'Batal',                           type: 'secondary', onClick: ({ close }) => close() },
       { label: isEdit ? 'Simpan' : 'Tambah Soal', type: 'primary',   onClick: ({ close }) => _submit(close, soalId, onSaved) }

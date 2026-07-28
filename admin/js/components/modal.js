@@ -9,11 +9,16 @@ let _stack = []; // support nested modal
  * @param {string}   opts.title
  * @param {string}   opts.body        - HTML string untuk isi modal
  * @param {object[]} [opts.actions]   - [{label, type:'primary'|'danger'|'secondary', onClick}]
- * @param {string}   [opts.size]      - 'sm'|'md'|'lg'|'xl' (default 'md')
- * @param {boolean}  [opts.closable]  - default true
+ * @param {string}   [opts.size]           - 'sm'|'md'|'lg'|'xl' (default 'md')
+ * @param {boolean}  [opts.closable]       - tampilkan tombol X, default true
+ * @param {boolean}  [opts.closeOnBackdrop] - klik area gelap di luar modal menutup modal, default true
+ * @param {boolean}  [opts.closeOnEscape]   - tombol Escape menutup modal, default true
  * @returns {object} { close }
  */
-export function openModal({ title, body, actions = [], size = 'md', closable = true }) {
+export function openModal({
+  title, body, actions = [], size = 'md', closable = true,
+  closeOnBackdrop = true, closeOnEscape = true,
+}) {
   const id = 'modal-' + Date.now();
 
   const sizeClass = {
@@ -70,11 +75,13 @@ export function openModal({ title, body, actions = [], size = 'md', closable = t
   // Close button
   if (closable) {
     el.querySelector(`#${id}-close`)?.addEventListener('click', close);
+  }
+  if (closeOnBackdrop) {
     el.querySelector(`#${id}-backdrop`)?.addEventListener('click', close);
   }
 
   // ESC key
-  const onKey = (e) => { if (e.key === 'Escape' && closable) close(); };
+  const onKey = (e) => { if (e.key === 'Escape' && closeOnEscape) close(); };
   document.addEventListener('keydown', onKey);
 
   function close() {
