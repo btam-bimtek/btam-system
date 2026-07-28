@@ -144,11 +144,11 @@ function _render(app) {
 
 function _buildTabBtn(id, label) {
   const active = S.tab === id;
-  return `<button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-200'}" data-tab="${id}">${label}</button>`;
+  return `<button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'text-[#2dd4bf] border-[#2dd4bf]' : 'text-gray-400 border-transparent hover:text-gray-200'}" data-tab="${id}">${label}</button>`;
 }
 
 function _setTabActive(btn, active) {
-  btn.className = `tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-200'}`;
+  btn.className = `tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'text-[#2dd4bf] border-[#2dd4bf]' : 'text-gray-400 border-transparent hover:text-gray-200'}`;
 }
 
 // ─── RENDER TAB ─────────────────────────────────────────────────────────────

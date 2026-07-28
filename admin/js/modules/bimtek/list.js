@@ -15,7 +15,7 @@ export async function renderBimtekList({ query } = {}) {
   app.innerHTML = `
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-lg font-bold text-white">Daftar Bimtek</h1>
-      <button id="btn-baru" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+      <button id="btn-baru" class="px-3 py-1.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
         + Bimtek Baru
       </button>
     </div>
@@ -43,7 +43,7 @@ export async function renderBimtekList({ query } = {}) {
           `<option value="${b.bidangId}">${b.nama}</option>`
         ).join('')}
       </select>
-      <button id="btn-reset" class="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+      <button id="btn-reset" class="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#12181c] transition-colors">
         Reset
       </button>
     </div>
