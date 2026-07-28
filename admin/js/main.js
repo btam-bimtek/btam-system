@@ -3,7 +3,7 @@
 
 import { onAuthChange } from '../../shared/auth.js';
 import { setState, getState } from './store.js';
-import { route, startRouter, navigate } from './router.js';
+import { route, startRouter, navigate, refresh } from './router.js';
 import { installAuthGuard } from './auth-guard.js';
 import { renderLogin } from './modules/auth/login.js';
 import { renderDashboard } from './modules/dashboard/index.js';
@@ -19,6 +19,11 @@ async function boot() {
   installAuthGuard();
 
   // 3. Watch auth state
+  // Dispatch awal router (langkah 5) bisa terjadi SEBELUM Firebase Auth selesai resolve
+  // (onAuthChange selalu async), sehingga _guardRoute() menolak render karena auth.loading
+  // masih true — dan tanpa retry, halaman tetap kosong sampai user ganti-hash manual.
+  // Begitu status auth pertama kali diketahui, jalankan ulang rute saat ini sekali saja.
+  let _authResolved = false;
   onAuthChange((authResult) => {
     if (authResult) {
       setState('auth', { user: authResult.user, profile: authResult.profile, loading: false });
@@ -26,6 +31,10 @@ async function boot() {
     } else {
       setState('auth', { user: null, profile: null, loading: false });
       updateSidebarAuth(null);
+    }
+    if (!_authResolved) {
+      _authResolved = true;
+      refresh();
     }
   });
 

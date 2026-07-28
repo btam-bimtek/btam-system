@@ -56,6 +56,17 @@ export function startRouter() {
   _dispatch(hash);
 }
 
+/**
+ * Jalankan ulang handler untuk rute saat ini (hash tidak berubah).
+ * Dipakai saat sebuah route handler menolak render karena kondisi yang
+ * baru terpenuhi belakangan (mis. auth state yang masih loading saat
+ * dispatch awal) — supaya tidak perlu ganti-hash manual untuk retry.
+ */
+export function refresh() {
+  const hash = window.location.hash.slice(1) || '/';
+  _dispatch(hash);
+}
+
 // ─── Internal ─────────────────────────────────────────────────
 function _dispatch(rawHash) {
   const [pathPart, queryPart] = rawHash.split('?');
