@@ -51,11 +51,11 @@ function _renderShell() {
     <div id="auth-loading-overlay" class="hidden"></div>
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"></div>
 
-    <div id="shell" class="hidden min-h-screen flex bg-gray-950 text-gray-100">
-      <aside id="sidebar" class="w-64 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <div id="shell" class="hidden min-h-screen flex bg-[#0b0f10] text-gray-100">
+      <aside id="sidebar" class="w-64 shrink-0 bg-[#0d1416] border-r border-[#1e3a3f] flex flex-col">
       </aside>
       <div id="shell-content" class="flex-1 flex flex-col min-w-0">
-        <header id="navbar" class="h-14 bg-gray-900 border-b border-gray-800 flex items-center px-6 shrink-0">
+        <header id="navbar" class="h-14 bg-[#0d1416] border-b border-[#1e3a3f] flex items-center px-6 shrink-0">
         </header>
         <main id="app" class="flex-1 p-6 overflow-auto">
         </main>

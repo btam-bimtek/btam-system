@@ -7,6 +7,7 @@ export function renderNavbar() {
   const navbar = document.getElementById('navbar');
   if (!navbar) return;
 
+  navbar.style.position = 'relative';
   navbar.innerHTML = `
     <div class="flex items-center justify-between w-full">
       <!-- Page title (diupdate oleh setPageTitle) -->
@@ -18,6 +19,7 @@ export function renderNavbar() {
         <span id="navbar-lembaga" class="text-xs text-gray-500 hidden sm:block">BTAM</span>
       </div>
     </div>
+    <div class="pid-pipe" style="position:absolute;left:0;right:0;bottom:-1px;opacity:0.5;"></div>
   `;
 
   // Update nama lembaga dari settings

@@ -73,9 +73,9 @@ export function renderSidebar() {
 
   sidebar.innerHTML = `
     <!-- Logo -->
-    <div class="px-5 py-5 border-b border-gray-800">
+    <div class="px-5 py-5 border-b border-[#1e3a3f]">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+        <div class="w-8 h-8 bg-[#0d9488] rounded-lg flex items-center justify-center shrink-0">
           <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor"
                stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -95,9 +95,9 @@ export function renderSidebar() {
     </nav>
 
     <!-- User info + logout -->
-    <div class="px-3 py-4 border-t border-gray-800" id="sidebar-user">
-      <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-800/50 mb-2">
-        <div class="w-7 h-7 bg-blue-700 rounded-full flex items-center justify-center shrink-0">
+    <div class="px-3 py-4 border-t border-[#1e3a3f]" id="sidebar-user">
+      <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#12181c] mb-2">
+        <div class="w-7 h-7 bg-[#0d9488] rounded-full flex items-center justify-center shrink-0">
           <span id="user-initial" class="text-xs font-bold text-white">?</span>
         </div>
         <div class="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export function renderSidebar() {
       </div>
       <button id="logout-btn"
               class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400
-                     hover:bg-gray-800 hover:text-red-400 transition-colors text-sm">
+                     hover:bg-[#12181c] hover:text-red-400 transition-colors text-sm">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           ${ICONS.logout}
         </svg>
@@ -131,7 +131,7 @@ function _buildNavHTML() {
         <a href="#${item.href}"
            data-href="${item.href}"
            class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                  text-gray-400 hover:bg-gray-800 hover:text-gray-100 transition-colors">
+                  text-gray-400 hover:bg-[#12181c] hover:text-gray-100 transition-colors">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor"
                stroke-width="1.75" viewBox="0 0 24 24">
             ${ICONS[item.icon] ?? ''}
@@ -143,7 +143,7 @@ function _buildNavHTML() {
 
     return `
       <div class="mb-5">
-        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider px-3 mb-1">
+        <p class="text-xs font-medium text-[#4b5f63] uppercase tracking-wider px-3 mb-1">
           ${section.section}
         </p>
         ${itemsHTML}
@@ -160,8 +160,7 @@ function _highlightActive() {
       ? current === '/'
       : current === href || current.startsWith(href + '/');
 
-    el.classList.toggle('bg-gray-800',    isActive);
-    el.classList.toggle('text-white',     isActive);
+    el.classList.toggle('pid-nav-active', isActive);
     el.classList.toggle('text-gray-400',  !isActive);
   });
 }

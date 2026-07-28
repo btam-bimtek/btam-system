@@ -27,7 +27,7 @@ export function openModal({
 
   const actionsHTML = actions.map(a => {
     const styles = {
-      primary:   'bg-blue-600 hover:bg-blue-500 text-white',
+      primary:   'bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa]',
       danger:    'bg-red-700 hover:bg-red-600 text-white',
       secondary: 'bg-gray-700 hover:bg-gray-600 text-gray-200'
     }[a.type ?? 'secondary'];
@@ -41,10 +41,10 @@ export function openModal({
   el.className = 'fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto';
   el.innerHTML = `
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="${id}-backdrop"></div>
-    <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full ${sizeClass} mb-8"
+    <div class="relative bg-[#0d1416] border border-[#1e3a3f] rounded-2xl shadow-2xl w-full ${sizeClass} mb-8"
          style="display:flex;flex-direction:column">
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800" style="flex-shrink:0">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#1e3a3f]" style="flex-shrink:0">
         <h3 class="text-base font-semibold text-white">${title}</h3>
         ${closable ? `<button id="${id}-close" class="text-gray-500 hover:text-gray-300 transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -57,7 +57,7 @@ export function openModal({
         ${body}
       </div>
       <!-- Footer -->
-      ${actionsHTML ? `<div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3" style="flex-shrink:0">
+      ${actionsHTML ? `<div class="px-6 py-4 border-t border-[#1e3a3f] flex justify-end gap-3" style="flex-shrink:0">
         ${actionsHTML}
       </div>` : ''}
     </div>
