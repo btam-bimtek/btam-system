@@ -143,8 +143,8 @@ function _renderPagination(el, current, total, onChange) {
       <button data-page="${p}"
         class="w-7 h-7 rounded flex items-center justify-center text-xs transition-colors
                ${p === current
-                 ? 'bg-blue-600 text-white'
-                 : 'text-gray-400 hover:bg-gray-700 hover:text-white'}">
+                 ? 'bg-[#0d9488] text-white'
+                 : 'text-gray-400 hover:bg-[#12181c] hover:text-white'}">
         ${p}
       </button>`;
   }).join('');
@@ -153,13 +153,13 @@ function _renderPagination(el, current, total, onChange) {
   const nav = `
     <button data-page="${current - 1}" ${current <= 1 ? 'disabled' : ''}
       class="w-7 h-7 rounded flex items-center justify-center text-gray-400
-             hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+             hover:bg-[#12181c] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
       ‹
     </button>
     ${el.innerHTML}
     <button data-page="${current + 1}" ${current >= total ? 'disabled' : ''}
       class="w-7 h-7 rounded flex items-center justify-center text-gray-400
-             hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+             hover:bg-[#12181c] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
       ›
     </button>`;
   el.innerHTML = nav;
