@@ -1,8 +1,8 @@
 # Progress Implementasi Sistem Bimtek BTAM
 
-**Last Updated:** 26 Mei 2026  
-**Status:** M1.1-1.9 ✅ Done | M1.10 dipindah ke akhir | M1.11-1.12 ⬜ Master EK + Tracing (baru)  
-**Total Progress:** 9/12 milestones selesai (Phase 1 core 75% — milestone baru ditambah)
+**Last Updated:** 28 Jul 2026  
+**Status:** M1.1-1.9 ✅ Done | M1.11-1.12 ✅ Done (verifikasi ulang dari kode — "EK" di dokumen desain lama berganti istilah jadi "UK") | M1.10 (testing) belum diverifikasi  
+**Total Progress:** 11/12 milestones selesai (Phase 1 core ~92%)
 
 ---
 
@@ -176,25 +176,24 @@
 
 ---
 
-### ⬜ M1.11 — Master EK + Link ke Bimtek + Update Laporan
-**Target:** TBD  
-**Estimasi:** ~8-12 jam  
-**Keputusan Desain:** `docs/RESUME_DISKUSI_26MEI2026_EK_MASTER.md`  
+### ✅ M1.11 — Master UK + Link ke Bimtek + Update Laporan (Done)
+**Keputusan Desain:** `docs/RESUME_DISKUSI_26MEI2026_EK_MASTER.md` (istilah "EK" di dokumen ini
+berganti jadi "UK" / Unit Kompetensi saat implementasi — konsisten dengan modul Unit Kompetensi
+yang sudah ada, bukan modul terpisah baru).
 **Deliverables:**
-- Modul `master-ek`: CRUD + Import Excel
-- Update form & API bimtek: tambah field `ekIds`
-- Update laporan peserta Section C: gunakan `bimtek.ekIds` sebagai baseline EK
-- Update Firestore rules: tambah `elemen_kompetensi`
-- Bank soal: badge warning kalau EK tidak ada di master
+- Modul `master-uk`: CRUD + Import Excel (`admin/js/modules/master-uk/`)
+- Form & API bimtek: field `ukIds` di bimtek doc & mapel (`admin/js/modules/bimtek/api.js`)
+- Laporan peserta Section C: `bimtek.ukIds` sebagai baseline UK (`bimtek/report-api.js`)
+- Firestore rules: collection `unit_kompetensi`
+- Bank soal: bukan badge warning, tapi UK picker yang sumbernya `listUKAktif()` —
+  soal cuma bisa memilih UK yang sudah ada di master, dicegah dari akarnya
 
-### ⬜ M1.12 — Tracing Kompetensi Peserta + Halaman Detail Peserta
-**Target:** TBD  
-**Estimasi:** ~6-10 jam  
+### ✅ M1.12 — Tracing Kompetensi Peserta + Halaman Detail Peserta (Done)
 **Deliverables:**
 - Halaman detail peserta (`/peserta/:noPeserta`): Tab Info + Tab Riwayat Bimtek + Tab Kompetensi
-- Tab Kompetensi: trend EK lintas bimtek (tabel + chart)
-- `getPesertaEKHistory()` API function
-- Update list peserta: nama jadi link klik
+  (`admin/js/modules/peserta-master/detail.js`)
+- `getPesertaEKHistory()` API function (`peserta-master/tracing-api.js`)
+- List peserta: nama jadi link klik ke detail (`peserta-master/index.js`)
 
 ---
 
@@ -207,10 +206,10 @@
 | Exam (M1.5-1.6) | Exam Editor + Runner | 26-36 | ~30 | ✅ |
 | Penilaian (M1.7) | Input Nilai & Kelulusan | 16-22 | ~8 | ✅ |
 | Report (M1.8-1.9) | Report + Dashboard + Settings | ~40 | ~2 sesi | ✅ |
-| EK (M1.11) | Master EK + Update Laporan | 8-12 | TBD | ⬜ |
-| Tracing (M1.12) | Tracing Kompetensi Peserta | 6-10 | TBD | ⬜ |
-| Testing (M1.10) | End-to-end testing (incl. EK) | 8-12 | TBD | ⬜ |
-| **Phase 1 Total** | **M1.1-1.12+1.10** | **~179-242** | **~75+** | **75% done** |
+| UK (M1.11) | Master UK + Update Laporan (rename dari "EK") | 8-12 | TBD | ✅ |
+| Tracing (M1.12) | Tracing Kompetensi Peserta | 6-10 | TBD | ✅ |
+| Testing (M1.10) | End-to-end testing | 8-12 | TBD | ⬜ |
+| **Phase 1 Total** | **M1.1-1.12+1.10** | **~179-242** | **~75+** | **~92% done** |
 
 ---
 

@@ -61,14 +61,6 @@ export async function listUKAktif({ bidangId = '' } = {}) {
   return data;
 }
 
-/** Ambil semua kode UK aktif sebagai Set — untuk validasi di bank soal. */
-export async function getUKKodeSet() {
-  const snap = await getDocs(
-    query(collection(db, COL_NAME), where('deleted', '==', false), where('status', '==', 'aktif'))
-  );
-  return new Set(snapToArray(snap).map(ek => ek.kode?.toLowerCase()));
-}
-
 export async function countUK() {
   const snap = await getCountFromServer(
     query(collection(db, COL_NAME), where('deleted', '==', false))
