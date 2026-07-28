@@ -143,7 +143,7 @@ function _renderPagination(el, current, total, onChange) {
       <button data-page="${p}"
         class="w-7 h-7 rounded flex items-center justify-center text-xs transition-colors
                ${p === current
-                 ? 'bg-[#0d9488] text-white'
+                 ? 'bg-[#0d9488] text-[#f0fdfa]'
                  : 'text-gray-400 hover:bg-[#12181c] hover:text-white'}">
         ${p}
       </button>`;

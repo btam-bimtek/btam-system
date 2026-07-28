@@ -75,7 +75,7 @@ export function renderSidebar() {
     <!-- Logo -->
     <div class="px-5 py-5 border-b border-[#1e3a3f]">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+        <div class="w-8 h-8 bg-[#0d9488] rounded-lg flex items-center justify-center shrink-0">
           <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor"
                stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -97,7 +97,7 @@ export function renderSidebar() {
     <!-- User info + logout -->
     <div class="px-3 py-4 border-t border-[#1e3a3f]" id="sidebar-user">
       <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#12181c] mb-2">
-        <div class="w-7 h-7 bg-blue-700 rounded-full flex items-center justify-center shrink-0">
+        <div class="w-7 h-7 bg-[#0d9488] rounded-full flex items-center justify-center shrink-0">
           <span id="user-initial" class="text-xs font-bold text-white">?</span>
         </div>
         <div class="min-w-0 flex-1">

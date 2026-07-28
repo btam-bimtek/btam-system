@@ -27,7 +27,7 @@ export function openModal({
 
   const actionsHTML = actions.map(a => {
     const styles = {
-      primary:   'bg-[#0d9488] hover:bg-[#14b8a6] text-white',
+      primary:   'bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa]',
       danger:    'bg-red-700 hover:bg-red-600 text-white',
       secondary: 'bg-gray-700 hover:bg-gray-600 text-gray-200'
     }[a.type ?? 'secondary'];
