@@ -73,6 +73,15 @@
   50%      { opacity: 0.5; }
 }
 
+/* ─── Sidebar nav — "pipe stub" pada item aktif ──────────── */
+.pid-nav-active {
+  background: #12181c;
+  border-left: 2px solid #2dd4bf;
+  color: #5eead4 !important;
+  padding-left: calc(0.75rem - 2px); /* kompensasi border 2px supaya konten tidak geser */
+}
+.pid-nav-active svg { color: #2dd4bf; }
+
 /* ─── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar        { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track  { background: transparent; }
