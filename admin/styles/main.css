@@ -110,21 +110,21 @@
   text-align: left;
   padding: 0.625rem 0.875rem;
   font-weight: 500;
-  color: #9ca3af;
-  background: #111827;
-  border-bottom: 1px solid #1f2937;
+  color: #6b8085;
+  background: #0b0f10;
+  border-bottom: 1px solid #1e3a3f;
   white-space: nowrap;
 }
 
 .btam-table td {
   padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid #1e3a3f;
   color: #e5e7eb;
   vertical-align: middle;
 }
 
 .btam-table tbody tr:hover td {
-  background: #1f2937;
+  background: #12181c;
 }
 
 .btam-table tbody tr:last-child td {
@@ -154,8 +154,8 @@
 .form-select,
 .form-textarea {
   width: 100%;
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: #12181c;
+  border: 1px solid #1e3a3f;
   border-radius: 0.5rem;
   padding: 0.5rem 0.875rem;
   color: #f3f4f6;
@@ -170,8 +170,8 @@
 .form-select:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  border-color: #2dd4bf;
+  box-shadow: 0 0 0 3px rgba(45,212,191,0.15);
 }
 
 .form-select {
