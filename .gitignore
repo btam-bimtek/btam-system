@@ -7,6 +7,9 @@ graphify-out/
 # Lockfile yatim piatu (tidak ada package.json di repo ini)
 package-lock.json
 
+# Worktree scratch (superpowers:using-git-worktrees)
+.worktrees/
+
 # OS / editor
 .DS_Store
 Thumbs.db
