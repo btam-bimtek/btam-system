@@ -1,0 +1,11 @@
+# Tool-generated caches/output — bukan bagian dari kode aplikasi
+.impeccable/
+.vite/
+graphify-out/
+
+# Lockfile yatim piatu (tidak ada package.json di repo ini)
+package-lock.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
