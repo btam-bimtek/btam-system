@@ -93,7 +93,7 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                     Tipe: ${tipe === 'pretest_posttest' ? 'Pre & Post' : tipe === 'pretest' ? 'Pre-Test' : tipe === 'posttest' ? 'Post-Test' : 'Seleksi Tertulis'}
                     · ${exam.published ? 'Dipublikasikan' : 'Draft'}
                   </div>
-                  <div class="text-xs text-blue-400 mt-1">
+                  <div class="text-xs text-[#2dd4bf] mt-1">
                     ${isSeleksi
                       ? `${seleksiCount} submission terscore`
                       : `Pre: ${preCount} · Post: ${postCount} submission terscore`}

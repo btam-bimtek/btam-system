@@ -18,7 +18,7 @@ import { renderEvaluasiGroupCard } from './evaluasi-ui.js';
 export async function renderTabEvaluasi(el, bimtekId, bimtek, mapels = []) {
   el.innerHTML = `
     <div class="flex justify-center py-8">
-      <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   try {

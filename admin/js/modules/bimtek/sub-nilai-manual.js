@@ -65,7 +65,7 @@ export async function renderSubNilaiManual(container, bimtekId, bimtek, scores) 
     </div>
 
     <div class="mt-6 flex gap-2">
-      <button id="btn-save-nilai-manual" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
+      <button id="btn-save-nilai-manual" class="px-4 py-2 bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] text-sm rounded-lg transition-colors">
         Simpan Nilai Manual
       </button>
     </div>

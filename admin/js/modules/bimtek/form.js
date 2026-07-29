@@ -15,7 +15,7 @@ export async function renderBimtekForm({ id } = {}) {
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="flex items-center justify-center py-16">
-      <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-6 h-6 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   let d = null;
@@ -37,7 +37,7 @@ export async function renderBimtekForm({ id } = {}) {
     <div class="max-w-3xl">
       <!-- Header -->
       <div class="flex items-center gap-3 mb-6">
-        <button id="btn-back" class="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors">
+        <button id="btn-back" class="p-1.5 rounded-lg hover:bg-[#12181c] text-gray-400 hover:text-white transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
@@ -51,7 +51,7 @@ export async function renderBimtekForm({ id } = {}) {
 
       <!-- Tab nav -->
       <div class="flex gap-1 mb-6 border-b border-gray-800">
-        <button class="tab-btn px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400" data-tab="info">Informasi</button>
+        <button class="tab-btn px-4 py-2 text-sm font-medium text-[#2dd4bf] border-b-2 border-[#2dd4bf]" data-tab="info">Informasi</button>
         <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent" data-tab="weights">Bobot Nilai</button>
       </div>
 
@@ -168,10 +168,10 @@ export async function renderBimtekForm({ id } = {}) {
 
       <!-- Actions -->
       <div class="flex items-center gap-3 pt-2">
-        <button id="btn-submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors">
+        <button id="btn-submit" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
           ${isEdit ? 'Simpan Perubahan' : 'Buat Bimtek'}
         </button>
-        <button id="btn-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Batal</button>
+        <button id="btn-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#12181c] transition-colors">Batal</button>
         ${isEdit && ['draft','planned'].includes(d?.status) ? `
           <button id="btn-delete" class="ml-auto px-4 py-2 rounded-lg text-sm bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors">Hapus Bimtek</button>
         ` : ''}
@@ -188,7 +188,7 @@ export async function renderBimtekForm({ id } = {}) {
       app.querySelectorAll('.tab-btn').forEach(b => {
         b.className = 'tab-btn px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent';
       });
-      btn.className = 'tab-btn px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400';
+      btn.className = 'tab-btn px-4 py-2 text-sm font-medium text-[#2dd4bf] border-b-2 border-[#2dd4bf]';
       app.querySelector('#tab-info').classList.toggle('hidden', btn.dataset.tab !== 'info');
       app.querySelector('#tab-weights').classList.toggle('hidden', btn.dataset.tab !== 'weights');
     });

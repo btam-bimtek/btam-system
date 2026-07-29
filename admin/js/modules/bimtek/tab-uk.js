@@ -12,7 +12,7 @@ import { COL, BIDANG_LIST } from '../../../../shared/constants.js';
 export async function renderTabUK(el, bimtekId) {
   el.innerHTML = `
     <div class="flex justify-center py-8">
-      <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   try {
@@ -92,7 +92,7 @@ function _render(el, denganUK, tanpaUK, totalSoal, exams) {
     <tr>
       <td class="text-center text-gray-500 w-8">${i + 1}</td>
       <td>
-        <span class="font-mono text-sm font-semibold text-blue-400">${_esc(uk.ekKey)}</span>
+        <span class="font-mono text-sm font-semibold text-[#2dd4bf]">${_esc(uk.ekKey)}</span>
       </td>
       <td>
         <div class="text-sm text-white">${_esc(uk.ekNama !== uk.ekKey ? uk.ekNama : '')}</div>

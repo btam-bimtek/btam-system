@@ -28,12 +28,12 @@ function _render(container) {
     <div class="flex gap-2 mb-6 border-b border-gray-800">
       <button id="btn-sub-penyelenggara"
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               ${S.subTab === 'penyelenggara' ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-200'}">
+               ${S.subTab === 'penyelenggara' ? 'text-[#2dd4bf] border-[#2dd4bf]' : 'text-gray-400 border-transparent hover:text-gray-200'}">
         Laporan Penyelenggara
       </button>
       <button id="btn-sub-peserta"
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               ${S.subTab === 'peserta' ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-200'}">
+               ${S.subTab === 'peserta' ? 'text-[#2dd4bf] border-[#2dd4bf]' : 'text-gray-400 border-transparent hover:text-gray-200'}">
         Laporan Peserta
       </button>
     </div>
@@ -53,7 +53,7 @@ function _switchTab(tab, container) {
   // Update tab button styles
   const btnPenyelenggara = container.querySelector('#btn-sub-penyelenggara');
   const btnPeserta       = container.querySelector('#btn-sub-peserta');
-  const active   = 'px-4 py-2 text-sm font-medium border-b-2 transition-colors text-blue-400 border-blue-400';
+  const active   = 'px-4 py-2 text-sm font-medium border-b-2 transition-colors text-[#2dd4bf] border-[#2dd4bf]';
   const inactive = 'px-4 py-2 text-sm font-medium border-b-2 transition-colors text-gray-400 border-transparent hover:text-gray-200';
   btnPenyelenggara.className = S.subTab === 'penyelenggara' ? active : inactive;
   btnPeserta.className       = S.subTab === 'peserta'       ? active : inactive;
@@ -65,7 +65,7 @@ function _renderSubTab(el) {
   if (!el) return;
   el.innerHTML = `
     <div class="flex items-center justify-center py-12">
-      <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-6 h-6 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   if (S.subTab === 'penyelenggara') {

@@ -43,7 +43,7 @@ export async function renderBimtekDetail({ id } = {}) {
   setPageTitle('Detail Bimtek');
   app.innerHTML = `
     <div class="flex items-center justify-center py-16">
-      <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-6 h-6 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   try {
@@ -80,7 +80,7 @@ function _render(app) {
     <!-- Header -->
     <div class="flex items-start justify-between mb-6 gap-4">
       <div class="flex items-start gap-3">
-        <button id="btn-back" class="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors mt-0.5">
+        <button id="btn-back" class="p-1.5 rounded-lg hover:bg-[#12181c] text-gray-400 hover:text-white transition-colors mt-0.5">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
@@ -175,7 +175,7 @@ function _buildTabMapel() {
     return `
       <div class="bg-gray-900 rounded-xl border border-gray-800 p-10 text-center">
         <p class="text-gray-500 text-sm mb-4">Belum ada mata pelajaran.</p>
-        ${canEdit ? `<button id="btn-add-mapel" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah Mata Pelajaran</button>` : ''}
+        ${canEdit ? `<button id="btn-add-mapel" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">+ Tambah Mata Pelajaran</button>` : ''}
       </div>`;
   }
 
@@ -213,7 +213,7 @@ function _buildTabMapel() {
   return `
     <div class="flex items-center justify-between mb-3">
       <span class="text-xs text-gray-500">${S.mapels.length} mata pelajaran · Total ${totalJp} JP</span>
-      ${canEdit ? `<button id="btn-add-mapel" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah</button>` : ''}
+      ${canEdit ? `<button id="btn-add-mapel" class="px-3 py-1.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">+ Tambah</button>` : ''}
     </div>
     <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       <table class="btam-table">
@@ -394,7 +394,7 @@ function _buildTabJadwal() {
                     <span class="badge badge-gray shrink-0 opacity-50">${s.jamMulai}–${s.jamSelesai}</span>
                     <span class="text-sm text-gray-600 italic">Slot kosong (1 JP)</span>
                   </div>
-                  ${canEdit ? `<button class="btn-assign-mapel text-xs px-2 py-1 rounded bg-blue-900/40 hover:bg-blue-800 text-blue-400 transition-colors whitespace-nowrap"
+                  ${canEdit ? `<button class="btn-assign-mapel text-xs px-2 py-1 rounded bg-[#0d9488]/20 hover:bg-[#0d9488]/30 text-[#5eead4] transition-colors whitespace-nowrap"
                     data-id="${s.id}" data-tgl="${tglStr}">Assign Mapel</button>` : ''}
                 </div>`;
             }
@@ -528,8 +528,8 @@ function _showAssignModal(slotId, tglStr) {
         <div id="assign-error" class="hidden text-red-400 text-sm bg-red-900/30 rounded p-3"></div>
       </div>
       <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800">
-        <button class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors" id="assign-batal">Batal</button>
-        <button id="assign-ok" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Assign</button>
+        <button class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#12181c] transition-colors" id="assign-batal">Batal</button>
+        <button id="assign-ok" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Assign</button>
       </div>
     </div>`;
   document.body.appendChild(el);
@@ -789,12 +789,12 @@ function _buildTabPeserta() {
         ${total > 0 ? `<button id="btn-wa-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-green-700 hover:bg-green-600 text-white transition-colors">Kirim WA Terpilih</button>` : ''}
         ${total > 0 ? `<button id="btn-email-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-indigo-700 hover:bg-indigo-600 text-white transition-colors">Kirim Email Terpilih</button>` : ''}
         ${total > 0 ? `<button id="btn-export-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">Export Excel</button>` : ''}
-        ${canEdit && !penuh ? `<button id="btn-add-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Tambah Peserta</button>` : ''}
+        ${canEdit && !penuh ? `<button id="btn-add-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">+ Tambah Peserta</button>` : ''}
       </div>
     </div>
     <div id="peserta-list" class="bg-gray-900 rounded-xl border border-gray-800">
       <div class="flex items-center justify-center py-10">
-        <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
       </div>
     </div>`;
 }
@@ -1146,13 +1146,13 @@ async function _showAddPesertaModal(app, el) {
           </select>
           <div class="flex items-center justify-between">
             <span id="peserta-count" class="text-xs text-gray-500">0 dipilih</span>
-            <button id="btn-pilih-semua" class="text-xs text-blue-400 hover:text-blue-300">Pilih semua hasil filter</button>
+            <button id="btn-pilih-semua" class="text-xs text-[#2dd4bf] hover:text-[#5eead4]">Pilih semua hasil filter</button>
           </div>
         </div>
         <div id="peserta-checklist" class="overflow-y-auto flex-1 px-5 pb-3 space-y-1 min-h-0"></div>
         <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800 shrink-0">
-          <button id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Batal</button>
-          <button id="modal-confirm" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Tambahkan</button>
+          <button id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#12181c] transition-colors">Batal</button>
+          <button id="modal-confirm" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Tambahkan</button>
         </div>
       </div>`;
 
@@ -1181,7 +1181,7 @@ async function _showAddPesertaModal(app, el) {
         return;
       }
       listEl.innerHTML = hasil.map(p => `
-        <label class="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors">
+        <label class="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-[#12181c] cursor-pointer transition-colors">
           <input type="checkbox" class="peserta-cb mt-0.5 shrink-0 accent-blue-500"
             value="${_esc(p.noPeserta)}" ${selected.has(p.noPeserta) ? 'checked' : ''}>
           <div class="min-w-0">

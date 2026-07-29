@@ -55,16 +55,16 @@ function _render(container) {
   container.innerHTML = `
     <!-- Sub-tab navigation -->
     <div class="flex gap-2 mb-6 border-b border-gray-800 flex-wrap">
-      <button id="btn-sub-kehadiran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kehadiran' ? 'text-blue-400 border-blue-400' : ''}">
+      <button id="btn-sub-kehadiran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kehadiran' ? 'text-[#2dd4bf] border-[#2dd4bf]' : ''}">
         Kehadiran
       </button>
-      <button id="btn-sub-nilai" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'nilai' ? 'text-blue-400 border-blue-400' : ''}">
+      <button id="btn-sub-nilai" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'nilai' ? 'text-[#2dd4bf] border-[#2dd4bf]' : ''}">
         Nilai Manual
       </button>
-      <button id="btn-sub-prepost" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'prepost' ? 'text-blue-400 border-blue-400' : ''}">
+      <button id="btn-sub-prepost" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'prepost' ? 'text-[#2dd4bf] border-[#2dd4bf]' : ''}">
         Pre/Post Test
       </button>
-      <button id="btn-sub-kelulusan" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kelulusan' ? 'text-blue-400 border-blue-400' : ''}">
+      <button id="btn-sub-kelulusan" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'kelulusan' ? 'text-[#2dd4bf] border-[#2dd4bf]' : ''}">
         Kelulusan
       </button>
       <button id="btn-sub-pelanggaran" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent ${S.subTab === 'pelanggaran' ? 'text-red-400 border-red-400' : ''}">

@@ -43,7 +43,7 @@ const SESSION_STATUS_BADGE = {
 
 export async function renderTabUjian(app, el, S) {
   el.innerHTML = `<div class="flex items-center justify-center py-10">
-    <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
   </div>`;
 
   try {
@@ -84,7 +84,7 @@ function _render(app, el, S, exams, sessions) {
       ${_buildAccessCodeSection(S.bimtek)}
       <div class="flex items-center justify-between">
         <span class="text-xs text-gray-500">${exams.length} ujian dikonfigurasi</span>
-        ${canEdit ? `<button id="btn-buat-ujian" class="px-3 py-1.5 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">+ Buat Ujian</button>` : ''}
+        ${canEdit ? `<button id="btn-buat-ujian" class="px-3 py-1.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">+ Buat Ujian</button>` : ''}
       </div>
       ${exams.length === 0
         ? `<div class="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center text-gray-500 text-sm">
@@ -260,7 +260,7 @@ function _buildExamCard(exam, sessions, S, canEdit) {
         <span>🔗 ${sessionCount} link${submitted ? ` (${submitted} selesai)` : ''}</span>
       </div>
       <div class="px-4 pb-3 flex gap-2 flex-wrap items-center">
-        ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-blue-900/50 hover:bg-blue-800 text-blue-300 transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
+        ${canEdit ? `<button class="btn-gen-links text-xs px-2 py-1 rounded bg-[#0d9488]/20 hover:bg-[#0d9488]/30 text-[#5eead4] transition-colors" data-id="${exam.id}">Generate Sesi</button>` : ''}
         <button class="btn-fix-expiry text-xs px-2 py-1 rounded bg-amber-900/50 hover:bg-amber-800 text-amber-300 transition-colors" data-id="${exam.id}">Perbaiki Kadaluarsa</button>
         ${_buildWindowToggles(exam)}
       </div>
@@ -361,7 +361,7 @@ async function _showExamModal(app, el, S, exam) {
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs text-gray-400">Pilih Soal dari Bank Soal</label>
-            <span id="soal-count-label" class="text-xs text-blue-400">0 dipilih</span>
+            <span id="soal-count-label" class="text-xs text-[#2dd4bf]">0 dipilih</span>
           </div>
           <div class="flex gap-2 mb-2 flex-wrap">
             <input id="soal-search" type="text" placeholder="Cari pertanyaan atau UK…" class="form-input flex-1 text-xs" style="min-width:140px">
@@ -389,8 +389,8 @@ async function _showExamModal(app, el, S, exam) {
 
       <div id="exam-error" class="hidden mx-5 mb-0 text-red-400 text-sm bg-red-900/30 rounded p-3"></div>
       <div class="flex justify-end gap-3 px-5 py-4 border-t border-gray-800 shrink-0">
-        <button id="exam-modal-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Batal</button>
-        <button id="exam-modal-save" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Simpan</button>
+        <button id="exam-modal-cancel" class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#12181c] transition-colors">Batal</button>
+        <button id="exam-modal-save" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Simpan</button>
       </div>
     </div>`;
 
@@ -544,7 +544,7 @@ async function _generateLinks(app, el, S, exam) {
       </div>
       <div class="p-5 border-t border-gray-800 flex justify-end gap-2">
         <button id="gen-cancel" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Batal</button>
-        <button id="gen-submit" class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">Generate</button>
+        <button id="gen-submit" class="px-3 py-1.5 text-sm rounded-lg bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Generate</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -699,20 +699,20 @@ function _buildAccessCodeSection(bimtek) {
   const code    = bimtek?.accessCode || '';
   const display = code ? `${code.slice(0, 3)}-${code.slice(3)}` : '';
   return `
-    <div class="bg-blue-950 border border-blue-800 rounded-xl p-4">
+    <div class="bg-[#0d9488]/10 border border-[#0d9488]/30 rounded-xl p-4">
       <div class="flex items-center justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-1">Kode Ujian Bimtek</p>
+          <p class="text-xs font-semibold text-[#2dd4bf] uppercase tracking-wide mb-1">Kode Ujian Bimtek</p>
           ${display
             ? `<p class="text-2xl font-mono font-bold text-white tracking-widest">${_esc(display)}</p>
-               <p class="text-xs text-blue-400 mt-1">Bagikan kode ini ke peserta — mereka input di halaman ujian</p>`
+               <p class="text-xs text-[#2dd4bf] mt-1">Bagikan kode ini ke peserta — mereka input di halaman ujian</p>`
             : `<p class="text-sm text-gray-400">Kode ujian belum dibuat</p>
                <p class="text-xs text-gray-500 mt-0.5">Generate kode agar peserta dapat mengakses ujian</p>`
           }
         </div>
         ${display
-          ? `<button id="btn-copy-kode" class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-blue-800 hover:bg-blue-700 text-blue-200 transition-colors">Salin</button>`
-          : `<button id="btn-gen-kode" class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">Generate Kode</button>`
+          ? `<button id="btn-copy-kode" class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-[#0d9488]/30 hover:bg-[#0d9488]/40 text-[#99f6e4] transition-colors">Salin</button>`
+          : `<button id="btn-gen-kode" class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">Generate Kode</button>`
         }
       </div>
     </div>`;

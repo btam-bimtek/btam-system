@@ -13,7 +13,7 @@ export function renderSubImportNilai(container, bimtekId, onDone, bimtek) {
       <!-- Panduan -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 text-sm text-gray-300 space-y-2">
         <p class="font-medium text-white">Format Excel (.xlsx)</p>
-        <p>Baris pertama = header. Kolom wajib: <code class="text-blue-300">noPeserta</code>. Kolom nilai boleh dikosongkan jika tidak ada data.</p>
+        <p>Baris pertama = header. Kolom wajib: <code class="text-[#5eead4]">noPeserta</code>. Kolom nilai boleh dikosongkan jika tidak ada data.</p>
         <div class="mt-2 overflow-x-auto">
           <table class="text-xs text-gray-400 border border-gray-700 rounded">
             <thead class="bg-gray-900">
@@ -54,7 +54,7 @@ export function renderSubImportNilai(container, bimtekId, onDone, bimtek) {
         <input type="file" id="xlsx-file-input" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
                  file:rounded-lg file:border-0 file:text-sm file:font-medium
-                 file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer" />
+                 file:bg-[#0d9488] file:text-[#f0fdfa] hover:file:bg-[#14b8a6] cursor-pointer" />
         <p id="parse-error" class="text-red-400 text-xs hidden"></p>
       </div>
 

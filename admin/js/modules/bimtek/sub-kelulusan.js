@@ -140,7 +140,7 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
       <button id="btn-config-threshold" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors">
         Konfigurasi Threshold Deskriptif
       </button>
-      <button id="btn-save-config" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
+      <button id="btn-save-config" class="px-4 py-2 bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] text-sm rounded-lg transition-colors">
         Simpan Konfigurasi
       </button>
     </div>

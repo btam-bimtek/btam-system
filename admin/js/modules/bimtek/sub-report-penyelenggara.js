@@ -85,7 +85,7 @@ function _innerTabBtn(id, label) {
 }
 
 function _innerTabClass(active) {
-  return `inner-tab-btn px-3 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`;
+  return `inner-tab-btn px-3 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-[#0d9488] text-[#f0fdfa]' : 'text-gray-400 hover:text-white hover:bg-[#12181c]'}`;
 }
 
 // ─── INNER TABS ───────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ function _renderOverview(el) {
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       ${_statCard('Rata-rata Pre Test',  stats.avgPretest   != null ? stats.avgPretest   : '—', 'text-gray-300')}
-      ${_statCard('Rata-rata Post Test', stats.avgPosttest  != null ? stats.avgPosttest  : '—', 'text-blue-400')}
+      ${_statCard('Rata-rata Post Test', stats.avgPosttest  != null ? stats.avgPosttest  : '—', 'text-[#2dd4bf]')}
       ${_statCard('Rata-rata Nilai Akhir', stats.avgNilaiAkhir != null ? stats.avgNilaiAkhir : '—', 'text-white')}
       ${_statCard('Rata-rata Kehadiran', stats.avgKehadiran != null ? `${stats.avgKehadiran}%` : '—', 'text-gray-300')}
     </div>

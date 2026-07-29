@@ -71,7 +71,7 @@ function _renderList(container) {
         <div class="text-xs text-gray-500">${_esc(p.noPeserta)}</div>
       </td>
       <td class="text-right">
-        <button class="btn-preview-peserta text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors mr-1"
+        <button class="btn-preview-peserta text-xs px-3 py-1.5 rounded-lg bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors mr-1"
           data-nopeserta="${_esc(p.noPeserta)}">
           Preview
         </button>
@@ -108,7 +108,7 @@ function _renderList(container) {
         <input id="input-no-sertifikat-bimtek" type="text" value="${_esc(S.bimtek?.noSertifikat ?? '')}"
           placeholder="Isi manual, mis. 123/BTAM/2026"
           class="form-input text-sm flex-1 min-w-40" style="max-width:260px">
-        <button id="btn-save-no-sertifikat-bimtek" class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+        <button id="btn-save-no-sertifikat-bimtek" class="px-3 py-1.5 text-sm rounded-lg bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
           Simpan
         </button>
       </div>
@@ -197,7 +197,7 @@ async function _loadAndShowPreview(container, noPeserta, autoPrint) {
   panel.classList.remove('hidden');
   panel.innerHTML = `
     <div class="flex items-center gap-3 py-8 justify-center">
-      <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
       <span class="text-gray-400 text-sm">Memuat laporan…</span>
     </div>`;
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -222,7 +222,7 @@ function _showPreview(container, panel, data, autoPrint) {
     <div class="flex items-center justify-between mb-4 no-print">
       <h3 class="font-semibold text-white">Preview Laporan — ${_esc(data.peserta?.nama ?? '')}</h3>
       <div class="flex gap-2">
-        <button id="btn-do-print" class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+        <button id="btn-do-print" class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
           </svg>

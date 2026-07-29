@@ -30,7 +30,7 @@ async function _refresh(pane, bimtekId, bimtek) {
 
   pane.innerHTML = `
     <div class="flex items-center justify-center py-10">
-      <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
     </div>`;
 
   const pengajarData = await _fetchPengajarDetails(pengajarIds);
@@ -39,7 +39,7 @@ async function _refresh(pane, bimtekId, bimtek) {
     <div class="flex items-center justify-between mb-4">
       <span class="text-sm text-gray-400">${pengajarIds.length} pengajar</span>
       <button id="btn-add-pengajar"
-        class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-1.5">
+        class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors flex items-center gap-1.5">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
@@ -124,7 +124,7 @@ function _emptyState() {
     <div class="flex items-center justify-between mb-4">
       <span class="text-sm text-gray-400">0 pengajar</span>
       <button id="btn-add-pengajar"
-        class="px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-1.5">
+        class="px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors flex items-center gap-1.5">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
@@ -166,7 +166,7 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
           <h2 class="text-sm font-semibold text-white">Tambah Pengajar</h2>
           <p class="text-xs text-gray-500 mt-0.5">Cari dari master pengajar</p>
         </div>
-        <button id="btn-close-pengajar" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors">
+        <button id="btn-close-pengajar" class="p-1 rounded hover:bg-[#12181c] text-gray-400 hover:text-white transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -189,7 +189,7 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
       <div class="flex items-center justify-between px-5 py-4 border-t border-gray-800 shrink-0">
         <button id="btn-cancel-pengajar" class="text-xs text-gray-400 hover:text-white transition-colors">Batal</button>
         <button id="btn-confirm-pengajar"
-          class="px-4 py-2 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50"
+          class="px-4 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors disabled:opacity-50"
           disabled>
           Tambahkan ke Bimtek
         </button>
@@ -261,7 +261,7 @@ function _openAddModal(bimtekId, bimtek, onSuccess) {
       return;
     }
     overlay.querySelector('#pengajar-results').innerHTML =
-      '<div class="flex justify-center py-4"><div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>';
+      '<div class="flex justify-center py-4"><div class="w-4 h-4 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div></div>';
     _timer = setTimeout(async () => {
       try {
         const results = await _searchPengajarMaster(term);

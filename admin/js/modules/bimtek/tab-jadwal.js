@@ -103,7 +103,7 @@ function _render(pane) {
       </div>
       <div class="flex items-center gap-2">
         <button id="btn-export-jadwal"
-          class="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1.5">
+          class="px-3 py-1.5 rounded-lg text-xs border border-[#1e3a3f] text-gray-300 hover:bg-[#12181c] transition-colors flex items-center gap-1.5">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
           </svg>
@@ -169,7 +169,7 @@ function _buildDayCard(date) {
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
         <div class="flex items-center gap-2">
           <span class="text-sm font-semibold text-gray-200">${_fmtDay(date)}</span>
-          ${isJumat ? '<span class="text-xs bg-blue-900/40 text-blue-400 border border-blue-700/40 px-1.5 py-0.5 rounded">Jumat</span>' : ''}
+          ${isJumat ? '<span class="text-xs bg-[#0d9488]/20 text-[#5eead4] border border-[#0d9488]/40 px-1.5 py-0.5 rounded">Jumat</span>' : ''}
           ${warnPadat ? '<span class="text-xs text-yellow-400">⚠ Hari padat</span>' : ''}
         </div>
         <span class="text-xs text-gray-500">${jpHari} JP terjadwal</span>
@@ -194,7 +194,7 @@ function _buildDayCard(date) {
             </select>
             <input type="time" class="form-input text-xs py-1 w-28 inp-jam" data-day="${dayKey}"
               value="${sched.jamMulai}" step="900">
-            <button class="btn-add-sesi px-3 py-1.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+            <button class="btn-add-sesi px-3 py-1.5 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors"
               data-day="${dayKey}">
               Tambah
             </button>
@@ -254,7 +254,7 @@ function _buildTimeline(dayKey, sched) {
     const mapel = _mapelList.find(m => m.id === slot.mapelId);
     const bidang = BIDANG_LIST.find(b => b.bidangId === mapel?.bidangId);
     return `
-      <div class="flex items-center gap-3 py-2 px-3 bg-blue-900/20 border border-blue-800/40 rounded-lg group">
+      <div class="flex items-center gap-3 py-2 px-3 bg-[#0d9488]/10 border border-[#0d9488]/30 rounded-lg group">
         <span class="text-xs text-gray-400 font-mono w-28 shrink-0">
           ${slot.jamMulai} – ${slot.jamSelesai}
         </span>
@@ -703,7 +703,7 @@ function _globalWarnings() {
 
 function _loadingHTML() {
   return `<div class="flex items-center justify-center py-16">
-    <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
   </div>`;
 }
 
