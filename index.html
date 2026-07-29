@@ -90,6 +90,27 @@
             justify-content: center;
         }
 
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .staff-card .card-icon {
+            background: rgba(45, 212, 191, 0.15);
+            color: #5eead4;
+            margin-bottom: 16px;
+        }
+
+        .public-card .card-icon {
+            background: rgba(13, 148, 136, 0.1);
+            color: #0d9488;
+        }
+
         .staff-card h2 {
             font-size: 1.15rem;
             font-weight: 700;
@@ -138,6 +159,12 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
+        }
+
+        .public-card .card-main {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
         .public-card h2 {
@@ -218,6 +245,13 @@
         <div class="side side-staff">
             <div class="side-label">Staff BTAM</div>
             <div class="staff-card">
+                <div class="card-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </div>
                 <h2>Admin Panel</h2>
                 <p>Kelola Bimtek, peserta, pengajar, bank soal, penilaian, dan laporan secara menyeluruh.</p>
                 <a href="admin/" class="btn">Login →</a>
@@ -228,25 +262,46 @@
             <div class="side-label">Peserta &amp; Publik</div>
 
             <div class="public-card">
-                <div>
-                    <h2>Pendaftar</h2>
-                    <p>Daftar Bimtek Air Minum</p>
+                <div class="card-main">
+                    <div class="card-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1m5 12H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V18a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Pendaftar</h2>
+                        <p>Daftar Bimtek Air Minum</p>
+                    </div>
                 </div>
                 <a href="pendaftar/" class="btn">Daftar Sekarang →</a>
             </div>
 
             <div class="public-card">
-                <div>
-                    <h2>Ujian</h2>
-                    <p>Akses pre-test dan post-test peserta</p>
+                <div class="card-main">
+                    <div class="card-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Ujian</h2>
+                        <p>Akses pre-test dan post-test peserta</p>
+                    </div>
                 </div>
                 <a href="exam/" class="btn">Buka Ujian →</a>
             </div>
 
             <div class="public-card">
-                <div>
-                    <h2>Portal Peserta</h2>
-                    <p>Cek sertifikat dan isi evaluasi pengajar</p>
+                <div class="card-main">
+                    <div class="card-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Portal Peserta</h2>
+                        <p>Cek sertifikat dan isi evaluasi pengajar</p>
+                    </div>
                 </div>
                 <a href="peserta/" class="btn">Masuk →</a>
             </div>
