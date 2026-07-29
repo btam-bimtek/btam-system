@@ -10,153 +10,246 @@
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             min-height: 100vh;
-            background: #f0f4f8;
+        }
+
+        /* ── Topbar ───────────────────────────────── */
+        .topbar {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            padding: 48px 20px 60px;
+            gap: 12px;
+            padding: 14px 28px;
+            background: #0b0f10;
+            border-bottom: 1px solid #1e3a3f;
         }
 
-        /* ── Hero ─────────────────────────────────── */
-        .hero {
-            text-align: center;
-            max-width: 640px;
-            margin-bottom: 44px;
-        }
-
-        .hero-icon {
-            width: 56px;
-            height: 56px;
-            background: #1d4ed8;
-            border-radius: 16px;
+        .topbar .logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #0d9488;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 24px;
+            flex-shrink: 0;
         }
 
-        .hero-icon svg { color: #fff; }
+        .topbar .logo svg { color: #f0fdfa; }
 
-        .hero-title {
-            font-size: clamp(1.35rem, 4vw, 1.75rem);
+        .topbar .brand-name {
+            font-size: 0.95rem;
             font-weight: 700;
-            color: #1e293b;
-            line-height: 1.45;
-            letter-spacing: -0.01em;
+            color: #f0fdfa;
+            line-height: 1.3;
         }
 
-        /* Huruf pembentuk SI-SABAT */
-        .hero-title .ak {
-            color: #1d4ed8;
-            font-weight: 800;
+        .topbar .brand-sub {
+            font-size: 0.7rem;
+            color: #5eead4;
+            opacity: 0.85;
         }
 
-        .hero-badge {
-            display: inline-block;
-            margin-top: 14px;
-            padding: 4px 14px;
-            background: #dbeafe;
-            color: #1d4ed8;
-            font-size: 0.8rem;
+        /* ── Body split ───────────────────────────── */
+        .split-body {
+            display: flex;
+            min-height: calc(100vh - 62px);
+        }
+
+        .side {
+            padding: 40px 32px;
+        }
+
+        .side-label {
+            font-size: 0.72rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
-            border-radius: 999px;
-            border: 1px solid #bfdbfe;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 18px;
+            opacity: 0.85;
         }
 
-        /* ── Cards ────────────────────────────────── */
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            width: 100%;
-            max-width: 600px;
+        /* Staff side — narrow, dark, single large card */
+        .side-staff {
+            flex: 0 0 30%;
+            background: linear-gradient(160deg, #0d1416 0%, #0b0f10 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
         }
 
-        .card {
-            background: white;
-            border: 1px solid #e2e8f0;
+        .side-staff .side-label { color: #5eead4; }
+
+        .staff-card {
+            flex: 1;
+            background: rgba(45, 212, 191, 0.08);
+            border: 1px solid rgba(45, 212, 191, 0.25);
             border-radius: 12px;
-            padding: 24px 20px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            backdrop-filter: blur(6px);
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .card h2 {
-            font-size: 1rem;
+        .staff-card h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .staff-card p {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .staff-card .btn {
+            align-self: flex-start;
+            padding: 9px 20px;
+            background: #0d9488;
+            color: #f0fdfa;
+            text-decoration: none;
+            border-radius: 999px;
+            font-size: 0.85rem;
             font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 6px;
+            transition: background 0.15s;
         }
 
-        .card p {
+        .staff-card .btn:hover { background: #14b8a6; }
+
+        /* Public side — wide, light, 3 stacked rows */
+        .side-public {
+            flex: 1;
+            background: linear-gradient(160deg, #ecfdf9 0%, #f0fdfa 100%);
+        }
+
+        .side-public .side-label { color: #0d9488; }
+
+        .public-card {
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(45, 212, 191, 0.25);
+            border-radius: 12px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.08);
+            padding: 18px 22px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .public-card h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .public-card p {
             font-size: 0.8rem;
             color: #64748b;
-            margin-bottom: 16px;
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
-        .card a {
-            display: inline-block;
-            padding: 9px 22px;
-            background: #1d4ed8;
-            color: white;
+        .public-card .btn {
+            flex-shrink: 0;
+            padding: 9px 20px;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            color: #f0fdfa;
             text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.83rem;
-            font-weight: 500;
-            transition: background .15s;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: opacity 0.15s;
         }
 
-        .card a:hover { background: #1e40af; }
+        .public-card .btn:hover { opacity: 0.85; }
 
         .footer {
-            margin-top: 48px;
+            padding: 20px 28px;
+            text-align: center;
             font-size: 0.72rem;
             color: #94a3b8;
+            background: #f0fdfa;
+        }
+
+        /* ── Mobile: stack vertically, public content first ── */
+        @media (max-width: 720px) {
+            .split-body {
+                flex-direction: column-reverse;
+                min-height: auto;
+            }
+
+            .side { padding: 28px 20px; }
+
+            .side-staff { flex: none; }
+
+            .staff-card { padding: 22px 20px; }
+
+            .public-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .public-card .btn { align-self: flex-start; }
         }
     </style>
 </head>
 <body>
 
-    <div class="hero">
-        <div class="hero-icon">
-            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <div class="topbar">
+        <div class="logo">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
             </svg>
         </div>
-
-        <h1 class="hero-title">
-            <span class="ak">S</span>istem
-            <span class="ak">I</span>nformasi
-            <span class="ak">S</span>eleksi &amp;
-            <span class="ak">A</span>sesmen
-            <span class="ak">B</span>imtek
-            <span class="ak">A</span>ir Minum
-            <span class="ak">T</span>erpadu
-        </h1>
-
-        <span class="hero-badge">SI-SABAT</span>
+        <div>
+            <div class="brand-name">Balai Teknik Air Minum</div>
+            <div class="brand-sub">SI-SABAT · Kementerian PU / Ditjen Cipta Karya</div>
+        </div>
     </div>
 
-    <div class="cards">
-        <div class="card">
-            <h2>Admin</h2>
-            <p>Kelola Bimtek, peserta, pengajar, dan nilai</p>
-            <a href="admin/">Buka Admin</a>
+    <div class="split-body">
+        <div class="side side-staff">
+            <div class="side-label">Staff BTAM</div>
+            <div class="staff-card">
+                <h2>Admin Panel</h2>
+                <p>Kelola Bimtek, peserta, pengajar, bank soal, penilaian, dan laporan secara menyeluruh.</p>
+                <a href="admin/" class="btn">Login →</a>
+            </div>
         </div>
 
-        <div class="card">
-            <h2>Ujian</h2>
-            <p>Akses pre-test dan post-test peserta</p>
-            <a href="exam/">Buka Ujian</a>
-        </div>
+        <div class="side side-public">
+            <div class="side-label">Peserta &amp; Publik</div>
 
-        <div class="card">
-            <h2>Pendaftar</h2>
-            <p>Daftar Bimtek Air Minum</p>
-            <a href="pendaftar/">Daftar Sekarang</a>
+            <div class="public-card">
+                <div>
+                    <h2>Pendaftar</h2>
+                    <p>Daftar Bimtek Air Minum</p>
+                </div>
+                <a href="pendaftar/" class="btn">Daftar Sekarang →</a>
+            </div>
+
+            <div class="public-card">
+                <div>
+                    <h2>Ujian</h2>
+                    <p>Akses pre-test dan post-test peserta</p>
+                </div>
+                <a href="exam/" class="btn">Buka Ujian →</a>
+            </div>
+
+            <div class="public-card">
+                <div>
+                    <h2>Portal Peserta</h2>
+                    <p>Cek sertifikat dan isi evaluasi pengajar</p>
+                </div>
+                <a href="peserta/" class="btn">Masuk →</a>
+            </div>
         </div>
     </div>
 
