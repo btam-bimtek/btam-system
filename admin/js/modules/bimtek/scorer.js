@@ -55,7 +55,11 @@ export function hitungSkor(submission, exam, soals, kunciMap, bloomBobot) {
     };
   }
 
-  const skorAkhir = totalBobot > 0 ? Math.round((totalScore / totalBobot) * 100) : 0;
+  // Sama seperti hitungNilaiAkhir: bersihkan noise floating-point sebelum
+  // pembulatan integer akhir (lihat komentar di hitungNilaiAkhir untuk detail).
+  const skorRaw = totalBobot > 0 ? (totalScore / totalBobot) * 100 : 0;
+  const skorBersih = Math.round((skorRaw + Number.EPSILON) * 1e6) / 1e6;
+  const skorAkhir = Math.round(skorBersih);
 
   return {
     skor: skorAkhir,
@@ -316,7 +320,13 @@ export function hitungNilaiAkhir(scores, bimtek) {
     (hasTugas ? (scores.tugas || 0) * (w.tugas || 0) : 0) +
     (hasPresentasi ? (scores.presentasi || 0) * (w.presentasi || 0) : 0);
 
-  return Math.round(nilaiAkhir);
+  // Penjumlahan skor x bobot desimal (mis. 0.15, 0.30) bisa menghasilkan noise
+  // floating-point ~1e-13 di sekitar JS. Ini berbahaya karena nilai akhir yang
+  // secara matematis persis di angka X.5 bisa salah arah pembulatan dan
+  // membalik status lulus/tidak lulus pada batas KKM (61, 71, 86). Bersihkan
+  // noise dengan pembulatan presisi-menengah sebelum pembulatan integer akhir.
+  const nilaiAkhirBersih = Math.round((nilaiAkhir + Number.EPSILON) * 1e6) / 1e6;
+  return Math.round(nilaiAkhirBersih);
 }
 
 // Kategori kelulusan (batas tetap, bukan KKM per-bimtek) dipindah ke shared/scoring.js
