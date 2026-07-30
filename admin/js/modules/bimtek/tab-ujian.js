@@ -657,8 +657,9 @@ function _buildInlineSessions(exam, sessions) {
     const cols = tipeCols.map(tipe => {
       const s = sesiMap[tipe];
       if (!s) return `<td class="text-xs text-gray-500">—</td>`;
-      const badge = SESSION_STATUS_BADGE[s.status] || 'badge-gray';
-      const lbl   = SESSION_STATUS_LABEL[s.status] || s.status;
+      const dispStatus = _displayStatus(s);
+      const badge = SESSION_STATUS_BADGE[dispStatus] || 'badge-gray';
+      const lbl   = SESSION_STATUS_LABEL[dispStatus] || dispStatus;
       const extLabel = s.timeExtensionMinutes ? `+${s.timeExtensionMinutes}m` : '';
       return `<td>
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -722,5 +723,27 @@ function _buildAccessCodeSection(bimtek) {
 
 function _esc(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _toDate(ts) {
+  if (!ts)                return null;
+  if (ts.toDate)           return ts.toDate();
+  if (ts instanceof Date)  return ts;
+  if (ts.seconds)          return new Date(ts.seconds * 1000);
+  return new Date(ts);
+}
+
+/**
+ * Status TIDAK pernah ditulis sebagai 'expired' di Firestore — tidak ada job
+ * server yang menyapu sesi yang lewat waktu. Kalau peserta menutup browser
+ * sebelum auto-submit terkirim, sesi selamanya tersangkut di 'started'.
+ * Fungsi ini hanya untuk TAMPILAN: turunkan 'expired' dari expiredAt tanpa
+ * mengubah data asli, supaya admin tidak salah kira peserta masih mengerjakan.
+ */
+function _displayStatus(s) {
+  if (s.status !== 'started') return s.status;
+  const expiredAt = _toDate(s.expiredAt);
+  if (expiredAt && Date.now() > expiredAt.getTime()) return 'expired';
+  return s.status;
 }
 
