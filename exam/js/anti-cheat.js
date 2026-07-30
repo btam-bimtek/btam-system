@@ -7,10 +7,10 @@ let _warnCount        = 0;
 let _maxWarnings      = 3;
 let _onWarn           = null;
 let _onAutoSubmit     = null;
-let _blurTimer        = null;
-let _hideTimer        = null; // debounce visibilitychange — hanya warn setelah 3 detik tersembunyi
+let _awayTimer        = null; // timer tunggal untuk grace period blur+visibilitychange (cegah race/double-warn)
+let _awayWarned       = false;
+let _softAwayCount    = 0;     // blur singkat (di bawah threshold) yang berulang — dieskalasi jadi warning resmi
 let _fsWarnPending    = false; // cegah double-warn saat fullscreen
-let _visibilityWarned = false; // cegah double-warn antara blur dan visibilitychange
 
 // ─── Public API ───────────────────────────────────────────────
 
@@ -42,8 +42,10 @@ export function initAntiCheat({ maxWarnings = 3, initialWarnCount = 0, onWarn, o
 /** Nonaktifkan semua listener. Dipanggil setelah submit. */
 export function destroyAntiCheat() {
   _active = false;
-  clearTimeout(_blurTimer);
-  clearTimeout(_hideTimer);
+  clearTimeout(_awayTimer);
+  _awayTimer     = null;
+  _awayWarned    = false;
+  _softAwayCount = 0;
 
   document.removeEventListener('visibilitychange',      _onVisibilityChange);
   window.removeEventListener('blur',                    _onBlur);
@@ -89,40 +91,66 @@ function _warn(reason) {
   }
 }
 
-// Durasi minimum tersembunyi (ms) sebelum dihitung pelanggaran.
-// Mencegah false positive dari notifikasi masuk, keyboard mobile, screen lock sesaat.
-const HIDE_THRESHOLD_MS = 3000;
+// Durasi minimum menghilang (ms) sebelum dihitung pelanggaran resmi.
+// Cukup untuk menoleransi notifikasi masuk/keyboard mobile yang sifatnya sekilas,
+// tapi terlalu singkat untuk sempat pindah app + cari + baca jawaban.
+const HIDE_THRESHOLD_MS = 1500;
+
+// Blur singkat (di bawah HIDE_THRESHOLD_MS) tidak langsung jadi warning resmi,
+// tapi diakumulasi di sini. Peserta yang berulang kali mepet-mepet ambang batas
+// (mis. intip HP <1.5 detik berkali-kali) tetap dieskalasi jadi warning resmi
+// setelah SOFT_AWAY_LIMIT kali, supaya threshold toleransi ini tidak jadi celah
+// tak terbatas.
+const SOFT_AWAY_LIMIT = 5;
+
+// 'blur' dan 'visibilitychange' fire hampir bersamaan untuk kejadian yang sama
+// (alt-tab, pindah app). Keduanya berbagi SATU timer grace-period: siapa pun
+// yang fire duluan menjadwalkan pengecekan di HIDE_THRESHOLD_MS; event lawannya
+// hanya membatalkan jika peserta kembali sebelum threshold. Ini mencegah race
+// yang sebelumnya membuat blur (debounce pendek) menembus grace period 3 detik
+// milik visibilitychange sehingga blur singkat ikut terhitung pelanggaran.
+function _isAway() {
+  return document.hidden || !document.hasFocus();
+}
+
+function _scheduleAwayCheck(reason) {
+  if (!_active || _awayTimer) return;
+  _awayTimer = setTimeout(() => {
+    _awayTimer = null;
+    if (_active && _isAway() && !_awayWarned) {
+      _awayWarned = true;
+      _warn(reason);
+    }
+  }, HIDE_THRESHOLD_MS);
+}
+
+function _cancelAwayCheck() {
+  if (_awayTimer) {
+    // Kembali sebelum threshold matang — bukan pelanggaran resmi, tapi tetap dicatat.
+    _softAwayCount++;
+    if (_softAwayCount >= SOFT_AWAY_LIMIT) {
+      _softAwayCount = 0;
+      _warn('repeated_short_away');
+    }
+  }
+  clearTimeout(_awayTimer);
+  _awayTimer  = null;
+  _awayWarned = false;
+}
 
 function _onVisibilityChange() {
   if (!_active) return;
-  if (document.hidden) {
-    // Mulai timer — hanya warn kalau masih tersembunyi setelah threshold
-    clearTimeout(_hideTimer);
-    _hideTimer = setTimeout(() => {
-      if (!_active || !document.hidden) return;
-      _visibilityWarned = true;
-      _warn('tab_switch');
-    }, HIDE_THRESHOLD_MS);
-  } else {
-    // Kembali terlihat sebelum threshold — batalkan
-    clearTimeout(_hideTimer);
-    _visibilityWarned = false;
-  }
+  if (document.hidden) _scheduleAwayCheck('tab_switch');
+  else _cancelAwayCheck();
 }
 
 function _onFocus() {
-  // Reset flag saat user kembali ke halaman
-  _visibilityWarned = false;
+  _cancelAwayCheck();
 }
 
 function _onBlur() {
   if (!_active) return;
-  clearTimeout(_blurTimer);
-  // Debounce 600ms. Jika visibilitychange sudah handle tab switch, skip.
-  // Jika tidak (alt-tab ke app lain), warn sebagai window_blur.
-  _blurTimer = setTimeout(() => {
-    if (_active && !_visibilityWarned) _warn('window_blur');
-  }, 600);
+  _scheduleAwayCheck('window_blur');
 }
 
 function _block(e) {

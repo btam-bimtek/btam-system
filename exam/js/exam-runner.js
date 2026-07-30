@@ -474,9 +474,10 @@ function _handleWarn(count, max, reason) {
   saveWarningCount(_session.id, count, reason).catch(console.warn);
 
   const msgs = {
-    tab_switch:      'Anda berpindah tab atau aplikasi lain.',
-    window_blur:     'Jendela ujian kehilangan fokus.',
-    exit_fullscreen: 'Anda keluar dari mode layar penuh.',
+    tab_switch:          'Anda berpindah tab atau aplikasi lain.',
+    window_blur:         'Jendela ujian kehilangan fokus.',
+    exit_fullscreen:     'Anda keluar dari mode layar penuh.',
+    repeated_short_away: 'Anda berulang kali berpindah tab/aplikasi secara singkat.',
   };
   const isLast = count >= max;
   _showToast(
