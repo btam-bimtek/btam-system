@@ -190,7 +190,15 @@ export async function scoreSeleksiSubmissions(examId) {
       );
       if (calonSnap.empty) throw new Error('Calon peserta tidak ditemukan');
       await updateNilaiTertulis(calonSnap.docs[0].id, exam.bimtekId, skor);
-      await syncUjianTertulisStatusLookup(calonSnap.docs[0].id);
+
+      // Sync status_lookup itu operasi turunan (memudahkan calon lihat status) —
+      // kegagalannya TIDAK boleh dihitung sebagai kegagalan scoring, karena nilai
+      // sudah tersimpan durably di calon_peserta lewat updateNilaiTertulis di atas.
+      try {
+        await syncUjianTertulisStatusLookup(calonSnap.docs[0].id);
+      } catch (syncErr) {
+        console.warn(`syncUjianTertulisStatusLookup gagal untuk ${pendaftarId}:`, syncErr.message);
+      }
     } catch (err) {
       failed++;
       errors.push({ noPeserta: pendaftarId, error: err.message });
