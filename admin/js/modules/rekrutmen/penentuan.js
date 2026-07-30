@@ -55,8 +55,7 @@ async function _renderContent() {
   const snap = await getDocs(query(
     collection(db, COL.CALON_PESERTA),
     where('tahun', '==', _S.tahun),
-    where('statusAdmin', '==', 'lulus'),
-    orderBy('nilaiTertulis', 'desc')
+    where('statusAdmin', '==', 'lulus')
   ));
   const calons = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -109,7 +108,7 @@ function _buildRanking(calons, bimteks) {
 
   // Sort each bimtek by nilai tertulis desc, split terpilih vs cadangan
   bimteks.forEach(b => {
-    ranked[b.bimtekId].sort((a, z) => (z.nilaiTertulis ?? 0) - (a.nilaiTertulis ?? 0));
+    ranked[b.bimtekId].sort((a, z) => (z.nilaiTertulis?.[b.bimtekId] ?? 0) - (a.nilaiTertulis?.[b.bimtekId] ?? 0));
     ranked[b.bimtekId] = ranked[b.bimtekId].map((c, i) => ({
       ...c,
       rank:      i + 1,
@@ -179,7 +178,7 @@ function _renderBimtekBlock(b, calons, list) {
                   <p class="text-gray-600">${_esc(c.pendaftarId)} · Pilihan ${(c.pilihanBimtekIds?.indexOf(b.bimtekId) ?? 0) + 1}</p>
                 </td>
                 <td class="px-4 py-2 text-gray-400">${_esc(c.instansi || '—')}</td>
-                <td class="px-4 py-2 text-right font-mono text-gray-300">${c.nilaiTertulis ?? '—'}</td>
+                <td class="px-4 py-2 text-right font-mono text-gray-300">${c.nilaiTertulis?.[b.bimtekId] ?? '—'}</td>
                 <td class="px-4 py-2 text-center">
                   ${c.isPrimary
                     ? '<span class="bg-green-900/40 text-green-400 px-1.5 py-0.5 rounded text-xs">Terpilih</span>'
@@ -207,7 +206,7 @@ function _renderTidakTerpilih(calons, ranked) {
         ${tidakTerpilih.map(c => `
           <div class="flex items-center justify-between text-xs">
             <span class="text-gray-400">${_esc(c.nama)} — ${_esc(c.instansi || '')}</span>
-            <span class="text-gray-600">${c.nilaiTertulis ?? 'Tidak ujian'}</span>
+            <span class="text-gray-600">${c.nilaiTertulis?.[c.pilihanBimtekIds?.[0]] ?? 'Tidak ujian'}</span>
           </div>`).join('')}
       </div>
     </div>`;
