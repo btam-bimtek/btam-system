@@ -374,22 +374,32 @@ function _renderKodeUjianScreen() {
     const opts = q('#s3-opts');
     s3.classList.remove('hidden');
 
+    // Peserta sudah submit Pre-Test di exam manapun dalam bimtek ini — dipakai
+    // untuk mengunci exam Post-Test yang dibuat berdiri sendiri (tipe 'posttest'
+    // murni, bukan gabungan 'pretest_posttest'), supaya urutan pengerjaan tetap
+    // Pre-Test dulu baru Post-Test walau keduanya exam terpisah.
+    const pretestSubmitted = (_sessionsL || []).some(s => s.tipeSession === 'pretest' && s.status === 'submitted');
+
     opts.innerHTML = exams.map(exam => {
-      const examSessions = (_sessionsL || []).filter(s => s.examId === exam.id);
-      const judul        = exam.judul || examSessions[0]?.examJudul || exam.id;
-      const hasSesi      = examSessions.length > 0;
-      const sel          = _examIdL === exam.id;
+      const examSessions   = (_sessionsL || []).filter(s => s.examId === exam.id);
+      const judul          = exam.judul || examSessions[0]?.examJudul || exam.id;
+      const hasSesi        = examSessions.length > 0;
+      const lockedByPretest = exam.tipe === 'posttest' && !pretestSubmitted;
+      const locked          = !hasSesi || lockedByPretest;
+      const sel             = _examIdL === exam.id;
       return `
         <label class="flex items-center gap-3 p-3 border rounded-xl transition-colors
-          ${!hasSesi
+          ${locked
             ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200'
             : sel ? 'border-blue-500 bg-blue-50 cursor-pointer'
                   : 'border-gray-200 hover:bg-gray-50 cursor-pointer'}">
           <input type="radio" name="exam" value="${_esc(exam.id)}" class="accent-blue-600 shrink-0"
-            ${!hasSesi ? 'disabled' : ''} ${sel ? 'checked' : ''}>
+            ${locked ? 'disabled' : ''} ${sel ? 'checked' : ''}>
           <div class="flex-1">
             <p class="text-sm font-medium text-gray-900">${_esc(judul)}</p>
-            ${!hasSesi ? '<p class="text-xs text-gray-400 mt-0.5">Sesi belum dibuat oleh panitia</p>' : ''}
+            ${!hasSesi ? '<p class="text-xs text-gray-400 mt-0.5">Sesi belum dibuat oleh panitia</p>'
+              : lockedByPretest ? '<p class="text-xs text-amber-600 mt-0.5">🔒 Selesaikan Pre-Test terlebih dahulu</p>'
+              : ''}
           </div>
         </label>`;
     }).join('');
