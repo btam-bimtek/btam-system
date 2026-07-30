@@ -4,346 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SI-SABAT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            min-height: 100vh;
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
-
-        /* ── Topbar ───────────────────────────────── */
-        .topbar {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            padding: 20px 28px;
-            background: #0b0f10;
-            border-bottom: 1px solid #1e3a3f;
-        }
-
-        .topbar .logo {
-            width: 46px;
-            height: 46px;
-            border-radius: 10px;
-            background: #0d9488;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .topbar .logo svg { width: 26px; height: 26px; color: #f0fdfa; }
-
-        .topbar .brand-full {
-            font-size: 1.55rem;
-            font-weight: 500;
-            color: #cbd5e1;
-            line-height: 1.4;
-        }
-
-        /* Huruf awal tiap kata yang membentuk "SI-SABAT" ditekankan,
-           supaya akronimnya "ditemukan" dari teks lengkap, bukan ditulis eksplisit. */
-        .topbar .brand-full .acr {
-            font-size: 1.35em;
-            font-weight: 800;
-            color: #2dd4bf;
-        }
-
-        .topbar .brand-full .acr-dash {
-            font-weight: 800;
-            color: #2dd4bf;
-            margin: 0 8px;
-        }
-
-        .topbar .brand-name {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: #7dd3c8;
-            margin-top: 6px;
-        }
-
-        .topbar .brand-sub {
-            font-size: 0.85rem;
-            color: #7dd3c8;
-            opacity: 0.65;
-            margin-top: 3px;
-        }
-
-        /* ── Body split ───────────────────────────── */
-        .split-body {
-            display: flex;
-            min-height: calc(100vh - 62px);
-        }
-
-        .side {
-            padding: 40px 32px;
-        }
-
-        .side-label {
-            font-size: 0.88rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 18px;
-            opacity: 0.85;
-        }
-
-        /* Staff side — narrow, dark, single large card */
-        .side-staff {
-            flex: 0 0 30%;
-            background: linear-gradient(160deg, #0d1416 0%, #0b0f10 100%);
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .side-staff .side-label { color: #5eead4; }
-
-        .staff-card {
-            flex: 1;
-            background: rgba(45, 212, 191, 0.08);
-            border: 1px solid rgba(45, 212, 191, 0.25);
-            border-radius: 12px;
-            backdrop-filter: blur(6px);
-            padding: 28px 24px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .card-icon {
-            width: 54px;
-            height: 54px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .card-icon svg { width: 28px; height: 28px; }
-
-        .staff-card .card-icon {
-            background: rgba(45, 212, 191, 0.15);
-            color: #5eead4;
-            margin-bottom: 16px;
-        }
-
-        .public-card .card-icon {
-            background: rgba(13, 148, 136, 0.1);
-            color: #0d9488;
-        }
-
-        .staff-card h2 {
-            font-size: 1.7rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 12px;
-        }
-
-        .staff-card p {
-            font-size: 1.15rem;
-            color: #cbd5e1;
-            line-height: 1.55;
-            margin-bottom: 24px;
-        }
-
-        .staff-card .btn {
-            align-self: flex-start;
-            padding: 12px 26px;
-            background: #0d9488;
-            color: #f0fdfa;
-            text-decoration: none;
-            border-radius: 999px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            transition: background 0.15s;
-        }
-
-        .staff-card .btn:hover { background: #14b8a6; }
-
-        /* Public side — wide, light, 3 stacked rows */
-        .side-public {
-            flex: 1;
-            background: linear-gradient(160deg, #ecfdf9 0%, #f0fdfa 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .side-public .side-label { color: #0d9488; }
-
-        .public-card-list {
-            display: flex;
-            flex-direction: column;
-            gap: 22px;
-        }
-
-        .public-card {
-            background: rgba(255, 255, 255, 0.75);
-            border: 1px solid rgba(45, 212, 191, 0.25);
-            border-radius: 14px;
-            backdrop-filter: blur(6px);
-            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.08);
-            padding: 28px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-        }
-
-        .public-card .card-main {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .public-card h2 {
-            font-size: 1.45rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 5px;
-        }
-
-        .public-card p {
-            font-size: 1.08rem;
-            color: #64748b;
-            line-height: 1.4;
-        }
-
-        .public-card .btn {
-            flex-shrink: 0;
-            padding: 12px 26px;
-            background: linear-gradient(135deg, #0d9488, #14b8a6);
-            color: #f0fdfa;
-            text-decoration: none;
-            border-radius: 999px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            white-space: nowrap;
-            transition: opacity 0.15s;
-        }
-
-        .public-card .btn:hover { opacity: 0.85; }
-
-        .footer {
-            padding: 20px 28px;
-            text-align: center;
-            font-size: 0.85rem;
-            color: #94a3b8;
-            background: #f0fdfa;
-        }
-
-        /* ── Mobile: stack vertically, public content first ── */
-        @media (max-width: 720px) {
-            .split-body {
-                flex-direction: column-reverse;
-                min-height: auto;
-            }
-
-            .side { padding: 28px 20px; }
-
-            .side-staff { flex: none; }
-
-            .staff-card { padding: 22px 20px; }
-
-            .public-card {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-
-            .public-card .btn { align-self: flex-start; }
-        }
+        .highlight { color: #2DD4BF; font-weight: 800; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen flex flex-col md:flex-row">
 
-    <div class="topbar">
-        <div class="logo">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-            </svg>
-        </div>
-        <div>
-            <div class="brand-full"><span class="acr">S</span>istem <span class="acr">I</span>nformasi<span class="acr-dash">-</span><span class="acr">S</span>eleksi &amp; <span class="acr">A</span>sesmen <span class="acr">B</span>imtek <span class="acr">A</span>ir Minum <span class="acr">T</span>erpadu</div>
-            <div class="brand-name">Balai Teknik Air Minum</div>
-            <div class="brand-sub">Kementerian PU · Ditjen Cipta Karya</div>
-        </div>
-    </div>
+    <!-- Section Kiri: Admin/Staff -->
+    <section class="w-full md:w-1/2 bg-[#0A2E2E] p-8 md:p-16 flex flex-col items-center justify-center text-white relative overflow-hidden">
+        <div class="z-10 w-full max-w-xl">
 
-    <div class="split-body">
-        <div class="side side-staff">
-            <div class="side-label">Staff BTAM</div>
-            <div class="staff-card">
-                <div class="card-icon">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                        <circle cx="12" cy="12" r="3"/>
+            <!-- Logo & Brand -->
+            <div class="flex items-center mb-12">
+                <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                    <div style="width:64px;height:64px;background-image:url('shared/assets/kop_btam.png');background-size:364px 64px;background-position:-3px -2px;background-repeat:no-repeat;"></div>
+                </div>
+                <div class="ml-4">
+                    <p class="text-xs uppercase tracking-[0.2em] opacity-60 font-semibold">Kementerian PU - Ditjen Cipta Karya</p>
+                    <p class="text-sm font-bold opacity-90 mt-0.5">Balai Teknik Air Minum</p>
+                </div>
+            </div>
+
+            <!-- Heading Utama SI-SABAT -->
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-light leading-snug mb-16">
+                <div><span class="highlight">S</span>istem <span class="highlight">I</span>nformasi</div>
+                <div class="mt-2 whitespace-nowrap">
+                    <span class="highlight">S</span>eleksi &amp; <span class="highlight">A</span>sesmen
+                </div>
+                <div class="whitespace-nowrap">
+                    <span class="highlight">B</span>imtek <span class="highlight">A</span>ir Minum <span class="highlight">T</span>erpadu
+                </div>
+            </h1>
+
+            <p class="text-xl font-semibold mb-6 opacity-90 tracking-wide">Staff BTAM</p>
+
+            <!-- Admin Panel Card -->
+            <div class="glass rounded-[2rem] p-8 max-w-md w-full">
+                <div class="bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                    <svg class="w-8 h-8 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 </div>
-                <h2>Admin Panel</h2>
-                <p>Kelola Bimtek, peserta, pengajar, bank soal, penilaian, dan laporan secara menyeluruh.</p>
-                <a href="admin/" class="btn">Login →</a>
+                <h2 class="text-2xl font-bold mb-3">Admin Panel</h2>
+                <p class="text-sm opacity-70 mb-8 leading-relaxed">
+                    Kelola Bimtek, peserta, pengajar, bank soal, penilaian, dan laporan secara menyeluruh dalam satu platform terintegrasi.
+                </p>
+                <a href="admin/"
+                   class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-white rounded-2xl font-bold transition-all transform hover:scale-[1.02] flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    Masuk ke Dashboard
+                </a>
             </div>
         </div>
 
-        <div class="side side-public">
-            <div class="side-label">Peserta &amp; Publik</div>
+        <!-- Efek Dekoratif -->
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+    </section>
 
-            <div class="public-card-list">
-            <div class="public-card">
-                <div class="card-main">
-                    <div class="card-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h1m5 12H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V18a2 2 0 01-2 2z"/>
+    <!-- Section Kanan: Peserta & Publik -->
+    <section class="w-full md:w-1/2 p-8 md:p-16 flex flex-col items-center justify-center bg-white">
+        <div class="w-full max-w-2xl">
+            <h2 class="text-3xl font-bold text-slate-800 mb-12 text-center md:text-left">Peserta &amp; Publik</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+                <!-- Pendaftar -->
+                <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all text-center flex flex-col items-center">
+                    <div class="w-16 h-16 bg-cyan-50 rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <div>
-                        <h2>Pendaftar</h2>
-                        <p>Daftar Bimtek Air Minum</p>
-                    </div>
+                    <h3 class="font-bold text-lg mb-2">Pendaftar</h3>
+                    <p class="text-sm text-slate-500 mb-8">Daftar Bimtek Air Minum Terpadu</p>
+                    <a href="pendaftar/"
+                       class="mt-auto w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold transition-colors">
+                        Daftar Sekarang
+                    </a>
                 </div>
-                <a href="pendaftar/" class="btn">Daftar Sekarang →</a>
-            </div>
 
-            <div class="public-card">
-                <div class="card-main">
-                    <div class="card-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                <!-- Ujian -->
+                <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all text-center flex flex-col items-center">
+                    <div class="w-16 h-16 bg-cyan-50 rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
-                    <div>
-                        <h2>Ujian</h2>
-                        <p>Akses pre-test dan post-test peserta</p>
-                    </div>
+                    <h3 class="font-bold text-lg mb-2">Ujian</h3>
+                    <p class="text-sm text-slate-500 mb-8">Akses pre-test dan post-test peserta</p>
+                    <a href="exam/"
+                       class="mt-auto w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold transition-colors">
+                        Buka Ujian
+                    </a>
                 </div>
-                <a href="exam/" class="btn">Buka Ujian →</a>
-            </div>
 
-            <div class="public-card">
-                <div class="card-main">
-                    <div class="card-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                <!-- Portal Peserta -->
+                <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all text-center flex flex-col items-center">
+                    <div class="w-16 h-16 bg-cyan-50 rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9-5-9 5 9 5zm0 0v6m0-6l9 5-9 5-9-5 9 5z" />
                         </svg>
                     </div>
-                    <div>
-                        <h2>Portal Peserta</h2>
-                        <p>Cek sertifikat dan isi evaluasi pengajar</p>
-                    </div>
+                    <h3 class="font-bold text-lg mb-2">Portal Peserta</h3>
+                    <p class="text-sm text-slate-500 mb-8">Cek sertifikat dan evaluasi pengajar</p>
+                    <a href="peserta/"
+                       class="mt-auto w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold transition-colors">
+                        Masuk Portal
+                    </a>
                 </div>
-                <a href="peserta/" class="btn">Masuk →</a>
-            </div>
+
             </div>
         </div>
-    </div>
-
-    <p class="footer">Balai Teknik Air Minum &mdash; Direktorat Jenderal Cipta Karya</p>
+    </section>
 
 </body>
 </html>
