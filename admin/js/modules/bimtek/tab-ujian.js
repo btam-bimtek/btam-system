@@ -68,7 +68,7 @@ async function _listAllSessions(bimtekId) {
 // ─── RENDER ──────────────────────────────────────────────────
 
 function _render(app, el, S, exams, sessions) {
-  const canEdit = ['draft', 'planned'].includes(S.bimtek?.status);
+  const canEdit = ['draft', 'aktif'].includes(S.bimtek?.status);
 
   // Group sessions by examId
   const sessionsByExam = {};
