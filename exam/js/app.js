@@ -418,7 +418,6 @@ function _renderKodeUjianScreen() {
     const sessByExam = _sessionsL.filter(s => s.examId === _examIdL);
     const sPretest   = sessByExam.find(s => s.tipeSession === 'pretest');
     const sPosttest  = sessByExam.find(s => s.tipeSession === 'posttest');
-    const sSingle    = sessByExam.find(s => s.tipeSession !== 'pretest' && s.tipeSession !== 'posttest');
     const pretestOK  = sPretest?.status === 'submitted';
 
     // Status window ujian (dari exam data yang sudah di-load di background)
@@ -426,12 +425,19 @@ function _renderKodeUjianScreen() {
     const pretestOpen  = _isWindowOpen(examData, 'pretest');
     const posttestOpen = _isWindowOpen(examData, 'posttest');
 
-    // Ujian single (bukan pretest/posttest) — langsung ke step 5
-    if (sSingle && !sPretest && !sPosttest) {
-      s4.classList.add('hidden');
-      _tipeL = sSingle.tipeSession;
-      _renderStep5();
-      return;
+    // Ujian tunggal — ditentukan dari tipe EXAM (bukan bentuk sesinya), supaya
+    // exam 'pretest' atau 'posttest' yang dibuat berdiri sendiri (bukan gabungan
+    // 'pretest_posttest') langsung lanjut ke step 5 tanpa gerbang palsu "selesaikan
+    // pre-test dulu" — sebelumnya salah dideteksi karena tipeSession-nya kebetulan
+    // 'pretest'/'posttest' juga.
+    if (examData && examData.tipe !== 'pretest_posttest') {
+      const sessSingle = sessByExam[0];
+      if (sessSingle) {
+        s4.classList.add('hidden');
+        _tipeL = sessSingle.tipeSession;
+        _renderStep5();
+        return;
+      }
     }
 
     // lockedByPretest: post-test dikunci karena pre-test belum selesai
