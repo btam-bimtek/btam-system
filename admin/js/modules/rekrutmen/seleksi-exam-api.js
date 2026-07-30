@@ -7,7 +7,7 @@
 
 import {
   db, collection, doc, getDoc, getDocs, updateDoc, writeBatch,
-  query, where, serverTimestamp, snapToArray
+  query, where, serverTimestamp, snapToArray, setDoc
 } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { logAudit } from '../../../../shared/logger.js';
@@ -72,6 +72,39 @@ export async function generateSeleksiSessions(exam, calonList, expiredAt) {
   });
 
   return { created, skipped };
+}
+
+/**
+ * Generate sesi ujian untuk SEMUA bimtek yang punya examIdTertulis, ke SEMUA
+ * calon yang lolos administrasi di bimtek itu. Dipanggil sekali dari UI,
+ * menggantikan generate satu-per-satu.
+ * @param {object} siklus - doc siklus_seleksi (butuh bimtekPilihan)
+ * @param {object[]} calonList - semua calon (statusAdminOverall lulus)
+ * @param {Date} expiredAt
+ */
+export async function generateSeleksiSessionsBulk(siklus, calonList, expiredAt) {
+  const bimtekWithExam = (siklus.bimtekPilihan || []).filter(b => b.examIdTertulis);
+  let created = 0, skipped = 0;
+  const byBimtek = [];
+
+  for (const b of bimtekWithExam) {
+    const examSnap = await getDoc(doc(db, COL.EXAMS, b.examIdTertulis));
+    if (!examSnap.exists()) { byBimtek.push({ bimtekId: b.bimtekId, created: 0, skipped: 0, error: 'Exam tidak ditemukan' }); continue; }
+    const exam = { id: examSnap.id, ...examSnap.data() };
+
+    const eligible = calonList.filter(c => c.statusAdmin?.[b.bimtekId]?.status === 'lulus');
+    const { created: c, skipped: s } = await generateSeleksiSessions(exam, eligible, expiredAt);
+    created += c; skipped += s;
+    byBimtek.push({ bimtekId: b.bimtekId, created: c, skipped: s });
+  }
+
+  // Sinkronkan status_lookup untuk semua calon yang barusan dapat sesi baru.
+  const touchedIds = new Set(
+    bimtekWithExam.flatMap(b => calonList.filter(c => c.statusAdmin?.[b.bimtekId]?.status === 'lulus').map(c => c.id))
+  );
+  for (const id of touchedIds) await syncUjianTertulisStatusLookup(id);
+
+  return { created, skipped, byBimtek };
 }
 
 /** List sesi seleksi_tertulis untuk exam tertentu (dipakai untuk tampilkan link per calon). */
@@ -156,7 +189,8 @@ export async function scoreSeleksiSubmissions(examId) {
         query(collection(db, COL.CALON_PESERTA), where('pendaftarId', '==', pendaftarId))
       );
       if (calonSnap.empty) throw new Error('Calon peserta tidak ditemukan');
-      await updateNilaiTertulis(calonSnap.docs[0].id, skor);
+      await updateNilaiTertulis(calonSnap.docs[0].id, exam.bimtekId, skor);
+      await syncUjianTertulisStatusLookup(calonSnap.docs[0].id);
     } catch (err) {
       failed++;
       errors.push({ noPeserta: pendaftarId, error: err.message });
@@ -171,6 +205,55 @@ export async function scoreSeleksiSubmissions(examId) {
   }
 
   return { processed, failed, errors };
+}
+
+/** Sinkronkan nilai untuk SEMUA bimtek yang punya examIdTertulis sekaligus. */
+export async function scoreSeleksiSubmissionsBulk(siklus) {
+  const bimtekWithExam = (siklus.bimtekPilihan || []).filter(b => b.examIdTertulis);
+  let processed = 0, failed = 0;
+  const byBimtek = [];
+
+  for (const b of bimtekWithExam) {
+    try {
+      const { processed: p, failed: f } = await scoreSeleksiSubmissions(b.examIdTertulis);
+      processed += p; failed += f;
+      byBimtek.push({ bimtekId: b.bimtekId, processed: p, failed: f });
+    } catch (e) {
+      byBimtek.push({ bimtekId: b.bimtekId, processed: 0, failed: 0, error: e.message });
+    }
+  }
+
+  return { processed, failed, byBimtek };
+}
+
+/**
+ * Sinkronkan ringkasan semua sesi ujian seleksi_tertulis milik satu calon
+ * ke status_lookup.ujianTertulis, supaya calon bisa lihat & akses link
+ * ujiannya sendiri lewat halaman Cek Status Pendaftaran (tanpa distribusi manual).
+ */
+export async function syncUjianTertulisStatusLookup(calonDocId) {
+  const calonSnap = await getDoc(doc(db, COL.CALON_PESERTA, calonDocId));
+  if (!calonSnap.exists()) return;
+  const calon = calonSnap.data();
+
+  const sessSnap = await getDocs(
+    query(
+      collection(db, COL.EXAM_SESSIONS),
+      where('noPeserta', '==', calon.pendaftarId),
+      where('tipeSession', '==', TIPE_SESSION)
+    )
+  );
+
+  const nilaiTertulis = calon.nilaiTertulis || {};
+  const ujianTertulis = snapToArray(sessSnap).map(s => ({
+    bimtekId:   s.bimtekId,
+    namaBimtek: s.examJudul || s.bimtekId,
+    token:      s.token,
+    status:     s.status,
+    nilai:      nilaiTertulis[s.bimtekId] ?? null,
+  }));
+
+  await setDoc(doc(db, COL.STATUS_LOOKUP, calon.pendaftarId), { ujianTertulis }, { merge: true });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
