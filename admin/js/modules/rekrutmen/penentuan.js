@@ -55,7 +55,7 @@ async function _renderContent() {
   const snap = await getDocs(query(
     collection(db, COL.CALON_PESERTA),
     where('tahun', '==', _S.tahun),
-    where('statusAdmin', '==', 'lulus')
+    where('statusAdminOverall', '==', 'lulus')
   ));
   const calons = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 

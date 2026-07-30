@@ -90,7 +90,7 @@ function _renderResult(d) {
     {
       label: 'Seleksi Administrasi',
       done: !!d.statusAdminOverall && d.statusAdminOverall !== 'pending',
-      detail: d.statusAdminOverall === 'gugur' && d.statusAdminReason ? `Alasan: ${d.statusAdminReason}` : null,
+      detail: d.statusAdminOverall === 'gugur' && _gugurReasons(d.statusAdmin) ? `Alasan: ${_gugurReasons(d.statusAdmin)}` : null,
       status: d.statusAdminOverall !== 'pending' ? statusAdmin : null
     },
     {
@@ -169,6 +169,15 @@ function _header() {
 }
 function _footer() { return `<footer class="text-center py-8 text-xs text-gray-400">Balai Teknik Air Minum — Direktorat Jenderal Cipta Karya</footer>`; }
 function _esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _gugurReasons(statusAdminMap) {
+  if (!statusAdminMap || typeof statusAdminMap !== 'object') return null;
+  const reasons = [...new Set(
+    Object.values(statusAdminMap)
+      .filter(v => v && v.status === 'gugur' && v.reason)
+      .map(v => v.reason)
+  )];
+  return reasons.length ? reasons.join('; ') : null;
+}
 function _fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -190,7 +199,7 @@ function _renderUjianTertulisList(list) {
         return `
           <div class="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-3 py-2">
             <span class="text-xs text-gray-700">${_esc(u.namaBimtek)}</span>
-            <a href="exam/?token=${encodeURIComponent(u.token)}" target="_blank"
+            <a href="/exam/?token=${encodeURIComponent(u.token)}" target="_blank"
                class="text-xs font-semibold text-blue-700 hover:text-blue-900 whitespace-nowrap">
               Mulai Ujian →
             </a>
