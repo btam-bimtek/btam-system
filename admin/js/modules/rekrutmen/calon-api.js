@@ -13,14 +13,14 @@ const PER_PAGE = 30;
 
 // ─── List ────────────────────────────────────────────────────
 
-export async function listCalonPeserta({ tahun, statusAdmin = null, search = '', lastDoc = null } = {}) {
+export async function listCalonPeserta({ tahun, statusAdminOverall = null, search = '', lastDoc = null } = {}) {
   const constraints = [
     where('tahun', '==', tahun),
     orderBy('submittedAt', 'desc'),
     limit(PER_PAGE)
   ];
-  if (statusAdmin) constraints.splice(1, 0, where('statusAdmin', '==', statusAdmin));
-  if (lastDoc)     constraints.push(startAfter(lastDoc));
+  if (statusAdminOverall) constraints.splice(1, 0, where('statusAdminOverall', '==', statusAdminOverall));
+  if (lastDoc)            constraints.push(startAfter(lastDoc));
 
   const snap = await getDocs(query(collection(db, COL.CALON_PESERTA), ...constraints));
   const data = snapToArray(snap);
@@ -52,15 +52,20 @@ async function _syncStatusLookup(docId, fields) {
 
 // ─── Seleksi Administrasi ────────────────────────────────────
 
-export async function setStatusAdmin(docId, status, alasan, adminEmail) {
+export async function setStatusAdmin(docId, bimtekId, status, alasan, adminEmail) {
   const ts = Timestamp.now();
-  await updateDoc(doc(db, COL.CALON_PESERTA, docId), {
-    statusAdmin:       status,
-    statusAdminReason: alasan || null,
-    updatedAt:         ts
-  });
-  await _syncStatusLookup(docId, { statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts });
-  await logAudit({ action: 'seleksi_admin', entityType: 'calon_peserta', entityId: docId, metadata: { status, alasan } });
+  const calonSnap = await getDoc(doc(db, COL.CALON_PESERTA, docId));
+  if (!calonSnap.exists()) throw new Error('Calon tidak ditemukan');
+  const calon = calonSnap.data();
+
+  const statusAdmin = { ...(calon.statusAdmin || {}) };
+  statusAdmin[bimtekId] = { status, reason: alasan || null };
+  const statusAdminOverall = Object.values(statusAdmin).some(s => s.status === 'lulus') ? 'lulus'
+    : Object.values(statusAdmin).some(s => s.status === 'gugur') ? 'gugur' : 'pending';
+
+  await updateDoc(doc(db, COL.CALON_PESERTA, docId), { statusAdmin, statusAdminOverall, updatedAt: ts });
+  await _syncStatusLookup(docId, { statusAdmin, statusAdminOverall, updatedAt: ts });
+  await logAudit({ action: 'seleksi_admin', entityType: 'calon_peserta', entityId: docId, metadata: { bimtekId, status, alasan } });
 }
 
 /**
@@ -74,12 +79,10 @@ export async function applyAdminRules(tahun, bimtekPilihan, adminEmail) {
   const snap = await getDocs(
     query(collection(db, COL.CALON_PESERTA),
       where('tahun', '==', tahun),
-      where('statusAdmin', '==', 'pending'))
+      where('statusAdminOverall', '==', 'pending'))
   );
 
-  // Buat map bimtekId → config aturan untuk lookup cepat
   const bimtekMap = Object.fromEntries((bimtekPilihan || []).map(b => [b.bimtekId, b]));
-  const totalRules = (bimtekPilihan || []).reduce((n, b) => n + (b.adminRules?.length || 0), 0);
 
   let lulus = 0, gugur = 0;
   const errors = [];
@@ -88,46 +91,46 @@ export async function applyAdminRules(tahun, bimtekPilihan, adminEmail) {
     const calon   = { id: d.id, ...d.data() };
     const pilihan = calon.pilihanBimtekIds || [];
 
-    let passes = false;
-    let reason = 'Tidak memenuhi kriteria administrasi untuk semua pilihan bimtek';
+    const statusAdmin = {};
+    let anyLulus = false;
 
-    // Jika tidak ada bimtek pilihan terkonfigurasi, semua lolos (tidak ada aturan)
     if (!bimtekPilihan?.length) {
-      passes = true;
-    } else {
-      for (const bimtekId of pilihan) {
-        const bimtek = bimtekMap[bimtekId];
-        if (!bimtek) continue;
-
-        const rules = bimtek.adminRules || [];
-        if (!_evalRules(calon, rules)) continue;
-
-        if (bimtek.larangRepeatBimtek3Tahun) {
-          const repeat = await _pernahTerpilihDiBimtek(calon, bimtekId, tahun);
-          if (repeat) {
-            reason = `Pernah terpilih di ${bimtek.namaBimtek || bimtekId} pada tahun ${repeat.tahun}`;
-            continue;
-          }
-        }
-
-        passes = true;
-        break;
-      }
+      // Tidak ada bimtek terkonfigurasi — tidak ada yang bisa dievaluasi, biarkan pending.
+      continue;
     }
 
+    for (const bimtekId of pilihan) {
+      const bimtek = bimtekMap[bimtekId];
+      if (!bimtek) continue;
+
+      const rules = bimtek.adminRules || [];
+      let passes = _evalRules(calon, rules);
+      let reason = passes ? null : 'Tidak memenuhi kriteria administrasi bimtek ini';
+
+      if (passes && bimtek.larangRepeatBimtek3Tahun) {
+        const repeat = await _pernahTerpilihDiBimtek(calon, bimtekId, tahun);
+        if (repeat) {
+          passes = false;
+          reason = `Pernah terpilih di ${bimtek.namaBimtek || bimtekId} pada tahun ${repeat.tahun}`;
+        }
+      }
+
+      statusAdmin[bimtekId] = { status: passes ? 'lulus' : 'gugur', reason };
+      if (passes) anyLulus = true;
+    }
+
+    const statusAdminOverall = anyLulus ? 'lulus' : 'gugur';
     const ts = Timestamp.now();
-    const statusAdmin       = passes ? 'lulus' : 'gugur';
-    const statusAdminReason = passes ? null : reason;
     try {
-      await updateDoc(doc(db, COL.CALON_PESERTA, d.id), { statusAdmin, statusAdminReason, updatedAt: ts });
-      await setDoc(doc(db, COL.STATUS_LOOKUP, calon.pendaftarId), { statusAdmin, statusAdminReason, updatedAt: ts }, { merge: true });
-      passes ? lulus++ : gugur++;
+      await updateDoc(doc(db, COL.CALON_PESERTA, d.id), { statusAdmin, statusAdminOverall, updatedAt: ts });
+      await setDoc(doc(db, COL.STATUS_LOOKUP, calon.pendaftarId), { statusAdmin, statusAdminOverall, updatedAt: ts }, { merge: true });
+      anyLulus ? lulus++ : gugur++;
     } catch (e) {
       errors.push(`${calon.pendaftarId}: ${e.message}`);
     }
   }
 
-  await logAudit({ action: 'apply_admin_rules', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { lulus, gugur, totalRules, bimtekCount: (bimtekPilihan||[]).length } });
+  await logAudit({ action: 'apply_admin_rules', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { lulus, gugur, bimtekCount: (bimtekPilihan||[]).length } });
   return { lulus, gugur, errors };
 }
 
@@ -157,15 +160,8 @@ async function _pernahTerpilihDiBimtek(calon, bimtekId, tahun) {
 /**
  * Bulk update status administrasi untuk sekumpulan docId.
  */
-export async function bulkSetStatusAdmin(docIds, status, alasan, adminEmail) {
-  const ts = Timestamp.now();
-  await Promise.all(docIds.map(async id => {
-    await updateDoc(doc(db, COL.CALON_PESERTA, id), {
-      statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts
-    });
-    await _syncStatusLookup(id, { statusAdmin: status, statusAdminReason: alasan || null, updatedAt: ts });
-  }));
-  await logAudit({ action: 'bulk_seleksi_admin', entityType: 'calon_peserta', entityId: 'batch', metadata: { count: docIds.length, status } });
+export async function bulkSetStatusAdmin(ids, bimtekId, status, alasan, adminEmail) {
+  await Promise.all(ids.map(id => setStatusAdmin(id, bimtekId, status, alasan, adminEmail)));
 }
 
 // ─── Hapus Calon Peserta ──────────────────────────────────────
@@ -196,15 +192,19 @@ export async function bulkDeleteCalonPeserta(docIds, adminEmail) {
 
 // ─── Nilai Tertulis ──────────────────────────────────────────
 
-export async function updateNilaiTertulis(docId, nilai, adminEmail) {
-  const statusTertulis = nilai >= 60 ? 'lulus' : 'gugur'; // threshold bisa dikonfigurasi
+export async function updateNilaiTertulis(docId, bimtekId, nilai, adminEmail) {
+  const statusTertulisVal = nilai >= 60 ? 'lulus' : 'gugur'; // threshold bisa dikonfigurasi
   const ts = Timestamp.now();
   await updateDoc(doc(db, COL.CALON_PESERTA, docId), {
-    nilaiTertulis:   nilai,
-    statusTertulis:  statusTertulis,
-    updatedAt:       ts
+    [`nilaiTertulis.${bimtekId}`]:  nilai,
+    [`statusTertulis.${bimtekId}`]: statusTertulisVal,
+    updatedAt: ts
   });
-  await _syncStatusLookup(docId, { nilaiTertulis: nilai, statusTertulis, updatedAt: ts });
+  await _syncStatusLookup(docId, {
+    [`nilaiTertulis.${bimtekId}`]:  nilai,
+    [`statusTertulis.${bimtekId}`]: statusTertulisVal,
+    updatedAt: ts
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
