@@ -89,9 +89,9 @@ function _renderResult(d) {
     },
     {
       label: 'Seleksi Administrasi',
-      done: !!d.statusAdmin && d.statusAdmin !== 'pending',
-      detail: d.statusAdmin === 'gugur' && d.statusAdminReason ? `Alasan: ${d.statusAdminReason}` : null,
-      status: d.statusAdmin !== 'pending' ? statusAdmin : null
+      done: !!d.statusAdminOverall && d.statusAdminOverall !== 'pending',
+      detail: d.statusAdminOverall === 'gugur' && d.statusAdminReason ? `Alasan: ${d.statusAdminReason}` : null,
+      status: d.statusAdminOverall !== 'pending' ? statusAdmin : null
     },
     {
       label: 'Seleksi Tertulis',
