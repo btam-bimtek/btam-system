@@ -5,14 +5,10 @@ import { setPageTitle }  from '../../layout/navbar.js';
 import { showToast }     from '../../components/toast.js';
 import { getState }      from '../../store.js';
 import { listSiklus, getSiklus, updateSiklus } from './siklus-api.js';
-import { generateSeleksiSessionsBulk, listSeleksiSessions, scoreSeleksiSubmissionsBulk } from './seleksi-exam-api.js';
+import { listSeleksiSessions, scoreSeleksiSubmissionsBulk, syncSeleksiEnrollment } from './seleksi-exam-api.js';
 import { setExamIdTertulis } from './siklus-api.js';
 import { listExams } from '../bimtek/exam-api.js';
-import { db }            from '../../../../shared/firebase-config.js';
-import {
-  collection, doc, getDoc, getDocs, query, where, orderBy, updateDoc, Timestamp
-} from '../../../../shared/db.js';
-import { COL } from '../../../../shared/constants.js';
+import { showExamModal } from '../bimtek/exam-modal.js';
 
 let _S = { tahun: null, siklus: null };
 
@@ -60,7 +56,15 @@ async function _renderContent() {
 
       <!-- Konfigurasi Exam per Bimtek -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Ujian Seleksi Tertulis per Bimtek</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-white">Ujian Seleksi Tertulis per Bimtek</h2>
+          <button id="btn-buat-exam-tertulis" class="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors">
+            + Buat Exam Baru
+          </button>
+        </div>
+        <p class="text-xs text-gray-600 mb-3">
+          Exam seleksi tertulis berdiri sendiri (tidak terikat ke satu bimtek) — pilih soal dari Bank Soal, lalu tautkan ke bimtek yang sesuai di bawah ini.
+        </p>
         ${bimtekPilihan.length === 0 ? `
           <p class="text-sm text-gray-500">Belum ada bimtek dikonfigurasi. Atur di tab Kuota &amp; Aturan Bimtek.</p>` : `
           <div class="space-y-2" id="bimtek-exam-list">
@@ -119,18 +123,23 @@ async function _renderContent() {
         </div>` : ''}
     </div>`;
 
+  // Exam seleksi tertulis berdiri sendiri (bimtekId null) — satu pool dipakai
+  // untuk semua dropdown bimtek, bukan di-query ulang per bimtek.
+  const examsStandalone = (await listExams(null)).filter(e => e.tipe === 'seleksi_tertulis');
+
   for (const b of bimtekPilihan) {
     const sel = document.querySelector(`.sel-exam-bimtek[data-bimtek-id="${b.bimtekId}"]`);
     if (!sel) continue;
-    const exams = (await listExams(b.bimtekId)).filter(e => e.tipe === 'seleksi_tertulis');
     sel.innerHTML = `<option value="">— Belum dipilih —</option>` +
-      exams.map(e => `<option value="${_esc(e.id)}" ${e.id === b.examIdTertulis ? 'selected' : ''}>${_esc(e.judul)}</option>`).join('');
+      examsStandalone.map(e => `<option value="${_esc(e.id)}" ${e.id === b.examIdTertulis ? 'selected' : ''}>${_esc(e.judul)}</option>`).join('');
     sel.addEventListener('change', async () => {
       const email = getState('auth')?.user?.email;
       try {
         await setExamIdTertulis(_S.tahun, b.bimtekId, sel.value || null, email);
         _S.siklus = await getSiklus(_S.tahun);
         showToast('Exam ditautkan', 'success');
+        const { created } = await syncSeleksiEnrollment(_S.siklus);
+        if (created > 0) showToast(`${created} sesi ujian dibuat otomatis untuk calon yang sudah lulus`, 'success');
       } catch (e) { showToast(e.message, 'error'); }
     });
   }
@@ -191,12 +200,9 @@ function _bindContentEvents() {
 
   document.getElementById('btn-gen-links-bulk')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-gen-links-bulk');
-    const lulusAdminList = await _fetchLulusAdminList();
-    if (!lulusAdminList.length) { showToast('Belum ada calon yang lolos administrasi di bimtek manapun.', 'info'); return; }
     btn.disabled = true; btn.textContent = 'Memproses...';
     try {
-      const expiredAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
-      const { created, skipped } = await generateSeleksiSessionsBulk(_S.siklus, lulusAdminList, expiredAt);
+      const { created, skipped } = await syncSeleksiEnrollment(_S.siklus);
       showToast(`${created} sesi dibuat, ${skipped} sudah ada (dilewati)`, 'success');
       _renderContent();
     } catch (e) {
@@ -205,17 +211,16 @@ function _bindContentEvents() {
       btn.disabled = false; btn.textContent = 'Generate Magic Link (Semua Bimtek)';
     }
   });
-}
 
-async function _fetchLulusAdminList() {
-  try {
-    const snap = await getDocs(query(
-      collection(db, COL.CALON_PESERTA),
-      where('tahun', '==', _S.tahun),
-      where('statusAdminOverall', '==', 'lulus')
-    ));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) { return []; }
+  document.getElementById('btn-buat-exam-tertulis')?.addEventListener('click', () => {
+    showExamModal({
+      bimtekId: null,
+      bidangIds: [],
+      exam: null,
+      defaultTipe: 'seleksi_tertulis',
+      onSaved: () => _renderContent(),
+    });
+  });
 }
 
 function _tsToInput(ts) {

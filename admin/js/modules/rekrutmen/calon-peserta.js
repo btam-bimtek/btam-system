@@ -12,6 +12,7 @@ import {
   setStatusAdmin, applyAdminRules, bulkSetStatusAdmin,
   deleteCalonPeserta, bulkDeleteCalonPeserta
 } from './calon-api.js';
+import { syncSeleksiEnrollment } from './seleksi-exam-api.js';
 import { SIKLUS_STATUS_LABEL } from '../../../../shared/constants.js';
 
 let _S = { tahun: null, siklus: null, data: [], lastDoc: null, filter: 'all', search: '', selected: new Set() };
@@ -333,6 +334,7 @@ async function _openDetailModal(docId) {
             }
             showToast('Status diperbarui', 'success');
             modal.close();
+            await _syncEnrollmentSilently();
             await _load();
           } catch (e) { showToast(e.message, 'error'); }
         }
@@ -363,6 +365,7 @@ async function _applyRules() {
   try {
     const { lulus, gugur, errors } = await applyAdminRules(_S.tahun, bimtekPilihan, email);
     showToast(`Selesai: ${lulus} lulus, ${gugur} gugur.${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
+    await _syncEnrollmentSilently();
     await _load();
   } catch (e) { showToast(e.message, 'error'); }
 }
@@ -399,6 +402,7 @@ async function _bulkAction(status) {
             await bulkSetStatusAdmin(ids, bimtekId, status, null, email);
             modal.close();
             showToast(`${ids.length} pendaftar di-set ${status}`, 'success');
+            await _syncEnrollmentSilently();
             await _load();
           } catch (e) { showToast(e.message, 'error'); }
         }
@@ -447,6 +451,20 @@ async function _bulkDelete() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
+
+/**
+ * Auto-enroll calon yang baru lulus administrasi ke ujian tertulis (kalau
+ * exam-nya sudah ditautkan). Dipanggil setelah tiap aksi ubah status admin.
+ * Gagal diam-diam kecuali ada sesi baru dibuat — supaya tidak mengganggu alur
+ * utama (ubah status) kalau sinkronisasi ini gagal.
+ */
+async function _syncEnrollmentSilently() {
+  if (!_S.siklus) return;
+  try {
+    const { created } = await syncSeleksiEnrollment(_S.siklus);
+    if (created > 0) showToast(`${created} sesi ujian tertulis dibuat otomatis`, 'success');
+  } catch (e) { console.warn('[syncSeleksiEnrollment]', e.message); }
+}
 
 function _sectionDetail(title, rows) {
   return `

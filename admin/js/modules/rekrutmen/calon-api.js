@@ -41,6 +41,16 @@ export async function getCalonPeserta(docId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+/** Semua calon yang lulus administrasi (di bimtek manapun) untuk satu tahun siklus. */
+export async function getLulusAdminCalon(tahun) {
+  const snap = await getDocs(query(
+    collection(db, COL.CALON_PESERTA),
+    where('tahun', '==', tahun),
+    where('statusAdminOverall', '==', 'lulus')
+  ));
+  return snapToArray(snap);
+}
+
 // ─── status_lookup (salinan ringkas untuk cek status publik) ─
 
 async function _syncStatusLookup(docId, fields) {

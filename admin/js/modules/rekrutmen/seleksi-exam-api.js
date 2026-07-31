@@ -13,7 +13,7 @@ import { COL } from '../../../../shared/constants.js';
 import { logAudit } from '../../../../shared/logger.js';
 import { getCurrentUser } from '../../../../shared/auth.js';
 import { hitungSkor } from '../bimtek/scorer.js';
-import { updateNilaiTertulis } from './calon-api.js';
+import { updateNilaiTertulis, getLulusAdminCalon } from './calon-api.js';
 
 const TIPE_SESSION = 'seleksi_tertulis';
 
@@ -105,6 +105,20 @@ export async function generateSeleksiSessionsBulk(siklus, calonList, expiredAt) 
   for (const id of touchedIds) await syncUjianTertulisStatusLookup(id);
 
   return { created, skipped, byBimtek };
+}
+
+/**
+ * Sinkronkan pendaftaran ujian tertulis untuk seluruh calon yang sudah lulus
+ * administrasi di siklus ini — dipanggil otomatis tiap kali status admin
+ * berubah jadi lulus (manual/bulk/rules) atau exam baru ditautkan ke bimtek,
+ * supaya calon langsung jadi peserta ujian tanpa admin perlu klik generate
+ * manual. Aman dipanggil berkali-kali (generateSeleksiSessions idempotent —
+ * skip yang sudah punya sesi).
+ */
+export async function syncSeleksiEnrollment(siklus) {
+  const calonList = await getLulusAdminCalon(siklus.tahun);
+  const expiredAt = _toDate(siklus.phases?.tertulis?.end) ?? new Date(Date.now() + 72 * 60 * 60 * 1000);
+  return generateSeleksiSessionsBulk(siklus, calonList, expiredAt);
 }
 
 /** List sesi seleksi_tertulis untuk exam tertentu (dipakai untuk tampilkan link per calon). */
@@ -280,4 +294,12 @@ function _generateToken() {
     const r = Math.random() * 16 | 0;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
+}
+
+function _toDate(ts) {
+  if (!ts) return null;
+  if (ts.toDate)          return ts.toDate();
+  if (ts instanceof Date) return ts;
+  if (ts.seconds)         return new Date(ts.seconds * 1000);
+  return new Date(ts);
 }
