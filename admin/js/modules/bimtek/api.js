@@ -62,8 +62,7 @@ export async function generateBimtekAccessCode(bimtekId) {
 export async function listBimtek({ tipe, status, bidangId } = {}) {
   let q = query(
     collection(db, COL),
-    where('deleted', '==', false),
-    orderBy('createdAt', 'desc')
+    where('deleted', '==', false)
   );
   const snap = await getDocs(q);
   let results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -73,7 +72,17 @@ export async function listBimtek({ tipe, status, bidangId } = {}) {
   if (status) results = results.filter(b => b.status === status);
   if (bidangId) results = results.filter(b => b.bidangIds?.includes(bidangId));
 
+  // Urutkan berdasarkan tanggal mulai bimtek (yang lebih dahulu di atas)
+  results.sort((a, b) => _toMillis(a.tanggalMulai) - _toMillis(b.tanggalMulai));
+
   return results;
+}
+
+function _toMillis(tanggal) {
+  if (!tanggal) return Infinity;
+  if (typeof tanggal.toMillis === 'function') return tanggal.toMillis();
+  const t = new Date(tanggal).getTime();
+  return Number.isNaN(t) ? Infinity : t;
 }
 
 // ─── GET SINGLE BIMTEK ──────────────────────────────────────────────────────
