@@ -110,6 +110,22 @@ export async function updateKuota(tahun, bimtekPilihan, adminEmail) {
   await logAudit({ action: 'update_kuota', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { count: bimtekPilihan.length } });
 }
 
+// ─── Exam Tertulis per Bimtek ────────────────────────────────
+
+/** Tautkan/ganti exam seleksi tertulis untuk satu bimtek dalam siklus. */
+export async function setExamIdTertulis(tahun, bimtekId, examId, adminEmail) {
+  const docRef = doc(db, COL.SIKLUS_SELEKSI, String(tahun));
+  const snap   = await getDoc(docRef);
+  if (!snap.exists()) throw new Error(`Siklus tahun ${tahun} tidak ditemukan`);
+
+  const bimtekPilihan = (snap.data().bimtekPilihan || []).map(b =>
+    b.bimtekId === bimtekId ? { ...b, examIdTertulis: examId } : b
+  );
+
+  await updateDoc(docRef, { bimtekPilihan, updatedAt: Timestamp.now() });
+  await logAudit({ action: 'set_exam_tertulis', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { bimtekId, examId } });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function _convertPhaseDates(payload) {

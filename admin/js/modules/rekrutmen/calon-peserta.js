@@ -12,6 +12,7 @@ import {
   setStatusAdmin, applyAdminRules, bulkSetStatusAdmin,
   deleteCalonPeserta, bulkDeleteCalonPeserta
 } from './calon-api.js';
+import { syncSeleksiEnrollment } from './seleksi-exam-api.js';
 import { SIKLUS_STATUS_LABEL } from '../../../../shared/constants.js';
 
 let _S = { tahun: null, siklus: null, data: [], lastDoc: null, filter: 'all', search: '', selected: new Set() };
@@ -80,7 +81,7 @@ async function _load(reset = true) {
   try {
     const { data, lastDoc } = await listCalonPeserta({
       tahun: _S.tahun,
-      statusAdmin: _S.filter !== 'all' ? _S.filter : null,
+      statusAdminOverall: _S.filter !== 'all' ? _S.filter : null,
       search: _S.search,
       lastDoc: reset ? null : _S.lastDoc
     });
@@ -131,11 +132,12 @@ function _renderTable() {
 }
 
 function _renderRow(d) {
+  const lulusCount = Object.values(d.statusAdmin || {}).filter(s => s.status === 'lulus').length;
   const statusBadge = {
     pending: '<span class="badge badge-yellow">Pending</span>',
-    lulus:   '<span class="badge badge-green">Lulus</span>',
+    lulus:   `<span class="badge badge-green">Lulus (${lulusCount} bimtek)</span>`,
     gugur:   '<span class="badge badge-red">Gugur</span>'
-  }[d.statusAdmin] ?? d.statusAdmin;
+  }[d.statusAdminOverall] ?? d.statusAdminOverall;
 
   const pilihan = (d.pilihanBimtekIds || []).slice(0, 2).map((id, i) => {
     const b = (_S.siklus?.bimtekPilihan || []).find(x => x.bimtekId === id);
@@ -279,22 +281,30 @@ async function _openDetailModal(docId) {
       </div>
       ${calon.ktpUrl ? `<div><a href="${calon.ktpUrl}" target="_blank" class="text-xs text-blue-400 underline">Lihat KTP →</a></div>` : ''}
 
-      <!-- Seleksi admin -->
-      <div class="border-t border-gray-800 pt-4">
-        <p class="text-xs font-medium text-gray-400 mb-2">Keputusan Administrasi</p>
-        <div class="flex gap-2 flex-wrap items-end">
-          <div class="flex-1">
-            <select id="sel-status-admin" class="form-input text-sm py-1.5">
-              <option value="pending" ${calon.statusAdmin === 'pending' ? 'selected' : ''}>Pending</option>
-              <option value="lulus"   ${calon.statusAdmin === 'lulus'   ? 'selected' : ''}>Lulus Administrasi</option>
-              <option value="gugur"   ${calon.statusAdmin === 'gugur'   ? 'selected' : ''}>Gugur Administrasi</option>
-            </select>
-          </div>
-          <div class="flex-1">
-            <input id="inp-alasan" type="text" class="form-input text-sm py-1.5"
-                   placeholder="Alasan (opsional)" value="${_esc(calon.statusAdminReason ?? '')}" />
-          </div>
-        </div>
+      <!-- Seleksi admin per bimtek -->
+      <div class="border-t border-gray-800 pt-4 space-y-3">
+        <p class="text-xs font-medium text-gray-400 mb-2">Keputusan Administrasi per Bimtek</p>
+        ${(calon.pilihanBimtekIds || []).map(bimtekId => {
+          const b = bimteks.find(x => x.bimtekId === bimtekId);
+          const cur = calon.statusAdmin?.[bimtekId] || { status: 'pending', reason: null };
+          return `
+          <div class="bg-gray-800/50 rounded-lg p-3">
+            <p class="text-xs text-gray-300 font-medium mb-2">${_esc(b?.namaBimtek ?? bimtekId)}</p>
+            <div class="flex gap-2 flex-wrap items-end">
+              <div class="flex-1">
+                <select class="sel-status-admin-bimtek form-input text-sm py-1.5" data-bimtek-id="${_esc(bimtekId)}">
+                  <option value="pending" ${cur.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="lulus"   ${cur.status === 'lulus'   ? 'selected' : ''}>Lulus Administrasi</option>
+                  <option value="gugur"   ${cur.status === 'gugur'   ? 'selected' : ''}>Gugur Administrasi</option>
+                </select>
+              </div>
+              <div class="flex-1">
+                <input type="text" class="inp-alasan-bimtek form-input text-sm py-1.5" data-bimtek-id="${_esc(bimtekId)}"
+                       placeholder="Alasan (opsional)" value="${_esc(cur.reason ?? '')}" />
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
 
@@ -314,12 +324,17 @@ async function _openDetailModal(docId) {
       {
         label: 'Simpan Keputusan', type: 'primary',
         onClick: async () => {
-          const status = document.getElementById('sel-status-admin')?.value;
-          const alasan = document.getElementById('inp-alasan')?.value.trim();
           try {
-            await setStatusAdmin(docId, status, alasan, email);
+            const selects = document.querySelectorAll('.sel-status-admin-bimtek');
+            for (const sel of selects) {
+              const bimtekId = sel.dataset.bimtekId;
+              const status   = sel.value;
+              const alasan   = document.querySelector(`.inp-alasan-bimtek[data-bimtek-id="${bimtekId}"]`)?.value.trim();
+              await setStatusAdmin(docId, bimtekId, status, alasan, email);
+            }
             showToast('Status diperbarui', 'success');
             modal.close();
+            await _syncEnrollmentSilently();
             await _load();
           } catch (e) { showToast(e.message, 'error'); }
         }
@@ -350,6 +365,7 @@ async function _applyRules() {
   try {
     const { lulus, gugur, errors } = await applyAdminRules(_S.tahun, bimtekPilihan, email);
     showToast(`Selesai: ${lulus} lulus, ${gugur} gugur.${errors.length ? ` ${errors.length} error.` : ''}`, 'success');
+    await _syncEnrollmentSilently();
     await _load();
   } catch (e) { showToast(e.message, 'error'); }
 }
@@ -359,20 +375,40 @@ async function _applyRules() {
 async function _bulkAction(status) {
   if (!requireWrite()) return;
   const ids = [..._S.selected];
-  const ok  = await confirmDialog({
-    title: `Set ${ids.length} pendaftar → ${status === 'lulus' ? 'Lulus' : 'Gugur'}?`,
-    message: `Tindakan ini akan mengubah status administrasi ${ids.length} pendaftar yang dipilih.`,
-    confirmLabel: status === 'lulus' ? 'Lulus' : 'Gugur',
-    danger: status === 'gugur'
-  });
-  if (!ok) return;
+  const bimteks = _S.siklus?.bimtekPilihan || [];
+  if (!bimteks.length) { showToast('Belum ada bimtek dikonfigurasi di siklus ini.', 'error'); return; }
 
-  const email = getState('auth')?.user?.email;
-  try {
-    await bulkSetStatusAdmin(ids, status, null, email);
-    showToast(`${ids.length} pendaftar di-set ${status}`, 'success');
-    await _load();
-  } catch (e) { showToast(e.message, 'error'); }
+  const body = `
+    <div class="space-y-3">
+      <p class="text-sm text-gray-400">Set status administrasi ${ids.length} pendaftar untuk bimtek yang dipilih.</p>
+      <select id="sel-bulk-bimtek" class="form-input w-full">
+        ${bimteks.map(b => `<option value="${_esc(b.bimtekId)}">${_esc(b.namaBimtek)}</option>`).join('')}
+      </select>
+    </div>`;
+
+  const modal = openModal({
+    title: `Set ${ids.length} pendaftar → ${status === 'lulus' ? 'Lulus' : 'Gugur'}`,
+    body,
+    size: 'sm',
+    actions: [
+      { label: 'Batal', type: 'secondary', onClick: () => modal.close() },
+      {
+        label: status === 'lulus' ? 'Lulus' : 'Gugur', type: 'primary',
+        onClick: async () => {
+          const bimtekId = document.getElementById('sel-bulk-bimtek')?.value;
+          if (!bimtekId) return;
+          const email = getState('auth')?.user?.email;
+          try {
+            await bulkSetStatusAdmin(ids, bimtekId, status, null, email);
+            modal.close();
+            showToast(`${ids.length} pendaftar di-set ${status}`, 'success');
+            await _syncEnrollmentSilently();
+            await _load();
+          } catch (e) { showToast(e.message, 'error'); }
+        }
+      }
+    ]
+  });
 }
 
 // ─── Hapus ───────────────────────────────────────────────────
@@ -415,6 +451,20 @@ async function _bulkDelete() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
+
+/**
+ * Auto-enroll calon yang baru lulus administrasi ke ujian tertulis (kalau
+ * exam-nya sudah ditautkan). Dipanggil setelah tiap aksi ubah status admin.
+ * Gagal diam-diam kecuali ada sesi baru dibuat — supaya tidak mengganggu alur
+ * utama (ubah status) kalau sinkronisasi ini gagal.
+ */
+async function _syncEnrollmentSilently() {
+  if (!_S.siklus) return;
+  try {
+    const { created } = await syncSeleksiEnrollment(_S.siklus);
+    if (created > 0) showToast(`${created} sesi ujian tertulis dibuat otomatis`, 'success');
+  } catch (e) { console.warn('[syncSeleksiEnrollment]', e.message); }
+}
 
 function _sectionDetail(title, rows) {
   return `

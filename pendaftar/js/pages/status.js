@@ -72,14 +72,7 @@ function _renderResult(d) {
     pending: { label: 'Menunggu Verifikasi', color: 'bg-yellow-100 text-yellow-700' },
     lulus:   { label: 'Lulus Administrasi',  color: 'bg-green-100 text-green-700' },
     gugur:   { label: 'Gugur Administrasi',  color: 'bg-red-100 text-red-700' }
-  }[d.statusAdmin] ?? { label: d.statusAdmin, color: 'bg-gray-100 text-gray-600' };
-
-  const statusTertulis = {
-    belum_ujian: { label: 'Belum Ujian',   color: 'bg-gray-100 text-gray-600' },
-    ujian:       { label: 'Sedang Ujian',  color: 'bg-blue-100 text-blue-700' },
-    lulus:       { label: 'Lulus',         color: 'bg-green-100 text-green-700' },
-    gugur:       { label: 'Tidak Lulus',   color: 'bg-red-100 text-red-700' }
-  }[d.statusTertulis];
+  }[d.statusAdminOverall] ?? { label: d.statusAdminOverall, color: 'bg-gray-100 text-gray-600' };
 
   const statusFinal = {
     terpilih:       { label: 'Terpilih sebagai Peserta', color: 'bg-green-100 text-green-700', icon: '🎉' },
@@ -96,15 +89,16 @@ function _renderResult(d) {
     },
     {
       label: 'Seleksi Administrasi',
-      done: !!d.statusAdmin && d.statusAdmin !== 'pending',
-      detail: d.statusAdmin === 'gugur' && d.statusAdminReason ? `Alasan: ${d.statusAdminReason}` : null,
-      status: d.statusAdmin !== 'pending' ? statusAdmin : null
+      done: !!d.statusAdminOverall && d.statusAdminOverall !== 'pending',
+      detail: d.statusAdminOverall === 'gugur' && _gugurReasons(d.statusAdmin) ? `Alasan: ${_gugurReasons(d.statusAdmin)}` : null,
+      status: d.statusAdminOverall !== 'pending' ? statusAdmin : null
     },
     {
       label: 'Seleksi Tertulis',
-      done: !!d.statusTertulis,
-      detail: d.nilaiTertulis != null ? `Nilai: ${d.nilaiTertulis}` : null,
-      status: statusTertulis ?? null
+      done: (d.ujianTertulis || []).length > 0 && d.ujianTertulis.every(u => u.status === 'submitted'),
+      detail: null,
+      status: null,
+      customBody: _renderUjianTertulisList(d.ujianTertulis || [])
     },
     {
       label: 'Penentuan Peserta',
@@ -144,6 +138,7 @@ function _renderResult(d) {
                 ${step.status ? `<span class="text-xs px-2 py-0.5 rounded-full font-medium ${step.status.color}">${step.status.label}</span>` : ''}
               </div>
               ${step.detail ? `<p class="text-xs text-gray-500 mt-0.5">${_esc(step.detail)}</p>` : ''}
+              ${step.customBody || ''}
             </div>
           </div>`).join('')}
       </div>
@@ -174,8 +169,41 @@ function _header() {
 }
 function _footer() { return `<footer class="text-center py-8 text-xs text-gray-400">Balai Teknik Air Minum — Direktorat Jenderal Cipta Karya</footer>`; }
 function _esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _gugurReasons(statusAdminMap) {
+  if (!statusAdminMap || typeof statusAdminMap !== 'object') return null;
+  const reasons = [...new Set(
+    Object.values(statusAdminMap)
+      .filter(v => v && v.status === 'gugur' && v.reason)
+      .map(v => v.reason)
+  )];
+  return reasons.length ? reasons.join('; ') : null;
+}
 function _fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function _renderUjianTertulisList(list) {
+  if (!list.length) return '';
+  return `
+    <div class="mt-2 space-y-1.5">
+      ${list.map(u => {
+        if (u.status === 'submitted') {
+          return `
+            <div class="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2">
+              <span class="text-xs text-gray-600">${_esc(u.namaBimtek)}</span>
+              <span class="text-xs font-medium text-gray-700">${u.nilai != null ? `Nilai: ${u.nilai}` : 'Menunggu Penilaian'}</span>
+            </div>`;
+        }
+        return `
+          <div class="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-3 py-2">
+            <span class="text-xs text-gray-700">${_esc(u.namaBimtek)}</span>
+            <a href="/exam/?token=${encodeURIComponent(u.token)}" target="_blank"
+               class="text-xs font-semibold text-blue-700 hover:text-blue-900 whitespace-nowrap">
+              Mulai Ujian →
+            </a>
+          </div>`;
+      }).join('')}
+    </div>`;
 }
