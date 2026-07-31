@@ -3,11 +3,12 @@
 
 import { setPageTitle }  from '../../layout/navbar.js';
 import { showToast }     from '../../components/toast.js';
+import { confirmDialog } from '../../components/modal.js';
 import { getState }      from '../../store.js';
 import { listSiklus, getSiklus, updateSiklus } from './siklus-api.js';
 import { listSeleksiSessions, scoreSeleksiSubmissionsBulk, syncSeleksiEnrollment } from './seleksi-exam-api.js';
 import { setExamIdTertulis } from './siklus-api.js';
-import { listExams, publishExam, setExamWindow } from '../bimtek/exam-api.js';
+import { listExams, publishExam, setExamWindow, deleteExam } from '../bimtek/exam-api.js';
 import { showExamModal } from '../bimtek/exam-modal.js';
 
 let _S = { tahun: null, siklus: null };
@@ -88,6 +89,12 @@ async function _renderContent() {
                   <button class="btn-toggle-publish-exam text-xs px-2.5 py-1 rounded-lg transition-colors ${e.published ? 'bg-yellow-900/50 hover:bg-yellow-900 text-yellow-300' : 'bg-green-900/50 hover:bg-green-900 text-green-300'}"
                           data-id="${_esc(e.id)}" data-published="${e.published}">
                     ${e.published ? 'Unpublish' : 'Publish'}
+                  </button>
+                  <button class="btn-edit-exam-tertulis text-xs px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors" data-id="${_esc(e.id)}">
+                    Edit
+                  </button>
+                  <button class="btn-delete-exam-tertulis text-xs px-2.5 py-1 rounded-lg bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors" data-id="${_esc(e.id)}">
+                    Hapus
                   </button>
                 </div>
               </div>`;
@@ -173,7 +180,7 @@ async function _renderContent() {
     });
   }
 
-  _bindContentEvents();
+  _bindContentEvents(examsStandalone);
 }
 
 async function _renderMonitorPerBimtek(bimtekPilihan) {
@@ -197,7 +204,7 @@ async function _renderMonitorPerBimtek(bimtekPilihan) {
   return blocks.join('') || '<p class="text-sm text-gray-500">Belum ada bimtek dengan exam tertaut.</p>';
 }
 
-function _bindContentEvents() {
+function _bindContentEvents(examsStandalone) {
   const email = getState('auth')?.user?.email;
 
   document.getElementById('btn-save-window')?.addEventListener('click', async () => {
@@ -257,6 +264,32 @@ function _bindContentEvents() {
       try {
         await publishExam(btn.dataset.id, !published);
         showToast(published ? 'Exam di-unpublish' : 'Exam dipublish', 'success');
+        _renderContent();
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+  });
+
+  document.querySelectorAll('.btn-edit-exam-tertulis').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exam = examsStandalone.find(e => e.id === btn.dataset.id);
+      if (!exam) return;
+      showExamModal({
+        bimtekId: null,
+        bidangIds: [],
+        exam,
+        defaultTipe: 'seleksi_tertulis',
+        onSaved: () => _renderContent(),
+      });
+    });
+  });
+
+  document.querySelectorAll('.btn-delete-exam-tertulis').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog({ title: 'Hapus Ujian', message: 'Hapus ujian ini beserta semua sesi pesertanya?', danger: true });
+      if (!ok) return;
+      try {
+        await deleteExam(btn.dataset.id);
+        showToast('Ujian dihapus', 'success');
         _renderContent();
       } catch (e) { showToast(e.message, 'error'); }
     });
