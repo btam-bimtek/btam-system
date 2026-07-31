@@ -7,7 +7,7 @@ import { getState }      from '../../store.js';
 import { listSiklus, getSiklus, updateSiklus } from './siklus-api.js';
 import { listSeleksiSessions, scoreSeleksiSubmissionsBulk, syncSeleksiEnrollment } from './seleksi-exam-api.js';
 import { setExamIdTertulis } from './siklus-api.js';
-import { listExams } from '../bimtek/exam-api.js';
+import { listExams, publishExam, setExamWindow } from '../bimtek/exam-api.js';
 import { showExamModal } from '../bimtek/exam-modal.js';
 
 let _S = { tahun: null, siklus: null };
@@ -51,20 +51,53 @@ async function _renderContent() {
   const window_e = _S.siklus.phases?.tertulis?.end;
   const bimtekPilihan = _S.siklus.bimtekPilihan || [];
 
+  // Exam seleksi tertulis berdiri sendiri (bimtekId null) — dimuat sekali,
+  // dipakai untuk daftar kelola exam DAN untuk isi tiap dropdown per bimtek.
+  const examsStandalone = (await listExams(null)).filter(e => e.tipe === 'seleksi_tertulis');
+
   content.innerHTML = `
     <div class="space-y-4">
 
-      <!-- Konfigurasi Exam per Bimtek -->
+      <!-- Daftar Exam Seleksi Tertulis (berdiri sendiri, tidak terikat bimtek) -->
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-white">Ujian Seleksi Tertulis per Bimtek</h2>
+          <h2 class="text-sm font-semibold text-white">Exam Seleksi Tertulis</h2>
           <button id="btn-buat-exam-tertulis" class="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors">
             + Buat Exam Baru
           </button>
         </div>
         <p class="text-xs text-gray-600 mb-3">
-          Exam seleksi tertulis berdiri sendiri (tidak terikat ke satu bimtek) — pilih soal dari Bank Soal, lalu tautkan ke bimtek yang sesuai di bawah ini.
+          Exam di sini berdiri sendiri (tidak terikat ke satu bimtek) — pilih soal dari Bank Soal, lalu publish dan tautkan ke bimtek yang sesuai di bagian bawah.
         </p>
+        ${examsStandalone.length === 0 ? `
+          <p class="text-sm text-gray-500">Belum ada exam. Klik "+ Buat Exam Baru" untuk mulai.</p>` : `
+          <div class="space-y-2">
+            ${examsStandalone.map(e => {
+              const isOpen = e.windowOpen?.seleksi_tertulis === true;
+              return `
+              <div class="flex items-center justify-between gap-3 bg-gray-800/50 rounded-lg px-3 py-2">
+                <div class="min-w-0">
+                  <p class="text-sm text-gray-200 truncate">${_esc(e.judul)}</p>
+                  <p class="text-xs text-gray-500">${e.durasi} menit · ${e.published ? '<span class="text-green-400">Published</span>' : '<span class="text-yellow-400">Draft</span>'}</p>
+                </div>
+                <div class="flex gap-1.5 shrink-0">
+                  <button class="btn-toggle-window-exam text-xs px-2.5 py-1 rounded-lg border transition-colors ${isOpen ? 'border-green-700 bg-green-900/50 text-green-300' : 'border-gray-700 bg-gray-800 text-gray-400'}"
+                          data-id="${_esc(e.id)}" data-open="${isOpen}" title="${isOpen ? 'Klik untuk menutup ujian' : 'Klik untuk membuka ujian'}">
+                    ${isOpen ? '✓ Terbuka' : '✗ Tertutup'}
+                  </button>
+                  <button class="btn-toggle-publish-exam text-xs px-2.5 py-1 rounded-lg transition-colors ${e.published ? 'bg-yellow-900/50 hover:bg-yellow-900 text-yellow-300' : 'bg-green-900/50 hover:bg-green-900 text-green-300'}"
+                          data-id="${_esc(e.id)}" data-published="${e.published}">
+                    ${e.published ? 'Unpublish' : 'Publish'}
+                  </button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`}
+      </div>
+
+      <!-- Konfigurasi Exam per Bimtek -->
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Tautkan Exam ke Bimtek</h2>
         ${bimtekPilihan.length === 0 ? `
           <p class="text-sm text-gray-500">Belum ada bimtek dikonfigurasi. Atur di tab Kuota &amp; Aturan Bimtek.</p>` : `
           <div class="space-y-2" id="bimtek-exam-list">
@@ -122,10 +155,6 @@ async function _renderContent() {
           ${await _renderMonitorPerBimtek(bimtekPilihan)}
         </div>` : ''}
     </div>`;
-
-  // Exam seleksi tertulis berdiri sendiri (bimtekId null) — satu pool dipakai
-  // untuk semua dropdown bimtek, bukan di-query ulang per bimtek.
-  const examsStandalone = (await listExams(null)).filter(e => e.tipe === 'seleksi_tertulis');
 
   for (const b of bimtekPilihan) {
     const sel = document.querySelector(`.sel-exam-bimtek[data-bimtek-id="${b.bimtekId}"]`);
@@ -219,6 +248,28 @@ function _bindContentEvents() {
       exam: null,
       defaultTipe: 'seleksi_tertulis',
       onSaved: () => _renderContent(),
+    });
+  });
+
+  document.querySelectorAll('.btn-toggle-publish-exam').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const published = btn.dataset.published === 'true';
+      try {
+        await publishExam(btn.dataset.id, !published);
+        showToast(published ? 'Exam di-unpublish' : 'Exam dipublish', 'success');
+        _renderContent();
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+  });
+
+  document.querySelectorAll('.btn-toggle-window-exam').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const isOpen = btn.dataset.open === 'true';
+      try {
+        await setExamWindow(btn.dataset.id, 'seleksi_tertulis', !isOpen);
+        showToast(!isOpen ? 'Ujian dibuka. Peserta dapat memulai ujian.' : 'Ujian ditutup.', 'success');
+        _renderContent();
+      } catch (e) { showToast(e.message, 'error'); }
     });
   });
 }
