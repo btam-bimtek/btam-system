@@ -73,7 +73,7 @@ export async function listBimtek({ tipe, status, bidangId } = {}) {
   if (bidangId) results = results.filter(b => b.bidangIds?.includes(bidangId));
 
   // Urutkan berdasarkan tanggal mulai bimtek (yang lebih dahulu di atas)
-  results.sort((a, b) => _toMillis(a.tanggalMulai) - _toMillis(b.tanggalMulai));
+  results.sort((a, b) => _toMillis(a.periode?.mulai) - _toMillis(b.periode?.mulai));
 
   return results;
 }
