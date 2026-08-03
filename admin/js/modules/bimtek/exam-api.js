@@ -213,11 +213,13 @@ export async function generateSessions(exam, pesertaIds, expiredAt = null) {
   };
 
   // Fetch info peserta untuk disimpan di session (agar exam app tidak perlu akses peserta_master)
+  // Peserta yang sudah dihapus (soft delete) dikecualikan dari pesertaMap sehingga
+  // tidak ikut dibuatkan sesi ujian di bawah.
   const pesertaMap = {};
   await Promise.all(pesertaIds.map(async id => {
     try {
       const snap = await getDoc(doc(db, COL.PESERTA_MASTER, id));
-      if (snap.exists()) {
+      if (snap.exists() && !snap.data().deleted) {
         const d = snap.data();
         pesertaMap[id] = {
           namaPeserta:     d.nama     || '',
@@ -239,6 +241,7 @@ export async function generateSessions(exam, pesertaIds, expiredAt = null) {
   let skipped   = 0;
 
   for (const noPeserta of pesertaIds) {
+    if (!pesertaMap[noPeserta]) { skipped += tipes.length; continue; } // dihapus/tidak ditemukan
     for (const tipeSession of tipes) {
       const key = `${noPeserta}__${tipeSession}`;
       if (existingSet.has(key)) { skipped++; continue; }

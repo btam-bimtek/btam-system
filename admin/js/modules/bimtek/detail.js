@@ -783,7 +783,7 @@ function _buildTabPeserta() {
 
   return `
     <div class="flex items-center justify-between mb-3">
-      <span class="text-xs text-gray-500">${total} / ${kapasitas} peserta</span>
+      <span id="peserta-count-badge" class="text-xs text-gray-500">${total} / ${kapasitas} peserta</span>
       <div class="flex gap-2">
         ${penuh ? `<span class="badge badge-yellow">Kapasitas penuh</span>` : ''}
         ${total > 0 ? `<button id="btn-wa-peserta" class="px-3 py-1.5 rounded-lg text-sm bg-green-700 hover:bg-green-600 text-white transition-colors">Kirim WA Terpilih</button>` : ''}
@@ -813,6 +813,9 @@ async function _loadPeserta(app, el) {
       // peserta yang sudah jadi alumni (mis. bimtek ini sendiri sudah completed)
       // akan hilang dari daftar padahal masih terdaftar di pesertaIds.
       const enrolled = await _fetchPesertaByIds(pesertaIds);
+      const activeCount = enrolled.filter(p => !p._orphan).length;
+      const badge = el.querySelector('#peserta-count-badge');
+      if (badge) badge.textContent = `${activeCount} / ${S.bimtek?.kapasitas || 0} peserta`;
 
       const rows = enrolled.map(p => `
         <tr>
@@ -1329,9 +1332,10 @@ function _esc(s) {
 }
 
 /**
- * Fetch peserta_master berdasarkan daftar noPeserta, tanpa filter isAlumni/deleted —
+ * Fetch peserta_master berdasarkan daftar noPeserta, tanpa filter isAlumni —
  * dipakai untuk menampilkan peserta yang SUDAH terdaftar di bimtek (beda kebutuhan
- * dengan listPeserta() yang untuk mencari kandidat baru).
+ * dengan listPeserta() yang untuk mencari kandidat baru). Peserta yang sudah
+ * dihapus (soft delete) dikecualikan sepenuhnya — tidak dihitung/ditampilkan.
  * Firestore 'in' max 30 per query, jadi di-chunk.
  */
 async function _fetchPesertaByIds(ids) {
@@ -1341,10 +1345,10 @@ async function _fetchPesertaByIds(ids) {
     const snap = await getDocs(
       query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
     );
-    snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }));
+    snap.docs.forEach(d => { if (!d.data().deleted) results.push({ id: d.id, ...d.data() }); });
   }
 
-  // Peserta yang ada di pesertaIds tapi tidak ketemu di master — tampilkan sebagai orphan
+  // Peserta yang ada di pesertaIds tapi tidak ketemu di master (atau sudah dihapus) — tampilkan sebagai orphan
   const found = new Set(results.map(p => p.noPeserta));
   ids.filter(np => !found.has(np)).forEach(np => {
     results.push({ noPeserta: np, nama: np, instansi: null, jabatan: null, _orphan: true });

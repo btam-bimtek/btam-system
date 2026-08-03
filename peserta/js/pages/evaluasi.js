@@ -4,7 +4,7 @@
 // mengajar 2 mapel dinilai 2x, terpisah per mapel). Jawaban tersimpan dengan
 // noPeserta (untuk audit manual), tapi UI admin tidak menampilkan identitas.
 
-import { getBimtek, getPengajar, listMapel, sudahEvaluasi, submitEvaluasi } from '../api.js';
+import { getBimtek, getPeserta, getPengajar, listMapel, sudahEvaluasi, submitEvaluasi } from '../api.js';
 import {
   RATING_LABEL, PERTANYAAN_PENYELENGGARA, PERTANYAAN_KEPUASAN, PERTANYAAN_PENGAJAR
 } from '../../../shared/evaluasi-questions.js';
@@ -23,12 +23,13 @@ export async function renderEvaluasi(app, session, bimtekId) {
 
   const content = document.getElementById('eval-content');
   try {
-    const [bimtek, sudah] = await Promise.all([
+    const [bimtek, sudah, peserta] = await Promise.all([
       getBimtek(bimtekId),
       sudahEvaluasi(bimtekId, session.noPeserta),
+      getPeserta(session.noPeserta),
     ]);
 
-    if (!bimtek || !(bimtek.pesertaIds || []).includes(session.noPeserta)) {
+    if (!peserta || !bimtek || !(bimtek.pesertaIds || []).includes(session.noPeserta)) {
       content.innerHTML = `<p class="text-sm text-red-600 py-8 text-center">Bimtek tidak ditemukan.</p>`;
       return;
     }

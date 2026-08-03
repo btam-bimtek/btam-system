@@ -209,6 +209,7 @@ export async function buildMasterExportRows() {
 
     (b.pesertaIds || []).forEach(noPeserta => {
       const p = pesertaMap[noPeserta];
+      if (!p) return; // peserta sudah dihapus dari sistem — jangan ikut dihitung sebagai alumni
       rows.push({
         tahun,
         tanggal_mulai:   _fmtDate(b.periode?.mulai),
@@ -268,7 +269,7 @@ async function _batchGetPeserta(ids) {
   if (!ids.length) return {};
   const snaps = await Promise.all(ids.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))));
   const map = {};
-  snaps.forEach(snap => { if (snap.exists()) map[snap.id] = snap.data(); });
+  snaps.forEach(snap => { if (snap.exists() && !snap.data().deleted) map[snap.id] = snap.data(); });
   return map;
 }
 

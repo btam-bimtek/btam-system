@@ -40,11 +40,14 @@ export async function renderSubReportPeserta(container, bimtekId, bimtek) {
   scores.forEach(s => { lulusMap[s.noPeserta] = s.lulus; });
 
   S.lembagaSettings = lembaga;
-  S.pesertaList = snaps.map((snap, i) => ({
-    noPeserta: ids[i],
-    nama:  snap.exists() ? (snap.data().nama  ?? ids[i]) : ids[i],
-    lulus: lulusMap[ids[i]] ?? false
-  }));
+  S.pesertaList = snaps
+    .map((snap, i) => ({
+      noPeserta: ids[i],
+      nama:  snap.exists() ? (snap.data().nama  ?? ids[i]) : ids[i],
+      lulus: lulusMap[ids[i]] ?? false,
+      _deleted: snap.exists() && !!snap.data().deleted
+    }))
+    .filter(p => !p._deleted);
 
   _renderList(container);
 }

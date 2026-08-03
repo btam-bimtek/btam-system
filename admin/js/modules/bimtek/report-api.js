@@ -267,7 +267,7 @@ async function _batchGetPeserta(noPesertaList) {
   );
   const map = {};
   snaps.forEach(snap => {
-    if (snap.exists()) map[snap.id] = { id: snap.id, ...snap.data() };
+    if (snap.exists() && !snap.data().deleted) map[snap.id] = { id: snap.id, ...snap.data() };
   });
   return map;
 }

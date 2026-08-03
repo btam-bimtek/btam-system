@@ -1,6 +1,6 @@
 // peserta/js/pages/sertifikat.js
 
-import { getBimtek, getPesertaReportData, getLembagaSettings } from '../api.js';
+import { getBimtek, getPeserta, getPesertaReportData, getLembagaSettings } from '../api.js';
 import { buildCertHTML, printCert } from '../../../shared/certificate.js';
 
 export async function renderSertifikat(app, session, bimtekId) {
@@ -18,8 +18,8 @@ export async function renderSertifikat(app, session, bimtekId) {
 
   const content = document.getElementById('cert-content');
   try {
-    const bimtek = await getBimtek(bimtekId);
-    if (!bimtek || !(bimtek.pesertaIds || []).includes(session.noPeserta)) {
+    const [bimtek, peserta] = await Promise.all([getBimtek(bimtekId), getPeserta(session.noPeserta)]);
+    if (!peserta || !bimtek || !(bimtek.pesertaIds || []).includes(session.noPeserta)) {
       content.innerHTML = `<p class="text-sm text-red-600 py-8 text-center">Sertifikat tidak ditemukan.</p>`;
       return;
     }

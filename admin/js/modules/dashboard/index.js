@@ -342,8 +342,26 @@ async function _loadProcessFlow(allBimtek) {
   // Bimtek tahun berjalan (basis bersama untuk node 1, 2, 4)
   const bimtekTahunIni = allBimtek.filter(b => ['completed', 'ongoing'].includes(b.status) && _bimtekYear(b) === thisYear);
 
+  // Peserta yang sudah dihapus (soft delete: field `deleted`) tidak boleh ikut terhitung.
+  let validPesertaIds = null;
+  try {
+    const allPesertaIds = [...new Set(bimtekTahunIni.flatMap(b => b.pesertaIds || []))];
+    if (allPesertaIds.length > 0) {
+      const CHUNK = 30;
+      const chunks = [];
+      for (let i = 0; i < allPesertaIds.length; i += CHUNK) chunks.push(allPesertaIds.slice(i, i + CHUNK));
+      const snaps = await Promise.all(chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id)))));
+      validPesertaIds = new Set(
+        snaps.filter(snap => snap.exists() && !snap.data().deleted).map(snap => snap.id)
+      );
+    } else {
+      validPesertaIds = new Set();
+    }
+  } catch (err) { console.warn('[dashboard] valid peserta flow:', err.message); }
+  const _countValid = (ids) => validPesertaIds ? (ids || []).filter(id => validPesertaIds.has(id)).length : (ids?.length || 0);
+
   // Node 1 — Realisasi Peserta: realisasi peserta murni vs target tahunan (Settings)
-  const totalRealisasi = bimtekTahunIni.reduce((s, b) => s + (b.pesertaIds?.length || 0), 0);
+  const totalRealisasi = bimtekTahunIni.reduce((s, b) => s + _countValid(b.pesertaIds), 0);
   let target = null;
   try {
     const targetSetting = await getAppSetting('target_tahunan');
@@ -360,7 +378,7 @@ async function _loadProcessFlow(allBimtek) {
       const key = b.namaKey || (b.nama ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
       if (!key) return;
       if (!byNama[key]) byNama[key] = { nama: b.nama, count: 0 };
-      byNama[key].count += b.pesertaIds?.length || 0;
+      byNama[key].count += _countValid(b.pesertaIds);
     });
     const ranked = Object.values(byNama).sort((a, b) => b.count - a.count);
     if (ranked.length && ranked[0].count > 0) topBimtekPeserta = ranked[0];
@@ -388,7 +406,8 @@ async function _loadProcessFlow(allBimtek) {
   let topInstansi = null;
   try {
     const bimtekRegulerTahunIni = bimtekTahunIni.filter(b => b.tipe !== 'pnbp');
-    const pesertaIds = [...new Set(bimtekRegulerTahunIni.flatMap(b => b.pesertaIds || []))];
+    const pesertaIds = [...new Set(bimtekRegulerTahunIni.flatMap(b => b.pesertaIds || []))]
+      .filter(id => !validPesertaIds || validPesertaIds.has(id));
     if (pesertaIds.length > 0) {
       const CHUNK = 30;
       const chunks = [];
@@ -396,7 +415,7 @@ async function _loadProcessFlow(allBimtek) {
       const snaps = await Promise.all(chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id)))));
       const instansiCount = {};
       snaps.forEach(snap => {
-        if (!snap.exists()) return;
+        if (!snap.exists() || snap.data().deleted) return;
         const inst = snap.data().instansi;
         if (inst) instansiCount[inst] = (instansiCount[inst] || 0) + 1;
       });
@@ -706,14 +725,27 @@ function _renderChartBidang(allBimtek, alumniStats) {
 
 // ─── Chart: Tren Peserta per Tahun ───────────────────────────────────────────
 
-function _renderChartTrenPeserta(allBimtek, alumniStats) {
-  // Peserta baru (dari sistem)
+async function _renderChartTrenPeserta(allBimtek, alumniStats) {
+  // Peserta baru (dari sistem) — kecualikan peserta yang sudah dihapus (soft delete)
+  const allPesertaIds = [...new Set(allBimtek.flatMap(b => b.pesertaIds || []))];
+  let validIds = null;
+  try {
+    if (allPesertaIds.length > 0) {
+      const CHUNK = 30;
+      const chunks = [];
+      for (let i = 0; i < allPesertaIds.length; i += CHUNK) chunks.push(allPesertaIds.slice(i, i + CHUNK));
+      const snaps = await Promise.all(chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id)))));
+      validIds = new Set(snaps.filter(snap => snap.exists() && !snap.data().deleted).map(snap => snap.id));
+    }
+  } catch (err) { console.warn('[dashboard] tren peserta valid ids:', err.message); }
+
   const byYearNew = {};
   allBimtek.forEach(b => {
     if (!b.periode?.mulai) return;
     const d  = b.periode.mulai.toDate ? b.periode.mulai.toDate() : new Date(b.periode.mulai);
     const yr = d.getFullYear();
-    byYearNew[yr] = (byYearNew[yr] || 0) + (b.pesertaIds?.length || 0);
+    const count = validIds ? (b.pesertaIds || []).filter(id => validIds.has(id)).length : (b.pesertaIds?.length || 0);
+    byYearNew[yr] = (byYearNew[yr] || 0) + count;
   });
 
   const allYears = new Set([
@@ -801,7 +833,7 @@ async function _loadSebaranData(allBimtek, alumniStats) {
         chunks.flatMap(chunk => chunk.map(id => getDoc(doc(db, COL.PESERTA_MASTER, id))))
       );
       snaps.forEach(snap => {
-        if (!snap.exists()) return;
+        if (!snap.exists() || snap.data().deleted) return;
         const d    = snap.data();
         const meta = metaByPeserta[snap.id];
         if (!meta) return;

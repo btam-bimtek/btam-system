@@ -43,13 +43,16 @@ export async function login(noPeserta, tanggalLahir) {
   const snap = await getDoc(doc(db, COL.PESERTA_MASTER, noPeserta.trim()));
   if (!snap.exists()) return null;
   const peserta = { id: snap.id, ...snap.data() };
+  if (peserta.deleted) return null;
   if (!peserta.tanggalLahir || peserta.tanggalLahir !== tanggalLahir) return null;
   return peserta;
 }
 
 export async function getPeserta(noPeserta) {
   const snap = await getDoc(doc(db, COL.PESERTA_MASTER, noPeserta));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  if (!snap.exists()) return null;
+  const peserta = { id: snap.id, ...snap.data() };
+  return peserta.deleted ? null : peserta;
 }
 
 // ─── Dashboard: daftar bimtek diikuti ───────────────────────
