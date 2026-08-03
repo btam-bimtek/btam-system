@@ -296,7 +296,7 @@ function _bimtekYear(b) {
   return d.getFullYear();
 }
 
-// ─── Alur Proses (P&ID) — 4 unit instrumen: Realisasi Peserta → Ujian → Penilaian → Instansi Pengirim
+// ─── Alur Proses (P&ID) — 4 unit instrumen: Realisasi Peserta → Ujian → Penilaian → Instansi Peserta Terbanyak
 
 function _processUnitSkeleton(code) {
   return `
@@ -384,10 +384,11 @@ async function _loadProcessFlow(allBimtek) {
     }
   } catch (err) { console.warn('[dashboard] penilaian flow:', err.message); }
 
-  // Node 4 — Instansi Pengirim: instansi dengan peserta terbanyak, bimtek tahun berjalan
+  // Node 4 — Instansi Peserta Terbanyak: instansi dengan peserta terbanyak, bimtek reguler tahun berjalan
   let topInstansi = null;
   try {
-    const pesertaIds = [...new Set(bimtekTahunIni.flatMap(b => b.pesertaIds || []))];
+    const bimtekRegulerTahunIni = bimtekTahunIni.filter(b => b.tipe !== 'pnbp');
+    const pesertaIds = [...new Set(bimtekRegulerTahunIni.flatMap(b => b.pesertaIds || []))];
     if (pesertaIds.length > 0) {
       const CHUNK = 30;
       const chunks = [];
@@ -417,7 +418,7 @@ async function _loadProcessFlow(allBimtek) {
     _processUnit('NLI-301', 'Penilaian',
       avgDelta != null ? `${avgDelta >= 0 ? '+' : ''}${avgDelta.toFixed(1)}` : '—', 'delta kompetensi rata-rata'),
     vpipe,
-    _processUnit('INS-401', 'Instansi Pengirim',
+    _processUnit('INS-401', 'Instansi Peserta Terbanyak',
       topInstansi ? _truncate(topInstansi.nama, 40) : '—',
       topInstansi ? `${topInstansi.count} peserta tahun ini` : 'belum ada data'),
   ].join('');
