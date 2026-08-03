@@ -85,7 +85,7 @@ function _renderTable() {
         if (!requireWrite()) return;
         const ok = await confirmDialog({ title:'Hapus Instansi', message:`Hapus <strong>${_esc(row.nama)}</strong>?`, confirmLabel:'Hapus', danger:true });
         if (!ok) return;
-        try { await deleteInstansi(row._id); showToast('Instansi dihapus.', 'success'); _reload(); }
+        try { await deleteInstansi(row.id); showToast('Instansi dihapus.', 'success'); _reload(); }
         catch (err) { showToast('Gagal: ' + err.message, 'error'); }
       }}
     ],
@@ -107,9 +107,9 @@ function _openForm(existing = null) {
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-400 mb-1.5">ID Instansi</label>
-            <input name="instansiId" class="form-input font-mono text-xs"
+            <input name="instansiId" class="form-input font-mono text-xs ${isEdit ? 'opacity-60' : ''}"
                    value="${_esc(existing?.instansiId ?? '')}"
-                   placeholder="otomatis dari nama" ${isEdit ? 'readonly class="opacity-60"' : ''} />
+                   placeholder="otomatis dari nama" ${isEdit ? 'readonly' : ''} />
             ${!isEdit ? '<p class="text-xs text-gray-600 mt-1">Kosongkan untuk auto-generate dari nama.</p>' : ''}
           </div>
           <div>
@@ -182,7 +182,7 @@ async function _submit(close, existing) {
 
   if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
   try {
-    if (existing) { await updateInstansi(existing._id, data); showToast('Instansi diperbarui.', 'success'); }
+    if (existing) { await updateInstansi(existing.id, data); showToast('Instansi diperbarui.', 'success'); }
     else { await createInstansi(data); showToast('Instansi ditambahkan.', 'success'); }
     close(); _reload();
   } catch (err) {
