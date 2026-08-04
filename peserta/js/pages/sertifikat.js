@@ -4,6 +4,28 @@ import { getBimtek, getPeserta, getPesertaReportData, getLembagaSettings, listMa
 import { buildCertHTML, printCert, buildCertBackHTML } from '../../../shared/certificate.js';
 
 export async function renderSertifikat(app, session, bimtekId) {
+  // Inject print styles for page breaks
+  if (!document.getElementById('cert-print-styles')) {
+    const style = document.createElement('style');
+    style.id = 'cert-print-styles';
+    style.textContent = `
+      .cert-page {
+        width: 297mm;
+        height: 210mm;
+        page-break-after: always;
+        box-sizing: border-box;
+      }
+      .cert-page:last-child {
+        page-break-after: avoid;
+      }
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   app.innerHTML = `
     <div class="no-print">${_header()}</div>
     <main class="max-w-4xl mx-auto px-4 py-6">
