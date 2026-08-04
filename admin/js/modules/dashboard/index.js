@@ -329,7 +329,7 @@ function _processUnit(code, label, value, detail, flexBasis = 1) {
       <p class="pid-unit-code">${code}</p>
       <p class="text-xs text-gray-400 pid-label mt-1">${label}</p>
       <p class="pid-mono text-xl font-semibold text-cyan-300 mt-1.5">${value}</p>
-      <p class="text-[10px] text-gray-600 mt-0.5">${detail}</p>
+      <p class="text-sm text-gray-600 mt-0.5">${detail}</p>
     </div>`;
 }
 
