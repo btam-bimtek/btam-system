@@ -238,6 +238,145 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
 }
 
 /**
+ * @param {Array} mapelList         Array of {id, urutan, nama, totalJp} already sorted by urutan
+ * @param {object} lembagaSettings  app_settings.global.lembaga (kota, penandaTangan, jabatanPenandaTangan, etc.)
+ * @returns {string} HTML siap di-print (ukuran A4 landscape) — page 2 dengan daftar mata pelajaran
+ */
+export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
+  const lembaga = lembagaSettings ?? {};
+  const kota = lembaga.kota || 'Jakarta';
+  const penanda = lembaga.penandaTangan || '';
+  const jabatanPenanda = lembaga.jabatanPenandaTangan || 'Kepala Balai Teknik Air Minum';
+
+  // Format tanggal hari ini atau dari periode jika ada
+  const tglTTD = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Hitung total JP dari semua mapel
+  const totalJp = (mapelList || []).reduce((sum, mapel) => sum + (mapel.totalJp || 0), 0);
+
+  return `
+    <div style="
+      width:297mm; height:210mm;
+      position:relative; overflow:hidden;
+      background:#ffffff;
+      font-family:Arial,Helvetica,sans-serif;
+      box-sizing:border-box;
+      color:#111827;
+      padding:10mm;
+    ">
+      <!-- Header: DAFTAR MATA PELAJARAN -->
+      <div style="text-align:center;margin-bottom:8mm;font-size:14pt;font-weight:bold;color:#111827;">
+        DAFTAR MATA PELAJARAN
+      </div>
+
+      <!-- Table container -->
+      <div style="margin-bottom:10mm;">
+        <table style="
+          width:100%;
+          border-collapse:collapse;
+          font-size:10pt;
+          line-height:1.5;
+        ">
+          <colgroup>
+            <col style="width:15mm;">
+            <col style="width:155mm;">
+            <col style="width:25mm;">
+          </colgroup>
+
+          <!-- Header row -->
+          <thead>
+            <tr style="border-bottom:1.5px solid #111827;">
+              <th style="
+                padding:2mm;
+                text-align:center;
+                font-weight:bold;
+                color:#111827;
+                border-bottom:1.5px solid #111827;
+              ">No.</th>
+              <th style="
+                padding:2mm;
+                text-align:left;
+                font-weight:bold;
+                color:#111827;
+                border-bottom:1.5px solid #111827;
+              ">Nama Mata Pelajaran</th>
+              <th style="
+                padding:2mm;
+                text-align:center;
+                font-weight:bold;
+                color:#111827;
+                border-bottom:1.5px solid #111827;
+              ">JP</th>
+            </tr>
+          </thead>
+
+          <!-- Data rows -->
+          <tbody>
+            ${(mapelList || []).map((mapel, idx) => `
+              <tr style="border-bottom:0.5px solid #d1d5db;">
+                <td style="
+                  padding:2mm;
+                  text-align:center;
+                  color:#374151;
+                  vertical-align:top;
+                ">${idx + 1}</td>
+                <td style="
+                  padding:2mm;
+                  text-align:left;
+                  color:#374151;
+                  vertical-align:top;
+                ">${_esc(mapel.nama || '')}</td>
+                <td style="
+                  padding:2mm;
+                  text-align:center;
+                  color:#374151;
+                  vertical-align:top;
+                ">${mapel.totalJp || 0}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+
+          <!-- Total row -->
+          <tfoot>
+            <tr style="border-top:1.5px solid #111827;">
+              <td colspan="2" style="
+                padding:2mm;
+                text-align:right;
+                font-weight:bold;
+                color:#111827;
+                border-top:1.5px solid #111827;
+              ">JUMLAH</td>
+              <td style="
+                padding:2mm;
+                text-align:center;
+                font-weight:bold;
+                color:#111827;
+                border-top:1.5px solid #111827;
+              ">${totalJp}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Signature block -->
+      <div style="
+        margin-top:20mm;
+        text-align:center;
+        color:#111827;
+        font-size:9pt;
+      ">
+        <div style="margin-bottom:1mm;">${_esc(kota)}, ${_esc(tglTTD)}</div>
+        <div style="margin-bottom:12mm;line-height:1.4;">${_esc(jabatanPenanda)}</div>
+        <div style="height:12mm;"></div>
+        <div style="font-weight:bold;border-top:1px solid #111827;padding-top:1mm;display:inline-block;min-width:50mm;">
+          ${_esc(penanda)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Trigger window.print() dengan ukuran halaman A4 landscape tanpa margin.
  * Elemen yang mau dicetak harus punya class "cert-doc" (lihat print.css),
  * elemen lain di halaman diberi class "no-print".
