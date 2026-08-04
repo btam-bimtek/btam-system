@@ -1,7 +1,7 @@
 // peserta/js/pages/sertifikat.js
 
-import { getBimtek, getPeserta, getPesertaReportData, getLembagaSettings } from '../api.js';
-import { buildCertHTML, printCert } from '../../../shared/certificate.js';
+import { getBimtek, getPeserta, getPesertaReportData, getLembagaSettings, listMapel } from '../api.js';
+import { buildCertHTML, printCert, buildCertBackHTML } from '../../../shared/certificate.js';
 
 export async function renderSertifikat(app, session, bimtekId) {
   app.innerHTML = `
@@ -28,17 +28,22 @@ export async function renderSertifikat(app, session, bimtekId) {
       return;
     }
 
-    const [data, lembagaSettings] = await Promise.all([
+    const [data, lembagaSettings, mapels] = await Promise.all([
       getPesertaReportData(bimtekId, session.noPeserta, bimtek),
       getLembagaSettings(),
+      listMapel(bimtekId),
     ]);
 
     const html = buildCertHTML(data, bimtek, lembagaSettings);
+    const backPageHtml = buildCertBackHTML(mapels, lembagaSettings);
     content.innerHTML = `
       <div class="no-print flex justify-end mb-3">
         <button id="btn-print" class="btn-primary">Cetak Sertifikat</button>
       </div>
-      <div class="cert-doc overflow-x-auto">${html}</div>
+      <div class="cert-doc overflow-x-auto">
+        <div class="cert-page">${html}</div>
+        <div class="cert-page">${backPageHtml}</div>
+      </div>
     `;
     document.getElementById('btn-print')?.addEventListener('click', () => printCert());
   } catch (e) {
