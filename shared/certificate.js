@@ -121,7 +121,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
               <tr>
                 <td style="padding:0;white-space:nowrap;color:#374151;vertical-align:top;">${lbl}</td>
                 <td style="padding:0 3mm 0 0;color:#374151;vertical-align:top;">:</td>
-                <td style="padding:0;color:#111827;font-weight:600;vertical-align:top;">${val || '—'}</td>
+                <td style="padding:0;color:#111827;vertical-align:top;">${val || '—'}</td>
               </tr>`).join('')}
           </table>
         </div>
