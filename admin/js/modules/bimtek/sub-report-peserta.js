@@ -10,7 +10,7 @@ import { getAppSetting } from '../settings/api.js';
 import { listBimtekScores } from './penilaian-api.js';
 import { updateBimtek, listMapel } from './api.js';
 import { showToast } from '../../components/toast.js';
-import { buildCertHTML, buildCertBackHTML, printCert } from '../../../../shared/certificate.js';
+import { buildCertHTML, buildSuratKeteranganHTML, buildCertBackHTML, printCert } from '../../../../shared/certificate.js';
 
 // Inject print styles for cert page breaks (sekali saja, sama pola dengan Portal Peserta)
 if (!document.getElementById('cert-print-styles')) {
@@ -1128,6 +1128,9 @@ function _showCert(container, panel, data, mapels = []) {
 }
 
 // ─── SURAT KETERANGAN ────────────────────────────────────────────────────────
+// Bentuk & layout identik dengan sertifikat (buildCertHTML mode background Canva/
+// CSS fallback) — hanya beda judul, kalimat intro, baris field (tanpa Kualifikasi),
+// tanpa nomor. Halaman 2 (Daftar Mata Pelajaran) sama seperti sertifikat.
 
 async function _loadAndShowSuratKeterangan(container, noPeserta) {
   const panel = container.querySelector('#report-preview-panel');
@@ -1140,8 +1143,12 @@ async function _loadAndShowSuratKeterangan(container, noPeserta) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
-    const html = _buildSuratKeteranganHTML(data);
+    const [data, mapels] = await Promise.all([
+      getPesertaReportData(S.bimtekId, noPeserta, S.bimtek),
+      listMapel(S.bimtekId).catch(() => []),
+    ]);
+    const html     = buildSuratKeteranganHTML(data, S.bimtek, S.lembagaSettings);
+    const backHtml = buildCertBackHTML(mapels, S.lembagaSettings, S.bimtek);
     const listSection = container.querySelector('#peserta-list-section');
 
     panel.innerHTML = `
@@ -1157,12 +1164,15 @@ async function _loadAndShowSuratKeterangan(container, noPeserta) {
           <button id="btn-close-surat-ket" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
         </div>
       </div>
-      <div id="surat-ket-doc">${html}</div>
+      <div id="cert-doc" class="cert-doc overflow-x-auto">
+        <div class="cert-page">${html}</div>
+        <div class="cert-page">${backHtml}</div>
+      </div>
     `;
 
     if (listSection) listSection.classList.add('no-print');
 
-    panel.querySelector('#btn-print-surat-ket').addEventListener('click', () => _printSuratKeterangan());
+    panel.querySelector('#btn-print-surat-ket').addEventListener('click', () => printCert());
     panel.querySelector('#btn-close-surat-ket').addEventListener('click', () => {
       panel.innerHTML = '';
       panel.classList.add('hidden');
@@ -1171,119 +1181,5 @@ async function _loadAndShowSuratKeterangan(container, noPeserta) {
   } catch (err) {
     panel.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat: ${err.message}</div>`;
   }
-}
-
-function _buildSuratKeteranganHTML(data) {
-  const { peserta } = data;
-  const b       = S.bimtek;
-  const lembaga = S.lembagaSettings ?? {};
-  const kopUrl  = lembaga.logoUrl || '../shared/assets/kop_btam.png';
-
-  const periodeStr = (() => {
-    const fmt = ts => {
-      if (!ts) return '';
-      const d = ts.toDate ? ts.toDate() : new Date(ts);
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-    };
-    const m = fmt(b.periode?.mulai);
-    const s = fmt(b.periode?.selesai);
-    return m && s ? `${m} s.d. ${s}` : (m || s || '-');
-  })();
-
-  const tglCetak  = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-  const kota      = lembaga.kota || lembaga.lokasi || 'Bekasi';
-  const namaLemb  = lembaga.nama || 'Balai Teknik Air Minum';
-  const lokasi    = b.lokasi || '-';
-
-  const fieldRow = (label, value) => value ? `
-    <tr>
-      <td style="padding:3px 0; font-size:13px; width:160px; vertical-align:top;">${label}</td>
-      <td style="padding:3px 0; font-size:13px; width:12px;">:</td>
-      <td style="padding:3px 0; font-size:13px;">${_esc(value)}</td>
-    </tr>` : '';
-
-  return `
-    <div style="
-      width:210mm; min-height:297mm;
-      padding:0 20mm 20mm 20mm;
-      font-family:'Times New Roman',Georgia,serif;
-      color:#1a1a1a;
-      background:#fff;
-      box-sizing:border-box;
-    ">
-      <!-- Kop Surat -->
-      <div style="margin-bottom:0;">
-        <img src="${_esc(kopUrl)}" alt="Kop Surat" style="width:100%;height:auto;display:block;">
-      </div>
-      <div style="border-top:3px solid #1a1a1a; border-bottom:1px solid #1a1a1a; margin-bottom:24px;"></div>
-
-      <!-- Judul -->
-      <div style="text-align:center; margin-bottom:24px;">
-        <div style="font-size:16px; font-weight:bold; letter-spacing:3px; text-decoration:underline; text-transform:uppercase;">
-          SURAT KETERANGAN
-        </div>
-      </div>
-
-      <!-- Pembuka -->
-      <div style="font-size:13px; line-height:1.8; margin-bottom:16px;">
-        Yang bertanda tangan di bawah ini, Kepala ${_esc(namaLemb)}, dengan ini menerangkan bahwa:
-      </div>
-
-      <!-- Identitas Peserta -->
-      <div style="margin: 0 0 20px 24px;">
-        <table style="border-collapse:collapse;">
-          ${fieldRow('Nama', peserta?.nama)}
-          ${fieldRow('Jabatan', peserta?.jabatan)}
-          ${fieldRow('Instansi/Unit Kerja', peserta?.instansi)}
-          ${fieldRow('No. Peserta', peserta?.noPeserta ?? peserta?.id)}
-        </table>
-      </div>
-
-      <!-- Isi keterangan -->
-      <div style="font-size:13px; line-height:1.8; margin-bottom:16px;">
-        adalah benar telah mengikuti kegiatan:
-      </div>
-
-      <!-- Detail kegiatan -->
-      <div style="margin: 0 0 24px 24px;">
-        <table style="border-collapse:collapse;">
-          ${fieldRow('Nama Kegiatan', b.nama)}
-          ${fieldRow('Tanggal Pelaksanaan', periodeStr)}
-          ${fieldRow('Tempat Pelaksanaan', lokasi)}
-        </table>
-      </div>
-
-      <!-- Penutup -->
-      <div style="font-size:13px; line-height:1.8; margin-bottom:40px;">
-        Demikian surat keterangan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.
-      </div>
-
-      <!-- TTD -->
-      <div style="display:flex; justify-content:flex-end;">
-        <div style="text-align:center; min-width:200px;">
-          <div style="font-size:13px;">${_esc(kota)}, ${tglCetak}</div>
-          <div style="font-size:13px; margin-bottom:64px;">Kepala ${_esc(namaLemb)},</div>
-          <div style="border-top:1.5px solid #1a1a1a; padding-top:4px;">
-            <div style="font-size:13px; font-weight:bold;">(..............................)</div>
-            <div style="font-size:12px; margin-top:2px;">NIP. ................................</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-}
-
-function _printSuratKeterangan() {
-  const style = document.createElement('style');
-  style.id    = 'surat-ket-print-style';
-  style.textContent = '@page { size: A4 portrait; margin: 0; }';
-  document.head.appendChild(style);
-  document.body.classList.add('printing-surat-ket');
-
-  window.print();
-
-  setTimeout(() => {
-    document.getElementById('surat-ket-print-style')?.remove();
-    document.body.classList.remove('printing-surat-ket');
-  }, 1000);
 }
 

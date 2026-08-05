@@ -228,14 +228,4 @@
 
   body.printing-cert #report-preview-panel { display: block !important; }
   body.printing-cert .cert-doc { display: block !important; }
-
-  /* Surat Keterangan: portrait, hide semua kecuali surat-ket-doc */
-  body.printing-surat-ket #sidebar,
-  body.printing-surat-ket #navbar,
-  body.printing-surat-ket .no-print,
-  body.printing-surat-ket #peserta-list-section,
-  body.printing-surat-ket #report-preview-panel > *:not(#surat-ket-doc) { display: none !important; }
-
-  body.printing-surat-ket #report-preview-panel { display: block !important; }
-  body.printing-surat-ket #surat-ket-doc { display: block !important; }
 }

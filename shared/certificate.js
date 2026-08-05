@@ -13,12 +13,15 @@ function _esc(str) {
  * @param {object} data          hasil getPesertaReportData(bimtekId, noPeserta, bimtek) — { peserta, scores }
  * @param {object} bimtek        dokumen bimtek (nama, periode, noSertifikat)
  * @param {object} lembagaSettings  app_settings.global.lembaga (nama, kota, penandaTangan, dst) — boleh {}
+ * @param {object} opts          { variant: 'sertifikat' | 'suratKeterangan' } — layout & posisi identik,
+ *                                hanya judul/intro/baris field/nomor yang beda per varian
  * @returns {string} HTML siap di-print (ukuran A4 landscape)
  */
-export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
+export function buildCertHTML(data, bimtek, lembagaSettings = {}, opts = {}) {
   const { peserta, scores } = data;
   const b       = bimtek;
   const lembaga = lembagaSettings ?? {};
+  const isSuratKet = opts.variant === 'suratKeterangan';
 
   const _fmtTs = ts => {
     if (!ts) return '';
@@ -52,10 +55,20 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
   const jabatanPenanda   = lembaga.jabatanPenandaTangan || 'Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan';
   const logoUrl          = lembaga.logoUrl              ?? null;
   const certBgUrl        = lembaga.certBgUrl            ?? null;
-  // Nomor sertifikat diisi manual oleh admin, berlaku untuk semua peserta bimtek ini
+  // Nomor sertifikat diisi manual oleh admin, berlaku untuk semua peserta bimtek ini — surat keterangan tidak pakai nomor
   const noCert           = b.noSertifikat || '—';
-  // Kualifikasi diisi dari kategori kelulusan (Sangat Baik/Baik/Cukup/Kurang/Sangat Kurang)
+  // Kualifikasi diisi dari kategori kelulusan (Sangat Baik/Baik/Cukup/Kurang/Sangat Kurang) — surat keterangan tidak menampilkan kualifikasi
   const kualifikasi      = kategoriNilai(scores?.nilaiAkhir).kategori;
+  // Judul & intro baris field beda per varian; layout/posisi identik
+  const introText        = isSuratKet ? 'Menerangkan Bahwa :' : 'Diberikan Kepada :';
+  const fieldRows         = [
+    ['Nama',                  _esc(peserta?.nama)],
+    ['NIK',                   _esc(peserta?.nik)],
+    ['Tempat, Tanggal Lahir', ttl],
+    ['Jabatan',               _esc(peserta?.jabatan)],
+    ['Instansi',              _esc(peserta?.instansi)],
+    ...(isSuratKet ? [] : [['Kualifikasi', _esc(kualifikasi)]]),
+  ];
 
   const certRow = (label, val) => `
     <tr>
@@ -96,28 +109,22 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
               </div>`}
         </div>
 
+        ${isSuratKet ? '' : `
         <!-- Nomor Sertifikat -->
         <div style="position:absolute;top:63mm;left:130mm;${F}font-size:14px;color:#374151;z-index:10;">
           Nomor : ${_esc(noCert)}
-        </div>
+        </div>`}
 
-        <!-- Diberikan Kepada -->
+        <!-- Diberikan Kepada / Menerangkan Bahwa -->
         <div style="position:absolute;top:70mm;left:130mm;${F}font-weight:700;color:#111827;z-index:10;">
-          Diberikan Kepada :
+          ${introText}
         </div>
 
         <!-- Fields table -->
         <div style="position:absolute;top:85mm;left:104mm;width:155mm;${F}color:#111827;z-index:10;line-height:1.3;">
           <table style="border-collapse:collapse;width:100%;${F}line-height:1.3;">
             <colgroup><col style="width:44mm;"><col style="width:5mm;"><col></colgroup>
-            ${[
-              ['Nama',                  _esc(peserta?.nama)],
-              ['NIK',                   _esc(peserta?.nik)],
-              ['Tempat, Tanggal Lahir', ttl],
-              ['Jabatan',               _esc(peserta?.jabatan)],
-              ['Instansi',              _esc(peserta?.instansi)],
-              ['Kualifikasi',           _esc(kualifikasi)],
-            ].map(([lbl, val]) => `
+            ${fieldRows.map(([lbl, val]) => `
               <tr>
                 <td style="padding:0;white-space:nowrap;color:#374151;vertical-align:top;">${lbl}</td>
                 <td style="padding:0 3mm 0 0;color:#374151;vertical-align:top;">:</td>
@@ -186,31 +193,27 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
         <!-- Divider -->
         <div style="border-top:1.5px solid #1a3a8f;margin:1mm 0 2mm;"></div>
 
-        <!-- SERTIFIKAT -->
+        <!-- SERTIFIKAT / SURAT KETERANGAN -->
         <div style="text-align:center;margin-bottom:0.5mm;">
-          <span style="font-size:20pt;font-weight:900;letter-spacing:5px;color:#e07820;">SERTIFIKAT</span>
+          <span style="font-size:${isSuratKet ? '15' : '20'}pt;font-weight:900;letter-spacing:${isSuratKet ? '2' : '5'}px;color:#e07820;">${isSuratKet ? 'SURAT KETERANGAN' : 'SERTIFIKAT'}</span>
         </div>
 
+        ${isSuratKet ? '' : `
         <!-- Nomor -->
         <div style="text-align:center;font-size:7pt;color:#4b5563;margin-bottom:3mm;">
           Nomor : ${_esc(noCert)}
-        </div>
+        </div>`}
 
-        <!-- Diberikan Kepada -->
+        <!-- Diberikan Kepada / Menerangkan Bahwa -->
         <div style="font-size:7.5pt;font-weight:700;color:#111827;margin-bottom:1.5mm;">
-          Diberikan Kepada :
+          ${introText}
         </div>
 
         <!-- Fields table -->
         <div style="flex:1;font-size:7.5pt;overflow:hidden;">
           <table style="border-collapse:collapse;width:100%;">
             <colgroup><col style="width:42mm;"><col style="width:5mm;"><col></colgroup>
-            ${certRow('Nama', _esc(peserta?.nama))}
-            ${certRow('NIK', _esc(peserta?.nik))}
-            ${certRow('Tempat, Tanggal Lahir', ttl)}
-            ${certRow('Jabatan', _esc(peserta?.jabatan))}
-            ${certRow('Instansi', _esc(peserta?.instansi))}
-            ${certRow('Kualifikasi', _esc(kualifikasi))}
+            ${fieldRows.map(([lbl, val]) => certRow(lbl, val)).join('')}
           </table>
         </div>
 
@@ -235,6 +238,19 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
       </div>
     </div>
   `;
+}
+
+/**
+ * Surat Keterangan — bentuk & posisi identik dengan buildCertHTML (mengikuti sertifikat
+ * asli lembaga), hanya beda judul, kalimat intro, baris field (tanpa Kualifikasi), dan
+ * tanpa nomor sertifikat.
+ * @param {object} data          hasil getPesertaReportData(bimtekId, noPeserta, bimtek) — { peserta, scores }
+ * @param {object} bimtek        dokumen bimtek (nama, periode)
+ * @param {object} lembagaSettings  app_settings.global.lembaga
+ * @returns {string} HTML siap di-print (ukuran A4 landscape)
+ */
+export function buildSuratKeteranganHTML(data, bimtek, lembagaSettings = {}) {
+  return buildCertHTML(data, bimtek, lembagaSettings, { variant: 'suratKeterangan' });
 }
 
 /**
