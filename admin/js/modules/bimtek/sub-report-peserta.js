@@ -8,9 +8,31 @@ import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { getAppSetting } from '../settings/api.js';
 import { listBimtekScores } from './penilaian-api.js';
-import { updateBimtek } from './api.js';
+import { updateBimtek, listMapel } from './api.js';
 import { showToast } from '../../components/toast.js';
-import { buildCertHTML, printCert } from '../../../../shared/certificate.js';
+import { buildCertHTML, buildCertBackHTML, printCert } from '../../../../shared/certificate.js';
+
+// Inject print styles for cert page breaks (sekali saja, sama pola dengan Portal Peserta)
+if (!document.getElementById('cert-print-styles')) {
+  const _certStyle = document.createElement('style');
+  _certStyle.id = 'cert-print-styles';
+  _certStyle.textContent = `
+    .cert-page {
+      width: 297mm;
+      height: 210mm;
+      page-break-after: always;
+      box-sizing: border-box;
+    }
+    .cert-page:last-child {
+      page-break-after: avoid;
+    }
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+  `;
+  document.head.appendChild(_certStyle);
+}
 
 // Chart instances untuk Section C peserta
 const _charts = {};
@@ -1061,16 +1083,20 @@ async function _loadAndShowCert(container, noPeserta) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-    const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
-    _showCert(container, panel, data);
+    const [data, mapels] = await Promise.all([
+      getPesertaReportData(S.bimtekId, noPeserta, S.bimtek),
+      listMapel(S.bimtekId).catch(() => []),
+    ]);
+    _showCert(container, panel, data, mapels);
   } catch (err) {
     panel.innerHTML = `<div class="text-red-400 text-sm p-4">Gagal memuat data: ${err.message}</div>`;
   }
 }
 
-function _showCert(container, panel, data) {
+function _showCert(container, panel, data, mapels = []) {
   const listSection = container.querySelector('#peserta-list-section');
   const html = buildCertHTML(data, S.bimtek, S.lembagaSettings);
+  const backHtml = buildCertBackHTML(mapels, S.lembagaSettings);
 
   panel.innerHTML = `
     <div class="flex items-center justify-between mb-4 no-print">
@@ -1085,7 +1111,10 @@ function _showCert(container, panel, data) {
         <button id="btn-close-cert" class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Tutup</button>
       </div>
     </div>
-    <div id="cert-doc" class="cert-doc">${html}</div>
+    <div id="cert-doc" class="cert-doc overflow-x-auto">
+      <div class="cert-page">${html}</div>
+      <div class="cert-page">${backHtml}</div>
+    </div>
   `;
 
   if (listSection) listSection.classList.add('no-print');
