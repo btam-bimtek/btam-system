@@ -240,9 +240,10 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
 /**
  * @param {Array} mapelList         Array of {id, urutan, nama, totalJp} already sorted by urutan
  * @param {object} lembagaSettings  app_settings.global.lembaga (kota, penandaTangan, jabatanPenandaTangan, etc.)
+ * @param {object} bimtek           dokumen bimtek (periode.selesai) — dipakai supaya tanggal TTD sama dengan lembar 1
  * @returns {string} HTML siap di-print (ukuran A4 landscape) — page 2 dengan daftar mata pelajaran
  */
-export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
+export function buildCertBackHTML(mapelList, lembagaSettings = {}, bimtek = {}) {
   const lembaga = lembagaSettings ?? {};
   const kota = lembaga.kota || 'Jakarta';
   // Penandatangan lembar 2 punya field terpisah (penandaTangan2/jabatanPenandaTangan2)
@@ -250,8 +251,14 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
   const penanda        = lembaga.penandaTangan2        || '';
   const jabatanPenanda = lembaga.jabatanPenandaTangan2 || 'Kepala Balai Teknik Air Minum';
 
-  // Format tanggal hari ini atau dari periode jika ada
-  const tglTTD = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  // Tanggal TTD sama dengan lembar 1: tanggal selesai bimtek, fallback hari ini
+  const _fmtTs = ts => {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+  const tglTTD = _fmtTs(bimtek?.periode?.selesai)
+    || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
   // Hitung total JP dari semua mapel
   const totalJp = (mapelList || []).reduce((sum, mapel) => sum + (mapel.totalJp || 0), 0);

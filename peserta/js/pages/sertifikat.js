@@ -57,7 +57,7 @@ export async function renderSertifikat(app, session, bimtekId) {
     ]);
 
     const html = buildCertHTML(data, bimtek, lembagaSettings);
-    const backPageHtml = buildCertBackHTML(mapels, lembagaSettings);
+    const backPageHtml = buildCertBackHTML(mapels, lembagaSettings, bimtek);
     content.innerHTML = `
       <div class="no-print flex justify-end mb-3">
         <button id="btn-print" class="btn-primary">Cetak Sertifikat</button>

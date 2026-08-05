@@ -1096,7 +1096,7 @@ async function _loadAndShowCert(container, noPeserta) {
 function _showCert(container, panel, data, mapels = []) {
   const listSection = container.querySelector('#peserta-list-section');
   const html = buildCertHTML(data, S.bimtek, S.lembagaSettings);
-  const backHtml = buildCertBackHTML(mapels, S.lembagaSettings);
+  const backHtml = buildCertBackHTML(mapels, S.lembagaSettings, S.bimtek);
 
   panel.innerHTML = `
     <div class="flex items-center justify-between mb-4 no-print">
