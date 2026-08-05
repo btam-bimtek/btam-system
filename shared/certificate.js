@@ -246,7 +246,10 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
   const lembaga = lembagaSettings ?? {};
   const kota = lembaga.kota || 'Jakarta';
   const penanda = lembaga.penandaTangan || '';
-  const jabatanPenanda = lembaga.jabatanPenandaTangan || 'Kepala Balai Teknik Air Minum';
+  // Penandatangan lembar 2 selalu Kepala Balai Teknik Air Minum — beda dari lembar 1
+  // (yang memakai jabatanPenandaTangan dari pengaturan lembaga, mis. Direktur), jadi
+  // sengaja tidak mewarisi lembaga.jabatanPenandaTangan.
+  const jabatanPenanda = 'Kepala Balai Teknik Air Minum';
 
   // Format tanggal hari ini atau dari periode jika ada
   const tglTTD = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -263,19 +266,22 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
       box-sizing:border-box;
       color:#111827;
       padding:10mm;
+      display:flex;
+      flex-direction:column;
     ">
       <!-- Header: DAFTAR MATA PELAJARAN -->
-      <div style="text-align:center;margin-bottom:8mm;font-size:14pt;font-weight:bold;color:#111827;">
+      <div style="flex:0 0 auto;text-align:center;margin-bottom:5mm;font-size:14pt;font-weight:bold;color:#111827;">
         DAFTAR MATA PELAJARAN
       </div>
 
-      <!-- Table container -->
-      <div style="margin-bottom:10mm;">
+      <!-- Table container — flex:1 & overflow:hidden agar tabel yang menyusut (bukan tanda tangan)
+           saat mapel terlalu banyak untuk muat 1 halaman A4 landscape -->
+      <div style="flex:1 1 auto;min-height:0;overflow:hidden;margin-bottom:4mm;">
         <table style="
           width:100%;
           border-collapse:collapse;
           font-size:10pt;
-          line-height:1.5;
+          line-height:1.25;
         ">
           <colgroup>
             <col style="width:15mm;">
@@ -317,21 +323,21 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
             ${(mapelList || []).map((mapel, idx) => `
               <tr style="border-bottom:0.5px solid #d1d5db;">
                 <td style="
-                  padding:2mm;
+                  padding:1.2mm 2mm;
                   text-align:center;
                   color:#374151;
                   vertical-align:top;
                   border-right:1px solid #d1d5db;
                 ">${idx + 1}</td>
                 <td style="
-                  padding:2mm;
+                  padding:1.2mm 2mm;
                   text-align:left;
                   color:#374151;
                   vertical-align:top;
                   border-right:1px solid #d1d5db;
                 ">${_esc(mapel.nama || '')}</td>
                 <td style="
-                  padding:2mm;
+                  padding:1.2mm 2mm;
                   text-align:center;
                   color:#374151;
                   vertical-align:top;
@@ -363,9 +369,9 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
         </table>
       </div>
 
-      <!-- Signature block -->
+      <!-- Signature block — flex:0 0 auto: selalu tampil penuh, tidak pernah ikut terpotong -->
       <div style="
-        margin-top:20mm;
+        flex:0 0 auto;
         text-align:center;
         color:#111827;
         font-size:9pt;
