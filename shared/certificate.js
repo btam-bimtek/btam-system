@@ -75,7 +75,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
       document.head.appendChild(link);
     }
 
-    const F = "font-family:'Open Sans',sans-serif;font-size:19px;";
+    const F = "font-family:'Open Sans',sans-serif;font-size:16px;";
 
     return `
       <div style="width:297mm;height:210mm;position:relative;overflow:hidden;${F}box-sizing:border-box;">
@@ -84,7 +84,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
         <img src="${_esc(certBgUrl)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0;">
 
         <!-- Foto peserta (kiri) -->
-        <div style="position:absolute;top:80mm;left:50mm;width:30mm;height:40mm;z-index:10;overflow:hidden;
+        <div style="position:absolute;top:82mm;left:50mm;width:30mm;height:40mm;z-index:10;overflow:hidden;
           border:1px solid #ccc;background:rgba(240,240,240,0.5);">
           ${peserta?.fotoUrl
             ? `<img src="${_esc(peserta.fotoUrl)}" alt="Foto" style="width:100%;height:100%;object-fit:cover;">`
@@ -127,7 +127,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
         </div>
 
         <!-- Bimtek text -->
-        <div style="position:absolute;top:131mm;left:32mm;right:32mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
+        <div style="position:absolute;top:131mm;left:30mm;right:30mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
           Pada Bimbingan Teknis <strong>${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
         </div>
