@@ -292,6 +292,7 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
                 font-weight:bold;
                 color:#111827;
                 border-bottom:1.5px solid #111827;
+                border-right:1px solid #9ca3af;
               ">No.</th>
               <th style="
                 padding:2mm;
@@ -299,6 +300,7 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
                 font-weight:bold;
                 color:#111827;
                 border-bottom:1.5px solid #111827;
+                border-right:1px solid #9ca3af;
               ">Nama Mata Pelajaran</th>
               <th style="
                 padding:2mm;
@@ -319,12 +321,14 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
                   text-align:center;
                   color:#374151;
                   vertical-align:top;
+                  border-right:1px solid #d1d5db;
                 ">${idx + 1}</td>
                 <td style="
                   padding:2mm;
                   text-align:left;
                   color:#374151;
                   vertical-align:top;
+                  border-right:1px solid #d1d5db;
                 ">${_esc(mapel.nama || '')}</td>
                 <td style="
                   padding:2mm;
@@ -345,6 +349,7 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
                 font-weight:bold;
                 color:#111827;
                 border-top:1.5px solid #111827;
+                border-right:1px solid #9ca3af;
               ">JUMLAH</td>
               <td style="
                 padding:2mm;
