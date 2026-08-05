@@ -372,15 +372,18 @@ export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
       <!-- Signature block — flex:0 0 auto: selalu tampil penuh, tidak pernah ikut terpotong -->
       <div style="
         flex:0 0 auto;
-        text-align:center;
+        display:flex;
+        justify-content:flex-end;
         color:#111827;
         font-size:9pt;
       ">
-        <div style="margin-bottom:1mm;">${_esc(kota)}, ${_esc(tglTTD)}</div>
-        <div style="margin-bottom:12mm;line-height:1.4;">${_esc(jabatanPenanda)}</div>
-        <div style="height:12mm;"></div>
-        <div style="font-weight:bold;border-top:1px solid #111827;padding-top:1mm;display:inline-block;min-width:50mm;">
-          ${_esc(penanda)}
+        <div style="text-align:center;width:70mm;">
+          <div style="margin-bottom:1mm;">${_esc(kota)}, ${_esc(tglTTD)}</div>
+          <div style="margin-bottom:12mm;line-height:1.4;">${_esc(jabatanPenanda)}</div>
+          <div style="height:12mm;"></div>
+          <div style="font-weight:bold;border-top:1px solid #111827;padding-top:1mm;display:inline-block;min-width:50mm;">
+            ${_esc(penanda)}
+          </div>
         </div>
       </div>
     </div>
