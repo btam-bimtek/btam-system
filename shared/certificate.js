@@ -245,11 +245,10 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}) {
 export function buildCertBackHTML(mapelList, lembagaSettings = {}) {
   const lembaga = lembagaSettings ?? {};
   const kota = lembaga.kota || 'Jakarta';
-  const penanda = lembaga.penandaTangan || '';
-  // Penandatangan lembar 2 selalu Kepala Balai Teknik Air Minum — beda dari lembar 1
-  // (yang memakai jabatanPenandaTangan dari pengaturan lembaga, mis. Direktur), jadi
-  // sengaja tidak mewarisi lembaga.jabatanPenandaTangan.
-  const jabatanPenanda = 'Kepala Balai Teknik Air Minum';
+  // Penandatangan lembar 2 punya field terpisah (penandaTangan2/jabatanPenandaTangan2)
+  // dari lembar 1, karena biasanya orang & jabatan berbeda (mis. Kepala Balai vs Direktur).
+  const penanda        = lembaga.penandaTangan2        || '';
+  const jabatanPenanda = lembaga.jabatanPenandaTangan2 || 'Kepala Balai Teknik Air Minum';
 
   // Format tanggal hari ini atau dari periode jika ada
   const tglTTD = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });

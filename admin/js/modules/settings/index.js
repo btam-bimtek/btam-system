@@ -127,7 +127,7 @@ function _renderLembaga(container) {
       </div>
 
       <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-white mb-2">Penanda Tangan Sertifikat</h2>
+        <h2 class="text-sm font-semibold text-white mb-2">Penanda Tangan Sertifikat — Lembar 1</h2>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-gray-400 mb-1.5">Kota Penandatanganan</label>
@@ -144,6 +144,23 @@ function _renderLembaga(container) {
             <input name="jabatanPenandaTangan" class="form-input"
                    placeholder="Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan"
                    value="${_esc(d.jabatanPenandaTangan ?? '')}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
+        <h2 class="text-sm font-semibold text-white mb-2">Penanda Tangan Sertifikat — Lembar 2 (Daftar Mata Pelajaran)</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama Penanda Tangan</label>
+            <input name="penandaTangan2" class="form-input" placeholder="Nama lengkap"
+                   value="${_esc(d.penandaTangan2 ?? '')}" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Jabatan Penanda Tangan</label>
+            <input name="jabatanPenandaTangan2" class="form-input"
+                   placeholder="Kepala Balai Teknik Air Minum"
+                   value="${_esc(d.jabatanPenandaTangan2 ?? '')}" />
           </div>
         </div>
       </div>
@@ -171,7 +188,9 @@ function _renderLembaga(container) {
         phone:                 data.phone.trim(),
         kota:                  data.kota.trim(),
         penandaTangan:         data.penandaTangan.trim(),
-        jabatanPenandaTangan:  data.jabatanPenandaTangan.trim()
+        jabatanPenandaTangan:  data.jabatanPenandaTangan.trim(),
+        penandaTangan2:        data.penandaTangan2.trim(),
+        jabatanPenandaTangan2: data.jabatanPenandaTangan2.trim()
       });
       S.settings.lembaga = { ...(S.settings.lembaga ?? {}), ...data };
       showToast('Info lembaga disimpan', 'success');
