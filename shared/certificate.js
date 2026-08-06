@@ -63,6 +63,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}, opts = {}) {
   const kualifikasi      = kategoriNilai(scores?.nilaiAkhir).kategori;
   // Judul & intro baris field beda per varian; layout/posisi identik
   const introText        = isSuratKet ? 'Menerangkan Bahwa :' : 'Diberikan Kepada :';
+  const bimtekLead        = isSuratKet ? 'Telah mengikuti Bimbingan Teknis' : 'Pada Bimbingan Teknis';
   const fieldRows         = [
     ['Nama',                  _esc(peserta?.nama)],
     ['NIK',                   _esc(peserta?.nik)],
@@ -137,7 +138,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}, opts = {}) {
 
         <!-- Bimtek text -->
         <div style="position:absolute;top:131mm;left:30mm;right:30mm;${F}line-height:1.6;color:#1a1a1a;text-align:center;z-index:10;">
-          Pada Bimbingan Teknis <strong>${_esc(b.nama)}</strong>
+          ${bimtekLead} <strong>${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
         </div>
 
@@ -221,7 +222,7 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}, opts = {}) {
 
         <!-- Bimtek text -->
         <div style="font-size:7pt;line-height:1.65;color:#374151;text-align:justify;">
-          Pada Bimbingan Teknis <strong style="color:#111827;">${_esc(b.nama)}</strong>
+          ${bimtekLead} <strong style="color:#111827;">${_esc(b.nama)}</strong>
           yang diselenggarakan oleh ${_esc(namaLemb)} pada tanggal ${_esc(periodeStr)}
         </div>
       </div>
