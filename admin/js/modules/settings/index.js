@@ -3,7 +3,7 @@
 
 import { setPageTitle } from '../../layout/navbar.js';
 import { showToast } from '../../components/toast.js';
-import { loadAllSettings, saveAppSetting, getAppSetting, uploadLogo, uploadCertBg, listAuditLog } from './api.js';
+import { loadAllSettings, saveAppSetting, getAppSetting, uploadLogo, uploadCertBg, uploadSuratKeteranganBg, listAuditLog } from './api.js';
 import { BLOOM_LEVELS } from '../../../../shared/constants.js';
 import { deleteField } from '../../../../shared/db.js';
 
@@ -401,8 +401,9 @@ function _renderThreshold(container) {
 // ─── TAB: LOGO ────────────────────────────────────────────────────────────────
 
 function _renderLogo(container) {
-  const currentUrl    = S.settings.lembaga?.logoUrl    ?? null;
-  const currentBgUrl  = S.settings.lembaga?.certBgUrl  ?? null;
+  const currentUrl        = S.settings.lembaga?.logoUrl              ?? null;
+  const currentBgUrl      = S.settings.lembaga?.certBgUrl            ?? null;
+  const currentSuratBgUrl = S.settings.lembaga?.suratKeteranganBgUrl ?? null;
 
   container.innerHTML = `
     <div class="space-y-5">
@@ -484,6 +485,49 @@ function _renderLogo(container) {
 
         <div class="mt-4">
           <button id="btn-upload-cert-bg" disabled
+            class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            Upload & Simpan
+          </button>
+        </div>
+      </div>
+
+      <!-- Background Surat Keterangan -->
+      <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <h2 class="text-sm font-semibold text-white mb-1">Background Surat Keterangan</h2>
+        <p class="text-xs text-gray-500 mb-5">
+          Gambar latar khusus Surat Keterangan (PNG, landscape A4), terpisah dari Background Sertifikat
+          supaya judul "SURAT KETERANGAN" bisa dicetak berbeda dari "SERTIFIKAT". Kalau kosong,
+          Surat Keterangan otomatis memakai Background Sertifikat di atas. Format: PNG/JPG. Maks 5 MB.
+        </p>
+
+        <div id="surat-ket-bg-preview" class="mb-5">
+          ${currentSuratBgUrl
+            ? `<div class="flex items-center gap-4">
+                 <img src="${_esc(currentSuratBgUrl)}" alt="Background" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+                 <span class="text-xs text-green-400">Background aktif</span>
+               </div>`
+            : `<div class="text-xs text-gray-500 italic">Belum ada background khusus. Memakai Background Sertifikat.</div>`
+          }
+        </div>
+
+        <label class="block">
+          <span class="text-xs font-medium text-gray-400 mb-1.5 block">Upload Background Baru</span>
+          <input id="surat-ket-bg-file" type="file" accept="image/png,image/jpeg"
+                 class="block text-sm text-gray-400
+                        file:mr-4 file:py-1.5 file:px-3
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-gray-700 file:text-white
+                        hover:file:bg-gray-600 cursor-pointer" />
+        </label>
+
+        <div id="surat-ket-bg-upload-preview" class="hidden mt-4">
+          <img id="surat-ket-bg-new-preview" src="" alt="Preview" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+          <p class="text-xs text-gray-500 mt-1">Preview — klik Simpan untuk mengupload</p>
+        </div>
+
+        <div class="mt-4">
+          <button id="btn-upload-surat-ket-bg" disabled
             class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Upload & Simpan
           </button>
@@ -578,6 +622,51 @@ function _renderLogo(container) {
     } finally {
       bgUploadBtn.disabled = true;
       bgUploadBtn.textContent = 'Upload & Simpan';
+    }
+  });
+
+  // ── Background Surat Keterangan ──
+  const suratBgFileInput = container.querySelector('#surat-ket-bg-file');
+  const suratBgUploadBtn = container.querySelector('#btn-upload-surat-ket-bg');
+  const suratBgPreviewDiv = container.querySelector('#surat-ket-bg-upload-preview');
+  const suratBgPreviewImg = container.querySelector('#surat-ket-bg-new-preview');
+
+  suratBgFileInput.addEventListener('change', () => {
+    const file = suratBgFileInput.files[0];
+    if (!file) { suratBgUploadBtn.disabled = true; suratBgPreviewDiv.classList.add('hidden'); return; }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File terlalu besar. Maks 5 MB.', 'error');
+      suratBgFileInput.value = '';
+      suratBgUploadBtn.disabled = true;
+      suratBgPreviewDiv.classList.add('hidden');
+      return;
+    }
+    suratBgPreviewImg.src = URL.createObjectURL(file);
+    suratBgPreviewDiv.classList.remove('hidden');
+    suratBgUploadBtn.disabled = false;
+  });
+
+  suratBgUploadBtn.addEventListener('click', async () => {
+    const file = suratBgFileInput.files[0];
+    if (!file) return;
+    suratBgUploadBtn.disabled = true;
+    suratBgUploadBtn.textContent = 'Mengupload…';
+    try {
+      const url = await uploadSuratKeteranganBg(file);
+      S.settings.lembaga = { ...(S.settings.lembaga ?? {}), suratKeteranganBgUrl: url };
+      showToast('Background surat keterangan berhasil diupload', 'success');
+      container.querySelector('#surat-ket-bg-preview').innerHTML = `
+        <div class="flex items-center gap-4">
+          <img src="${_esc(url)}" alt="Background" class="h-24 object-contain rounded-lg border border-gray-700 bg-white p-1" />
+          <span class="text-xs text-green-400">Background aktif</span>
+        </div>`;
+      suratBgPreviewDiv.classList.add('hidden');
+      suratBgFileInput.value = '';
+    } catch (err) {
+      showToast('Gagal upload: ' + err.message, 'error');
+    } finally {
+      suratBgUploadBtn.disabled = true;
+      suratBgUploadBtn.textContent = 'Upload & Simpan';
     }
   });
 }

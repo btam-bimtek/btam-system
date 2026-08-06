@@ -110,6 +110,37 @@ export async function uploadCertBg(file) {
   return url;
 }
 
+// ─── SURAT KETERANGAN BACKGROUND UPLOAD ──────────────────────────────────────
+
+/**
+ * Upload background surat keterangan ke Firebase Storage, simpan URL ke app_settings/lembaga.
+ * Terpisah dari certBgUrl supaya judul "SURAT KETERANGAN" bisa dicetak beda dari "SERTIFIKAT".
+ * @param {File} file
+ * @returns {string} downloadURL
+ */
+export async function uploadSuratKeteranganBg(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `settings/surat_keterangan_bg.${ext}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file);
+  const url = await getDownloadURL(ref);
+
+  await setDoc(
+    doc(db, COL.APP_SETTINGS, 'lembaga'),
+    { suratKeteranganBgUrl: url, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+
+  await logAudit({
+    action: 'upload_surat_keterangan_bg',
+    entityType: 'app_settings',
+    entityId: 'lembaga',
+    metadata: { ext }
+  });
+
+  return url;
+}
+
 // ─── AUDIT LOG ───────────────────────────────────────────────────────────────
 
 /**

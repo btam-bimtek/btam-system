@@ -54,7 +54,9 @@ export function buildCertHTML(data, bimtek, lembagaSettings = {}, opts = {}) {
   const penanda          = lembaga.penandaTangan        || '';
   const jabatanPenanda   = lembaga.jabatanPenandaTangan || 'Direktur Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan';
   const logoUrl          = lembaga.logoUrl              ?? null;
-  const certBgUrl        = lembaga.certBgUrl            ?? null;
+  // Surat Keterangan pakai background sendiri kalau sudah diupload (supaya judul "SURAT
+  // KETERANGAN" bisa beda dari "SERTIFIKAT"), fallback ke background sertifikat biasa.
+  const certBgUrl        = (isSuratKet ? lembaga.suratKeteranganBgUrl : null) || lembaga.certBgUrl || null;
   // Nomor sertifikat diisi manual oleh admin, berlaku untuk semua peserta bimtek ini — surat keterangan tidak pakai nomor
   const noCert           = b.noSertifikat || '—';
   // Kualifikasi diisi dari kategori kelulusan (Sangat Baik/Baik/Cukup/Kurang/Sangat Kurang) — surat keterangan tidak menampilkan kualifikasi
