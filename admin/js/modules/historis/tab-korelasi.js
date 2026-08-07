@@ -10,10 +10,8 @@ let _charts     = {};
 let _selected   = null;
 let _filterProv = '';
 let _filterStat = 'all';
-let _view       = 'k1';
-let _sub        = { k1: 'A', k2: 'A', k4: 'A' };
-let _k3x        = '';
-let _k3y        = 'total_latest';
+let _view       = 'k4';
+let _sub        = { k4: 'A' };
 let _sortKey    = 'instansi';
 let _sortDir    = 1;
 
@@ -28,8 +26,7 @@ export async function renderKorelasiTab() {
     </div>`;
 
   _selected = null; _filterProv = ''; _filterStat = 'all';
-  _view = 'k1'; _sub = { k1: 'A', k2: 'A', k4: 'A' };
-  _k3x = ''; _k3y = 'total_latest';
+  _view = 'k4'; _sub = { k4: 'A' };
   _destroyCharts();
 
   try {
@@ -94,9 +91,6 @@ function _renderShell(el) {
       <!-- Navigasi korelasi -->
       <div class="flex flex-wrap gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
         ${[
-          ['k1',         'K-1 Intensitas'],
-          ['k2',         'K-2 Bidang'],
-          ['k3',         'K-3 Explorer'],
           ['k4',         'K-4 Waktu'],
           ['k5',         'K-5 Provinsi'],
           ['tabel',      'Tabel'],
@@ -133,306 +127,10 @@ function _switchView(v) {
 }
 
 function _refresh() {
-  if (_view === 'k1')         _renderK1();
-  else if (_view === 'k2')    _renderK2();
-  else if (_view === 'k3')    _renderK3();
-  else if (_view === 'k4')    _renderK4();
+  if (_view === 'k4')         _renderK4();
   else if (_view === 'k5')    _renderK5();
   else if (_view === 'tabel') _renderTabel();
   else                        _renderDiagnostik();
-}
-
-// ─── K-1: Intensitas Bimtek → Tren Kinerja ───────────────────────────────────
-
-function _renderK1() {
-  const el  = document.getElementById('kor-sub-content');
-  const sub = _sub.k1;
-
-  el.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
-        ${[['A','Lifetime'],['B','5 Tahun Terakhir'],['C','Frekuensi Event']].map(([s,l]) =>
-          `<button class="k1-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="${s}">${l}</button>`
-        ).join('')}
-      </div>
-      <p class="text-xs text-gray-500">
-        ${sub === 'A' ? 'Total peserta bimtek BTAM per instansi (kumulatif lifetime)' :
-          sub === 'B' ? 'Peserta bimtek BTAM dalam 5 tahun terakhir (2019–2023)' :
-                        'Jumlah event bimtek unik yang diikuti per instansi'}
-        vs <strong class="text-white">tren kinerja PDAM</strong>
-        (slope OLS 2021–2023, poin/tahun).
-        Y &gt; 0 = membaik · Y &lt; 0 = memburuk
-      </p>
-      <div id="k1-chart"></div>
-    </div>`;
-
-  document.querySelectorAll('.k1-sub').forEach(b => {
-    const on = b.dataset.sub === sub;
-    b.classList.toggle('bg-gray-700', on); b.classList.toggle('text-white', on);
-    b.classList.toggle('text-gray-400', !on);
-    b.addEventListener('click', () => { _sub.k1 = b.dataset.sub; _renderK1(); });
-  });
-
-  const xField = sub === 'A' ? 'total' : sub === 'B' ? 'total5yr' : 'eventUnik';
-  const xLabel = sub === 'A' ? 'Total Peserta Bimtek (lifetime)' :
-                 sub === 'B' ? 'Peserta Bimtek 5 Tahun Terakhir' : 'Jumlah Event Bimtek Unik';
-
-  const points = _filtered()
-    .filter(d => d.alumni && d.kinerja)
-    .map(d => ({
-      x:        d.alumni[xField] ?? 0,
-      y:        _kSlope(d),
-      instansi: d.instansi,
-      provinsi: d.provinsi,
-      kategori: _latestKat(d),
-      extra:    `Total peserta lifetime: ${d.alumni.total}`,
-    }))
-    .filter(p => p.y !== null);
-
-  _scatter('k1-chart', points, {
-    xLabel,
-    yLabel:         'Tren Kinerja (poin/tahun)',
-    title:          `K-1${sub} — Intensitas Bimtek BTAM → Tren Kinerja PDAM`,
-    subtitle:       `${points.length} instansi · garis = regresi OLS · warna = arah tren kinerja`,
-    zeroLine:       true,
-    colorByTren:    true,
-    showRegression: true,
-  });
-}
-
-// ─── K-2: Bidang → Tren Metrik Kinerja ───────────────────────────────────────
-
-function _renderK2() {
-  const el  = document.getElementById('kor-sub-content');
-  const sub = _sub.k2;
-
-  const META = {
-    A: {
-      label:         'Trandis → Tren NRW',
-      xDesc:         'Peserta bidang Trandis',
-      yLabel:        'Tren NRW (unit/tahun)',
-      note:          'Y < 0 = NRW membaik (kehilangan air berkurang)',
-      lowerIsBetter: true,
-      getX: d => d.alumni?.byBidang?.trandis ?? 0,
-      getY: d => _metricSlope(d, 'nrw'),
-    },
-    B: {
-      label:         'Teknis → Tren Bobot Operasi',
-      xDesc:         'Peserta bidang Teknis (Produksi + Trandis + ME)',
-      yLabel:        'Tren Bobot Operasi (poin/tahun)',
-      note:          'Y > 0 = efisiensi operasi membaik',
-      lowerIsBetter: false,
-      getX: d => (d.alumni?.byBidang?.produksi ?? 0) + (d.alumni?.byBidang?.trandis ?? 0) + (d.alumni?.byBidang?.me ?? 0),
-      getY: d => _metricSlope(d, 'bobot_operasi'),
-    },
-    E: {
-      label:         'Semua → Tren Cakupan Pelayanan',
-      xDesc:         'Total peserta semua bidang',
-      yLabel:        'Tren Cakupan Pelayanan (unit/tahun)',
-      note:          'Y > 0 = cakupan meningkat',
-      lowerIsBetter: false,
-      getX: d => d.alumni?.total ?? 0,
-      getY: d => _metricSlope(d, 'cakupan'),
-    },
-  };
-
-  const m = META[sub];
-
-  el.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
-        ${Object.entries(META).map(([s, md]) =>
-          `<button class="k2-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="${s}">${md.label}</button>`
-        ).join('')}
-      </div>
-      <p class="text-xs text-gray-500">
-        ${_esc(m.xDesc)} vs <strong class="text-white">tren ${_esc(m.yLabel)}</strong>
-        (OLS slope 2021–2023) · ${_esc(m.note)}
-      </p>
-      <div id="k2-chart"></div>
-    </div>`;
-
-  document.querySelectorAll('.k2-sub').forEach(b => {
-    const on = b.dataset.sub === sub;
-    b.classList.toggle('bg-gray-700', on); b.classList.toggle('text-white', on);
-    b.classList.toggle('text-gray-400', !on);
-    b.addEventListener('click', () => { _sub.k2 = b.dataset.sub; _renderK2(); });
-  });
-
-  const points = _filtered()
-    .filter(d => d.kinerja)
-    .map(d => ({
-      x:        m.getX(d),
-      y:        m.getY(d),
-      instansi: d.instansi,
-      provinsi: d.provinsi,
-      kategori: _latestKat(d),
-    }))
-    .filter(p => p.y !== null);
-
-  const lib = m.lowerIsBetter;
-  const dotColorFn = p => {
-    if (p.y == null) return 'rgba(100,116,139,0.6)';
-    const good = lib ? p.y < -0.001 : p.y >  0.001;
-    const bad  = lib ? p.y >  0.001 : p.y < -0.001;
-    if (good) return 'rgba(52,211,153,0.85)';
-    if (bad)  return 'rgba(248,113,113,0.85)';
-    return 'rgba(100,116,139,0.6)';
-  };
-  const legendItems = [
-    { color: 'rgba(52,211,153,0.85)',  label: lib ? 'NRW Membaik'  : 'Membaik'  },
-    { color: 'rgba(100,116,139,0.6)', label: 'Stabil' },
-    { color: 'rgba(248,113,113,0.85)', label: lib ? 'NRW Memburuk' : 'Memburuk' },
-  ];
-
-  _scatter('k2-chart', points, {
-    xLabel:         m.xDesc,
-    yLabel:         m.yLabel,
-    title:          `K-2${sub} — ${m.label}`,
-    subtitle:       `${points.length} instansi · garis = regresi OLS · ${m.note}`,
-    zeroLine:       true,
-    showRegression: true,
-    dotColorFn,
-    legendItems,
-  });
-}
-
-// ─── K-3: Explorer ────────────────────────────────────────────────────────────
-
-function _renderK3() {
-  const el = document.getElementById('kor-sub-content');
-
-  const bimtekNames = _allBimtekNames();
-
-  const Y_OPTIONS = [
-    { v: 'total_latest', l: 'Total Kinerja (terbaru)' },
-    { v: 'total_slope',  l: 'Tren Total Kinerja (OLS slope)' },
-    { v: 'bobot_keuangan',  l: 'Bobot Keuangan (terbaru)' },
-    { v: 'bobot_pelayanan', l: 'Bobot Pelayanan (terbaru)' },
-    { v: 'bobot_operasi',   l: 'Bobot Operasi (terbaru)' },
-    { v: 'bobot_sdm',       l: 'Bobot SDM (terbaru)' },
-    { v: 'nrw',             l: 'NRW Kehilangan Air (terbaru)' },
-    { v: 'cakupan',         l: 'Cakupan Pelayanan (terbaru)' },
-  ];
-
-  const PRESETS = [
-    { xl: 'Trandis', xv: '__bidang_trandis', yl: 'NRW', yv: 'nrw' },
-    { xl: 'Teknis (Prod+Trandis+ME)', xv: '__bidang_teknis', yl: 'Bobot Operasi', yv: 'bobot_operasi' },
-  ];
-
-  el.innerHTML = `
-    <div class="space-y-4">
-      <p class="text-xs text-gray-500">Pilih variabel X dan Y untuk membuat scatter plot korelasi kustom.</p>
-
-      <!-- Presets -->
-      <div class="flex flex-wrap gap-2">
-        <span class="text-xs text-gray-500 self-center">Preset:</span>
-        ${PRESETS.map(p =>
-          `<button class="k3-preset px-2.5 py-1 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
-                   data-xv="${_esc(p.xv)}" data-yv="${_esc(p.yv)}">${_esc(p.xl)} → ${_esc(p.yl)}</button>`
-        ).join('')}
-        ${bimtekNames.slice(0, 6).map(n =>
-          `<button class="k3-preset px-2.5 py-1 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
-                   data-xv="${_esc(n)}" data-yv="bobot_pelayanan">${_esc(n.length > 30 ? n.slice(0,30)+'…' : n)}</button>`
-        ).join('')}
-      </div>
-
-      <div class="flex flex-wrap gap-3 items-end">
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">X — Bimtek / Bidang</label>
-          <select id="k3-x" class="form-select text-xs w-64">
-            <option value="">— pilih —</option>
-            <optgroup label="Agregat">
-              <option value="__total">Total peserta (lifetime)</option>
-              <option value="__total5yr">Peserta 5 tahun terakhir</option>
-              <option value="__event">Jumlah event unik</option>
-              <option value="__bidang_produksi">Peserta bidang Produksi</option>
-              <option value="__bidang_trandis">Peserta bidang Trandis</option>
-              <option value="__bidang_me">Peserta bidang ME</option>
-              <option value="__bidang_pendukung">Peserta bidang Pendukung</option>
-              <option value="__bidang_teknis">Peserta bidang Teknis (Prod+Trandis+ME)</option>
-            </optgroup>
-            <optgroup label="Nama Bimtek">
-              ${bimtekNames.map(n =>
-                `<option value="${_esc(n)}">${_esc(n)}</option>`
-              ).join('')}
-            </optgroup>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Y — Metrik Kinerja</label>
-          <select id="k3-y" class="form-select text-xs w-56">
-            ${Y_OPTIONS.map(o => `<option value="${o.v}"${_k3y === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}
-          </select>
-        </div>
-        <button id="k3-plot" class="px-4 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
-          Tampilkan
-        </button>
-      </div>
-
-      <div id="k3-chart"></div>
-    </div>`;
-
-  if (_k3x) document.getElementById('k3-x').value = _k3x;
-  document.getElementById('k3-plot').addEventListener('click', _runK3);
-  document.querySelectorAll('.k3-preset').forEach(b => {
-    b.addEventListener('click', () => {
-      _k3x = b.dataset.xv; _k3y = b.dataset.yv;
-      document.getElementById('k3-x').value = _k3x;
-      document.getElementById('k3-y').value = _k3y;
-      _runK3();
-    });
-  });
-}
-
-function _runK3() {
-  _k3x = document.getElementById('k3-x').value;
-  _k3y = document.getElementById('k3-y').value;
-  if (!_k3x) return;
-
-  const Y_META = {
-    total_latest:    { fn: d => _latestV(d, 'total'),           label: 'Total Kinerja (terbaru)' },
-    total_slope:     { fn: d => _kSlope(d),                     label: 'Tren Kinerja (slope/thn)' },
-    bobot_keuangan:  { fn: d => _latestV(d, 'bobot_keuangan'),  label: 'Bobot Keuangan' },
-    bobot_pelayanan: { fn: d => _latestV(d, 'bobot_pelayanan'), label: 'Bobot Pelayanan' },
-    bobot_operasi:   { fn: d => _latestV(d, 'bobot_operasi'),   label: 'Bobot Operasi' },
-    bobot_sdm:       { fn: d => _latestV(d, 'bobot_sdm'),       label: 'Bobot SDM' },
-    nrw:             { fn: d => _latestV(d, 'nrw'),             label: 'NRW' },
-    cakupan:         { fn: d => _latestV(d, 'cakupan'),         label: 'Cakupan Pelayanan' },
-  };
-
-  const ym = Y_META[_k3y] || Y_META.total_latest;
-
-  const getX = d => {
-    if (!d.alumni) return 0;
-    if (_k3x === '__total')          return d.alumni.total;
-    if (_k3x === '__total5yr')       return d.alumni.total5yr;
-    if (_k3x === '__event')          return d.alumni.eventUnik;
-    if (_k3x === '__bidang_teknis')  return (d.alumni.byBidang.produksi ?? 0) + (d.alumni.byBidang.trandis ?? 0) + (d.alumni.byBidang.me ?? 0);
-    if (_k3x.startsWith('__bidang_')) return d.alumni.byBidang[_k3x.replace('__bidang_', '')] ?? 0;
-    return d.alumni.byBimtek[_k3x] ?? 0;
-  };
-
-  const xLabel = _k3x.startsWith('__') ? _k3x.replace('__', '').replace('bidang_', 'Peserta bidang ') : `Peserta "${_k3x}"`;
-
-  const points = _filtered()
-    .filter(d => d.kinerja)
-    .map(d => ({
-      x:        getX(d),
-      y:        ym.fn(d),
-      instansi: d.instansi,
-      provinsi: d.provinsi,
-      kategori: _latestKat(d),
-    }))
-    .filter(p => p.y !== null);
-
-  _scatter('k3-chart', points, {
-    xLabel,
-    yLabel:   ym.label,
-    title:    `K-3 Explorer — ${xLabel} vs ${ym.label}`,
-    subtitle: `${points.length} instansi · warna = kategori kinerja terbaru`,
-    zeroLine: _k3y === 'total_slope',
-  });
 }
 
 // ─── K-4: Efek Waktu ──────────────────────────────────────────────────────────
@@ -1192,12 +890,6 @@ function _latestKat(d) {
   const entries = Object.entries(d.kinerja.byYear).sort(([a],[b]) => +b - +a);
   for (const [, v] of entries) { if (v?.kategori) return v.kategori; }
   return null;
-}
-
-function _allBimtekNames() {
-  const s = new Set();
-  _data.forEach(d => { if (d.alumni?.byBimtek) Object.keys(d.alumni.byBimtek).forEach(n => s.add(n)); });
-  return [...s].sort((a,b) => a.localeCompare(b,'id'));
 }
 
 // ─── Helpers display ──────────────────────────────────────────────────────────
