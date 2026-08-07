@@ -179,16 +179,26 @@ function _renderK4A() {
     return d.alumni.byYearBidang?.[tahun]?.[_k4Bidang] ?? 0;
   };
 
+  // Jitter deterministik per instansi (stabil antar re-render), supaya titik dalam satu
+  // kategori (Tidak Kirim / Kirim) tidak numpuk persis di satu garis vertikal.
+  const _jitter = nama => {
+    let h = 0;
+    for (let i = 0; i < nama.length; i++) h = (h * 31 + nama.charCodeAt(i)) >>> 0;
+    return ((h % 1000) / 1000 - 0.5) * 0.5; // rentang -0.25..0.25
+  };
+
   const render = () => {
     const p = PAIR;
 
     const points = _filtered()
       .filter(d => d.alumni && d.kinerja)
       .map(d => {
-        const xVal = xForRow(d, p.t);
-        const yVal = d.kinerja.byYear[p.t1]?.total;
+        const xVal   = xForRow(d, p.t);
+        const yVal   = d.kinerja.byYear[p.t1]?.total;
+        const cat    = xVal > 0 ? 1 : 0;
         return {
-          x: xVal, y: yVal,
+          x: cat + _jitter(d.instansi), y: yVal, cat, xVal,
+          xDisplay: `${cat === 1 ? 'Kirim' : 'Tidak Kirim'} (${xVal} peserta)`,
           instansi: d.instansi, provinsi: d.provinsi,
           kategori: d.kinerja.byYear[p.t1]?.kategori ?? null,
         };
@@ -196,6 +206,15 @@ function _renderK4A() {
       .filter(p => p.y !== null);
 
     const bidangLabel = BIDANG_OPTIONS.find(b => b.v === _k4Bidang)?.l ?? 'Semua Bidang';
+
+    const groupStats = cat => {
+      const ys = points.filter(p => p.cat === cat).map(p => p.y);
+      if (!ys.length) return { n: 0, mean: null };
+      return { n: ys.length, mean: ys.reduce((a, b) => a + b, 0) / ys.length };
+    };
+    const gTidak = groupStats(0);
+    const gKirim = groupStats(1);
+    const fmt = v => v === null ? '–' : v.toFixed(2);
 
     el.innerHTML = `
       <div class="space-y-3">
@@ -205,10 +224,24 @@ function _renderK4A() {
           </select>
         </div>
         <p class="text-xs text-gray-500">
-          Peserta bimtek BTAM (${_esc(bidangLabel)}) tahun ${p.t} → skor kinerja tahun ${p.t1}
+          Peserta bimtek BTAM (${_esc(bidangLabel)}) tahun ${p.t} → skor kinerja tahun ${p.t1}.
+          Instansi dikelompokkan: kirim peserta di tahun ${p.t} atau tidak — bukan diplot sebagai satu sumbu kontinu,
+          supaya instansi yang tidak kirim (X=0) tidak numpuk tercampur dengan yang kirim.
         </p>
         <p class="text-xs text-gray-600">Hypothesis-generating — N kecil per kombinasi, bukan bukti kausal.</p>
         <div id="k4a-chart"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+            <p class="text-xs text-gray-500 mb-1">Tidak Kirim Peserta (${p.t})</p>
+            <p class="text-lg font-bold text-white">${fmt(gTidak.mean)}</p>
+            <p class="text-xs text-gray-600">N = ${gTidak.n}</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+            <p class="text-xs text-gray-500 mb-1">Kirim Peserta (${p.t})</p>
+            <p class="text-lg font-bold text-white">${fmt(gKirim.mean)}</p>
+            <p class="text-xs text-gray-600">N = ${gKirim.n}</p>
+          </div>
+        </div>
       </div>`;
 
     document.getElementById('k4a-bidang').addEventListener('change', e => {
@@ -221,6 +254,8 @@ function _renderK4A() {
       title:    `K-4A — ${p.label}`,
       subtitle: `${points.length} instansi dengan data lengkap · ${bidangLabel}`,
       zeroLine: false,
+      xTicks:   { 0: 'Tidak Kirim', 1: 'Kirim Peserta' },
+      xMin: -0.5, xMax: 1.5,
     });
   };
 
@@ -412,7 +447,7 @@ function _renderK5() {
 
 // ─── Scatter helper ───────────────────────────────────────────────────────────
 
-function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLine, isProvinsi, colorByTren, showRegression, dotColorFn, legendItems } = {}) {
+function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLine, isProvinsi, colorByTren, showRegression, dotColorFn, legendItems, xTicks, xMin, xMax: xMaxOpt } = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (_charts.main) { _charts.main.destroy(); delete _charts.main; }
@@ -523,7 +558,7 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
                 : String(p.y);
               return [
                 p.instansi,
-                `${xLabel}: ${p.x}  ·  ${yLabel}: ${yFmt}`,
+                `${xLabel}: ${p.xDisplay ?? p.x}  ·  ${yLabel}: ${yFmt}`,
                 p.kategori ? `Kategori: ${p.kategori}` : '',
                 p.extra || '',
                 p.provinsi && !isProvinsi ? `Provinsi: ${p.provinsi}` : '',
@@ -537,8 +572,12 @@ function _scatter(containerId, points, { xLabel, yLabel, title, subtitle, zeroLi
       scales: {
         x: {
           title: { display: true, text: xLabel || 'X', color: '#9ca3af', font: { size: 11 } },
-          beginAtZero: true,
-          ticks: { color: '#6b7280', precision: 0 }, grid: { color: '#1f2937' },
+          beginAtZero: !xTicks,
+          min: xMin, max: xMaxOpt,
+          ticks: xTicks
+            ? { color: '#6b7280', callback: v => xTicks[Math.round(v)] ?? '' }
+            : { color: '#6b7280', precision: 0 },
+          grid: { color: '#1f2937' },
         },
         y: {
           title: { display: true, text: yLabel || 'Y', color: '#9ca3af', font: { size: 11 } },
