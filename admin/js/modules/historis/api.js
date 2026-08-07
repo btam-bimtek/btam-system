@@ -368,6 +368,7 @@ export async function getKorelasiData() {
       alumniMap[r.instansi] = {
         total: 0, total5yr: 0,
         byYear: {}, byBidang: {}, byBimtek: {},
+        byYearBidang: {},
         bimtekEvents: new Set(),
         provinsi: null, kab_kota: null,
       };
@@ -377,6 +378,10 @@ export async function getKorelasiData() {
     if (r.tahun >= CUTOFF_5YR) a.total5yr++;
     if (r.tahun) a.byYear[r.tahun] = (a.byYear[r.tahun] || 0) + 1;
     if (r.bidang) a.byBidang[r.bidang] = (a.byBidang[r.bidang] || 0) + 1;
+    if (r.tahun && r.bidang) {
+      if (!a.byYearBidang[r.tahun]) a.byYearBidang[r.tahun] = {};
+      a.byYearBidang[r.tahun][r.bidang] = (a.byYearBidang[r.tahun][r.bidang] || 0) + 1;
+    }
     if (r.nama_bimtek) {
       a.byBimtek[r.nama_bimtek] = (a.byBimtek[r.nama_bimtek] || 0) + 1;
       a.bimtekEvents.add(`${r.nama_bimtek}|${r.tahun}`);
@@ -428,12 +433,13 @@ export async function getKorelasiData() {
       provinsi:        a.provinsi || k?.provinsi || null,
       kab_kota:        a.kab_kota || null,
       alumni: {
-        total:     a.total,
-        total5yr:  a.total5yr,
-        eventUnik: a.bimtekEvents.size,
-        byYear:    a.byYear,
-        byBidang:  a.byBidang,
-        byBimtek:  a.byBimtek,
+        total:        a.total,
+        total5yr:     a.total5yr,
+        eventUnik:    a.bimtekEvents.size,
+        byYear:       a.byYear,
+        byBidang:     a.byBidang,
+        byBimtek:     a.byBimtek,
+        byYearBidang: a.byYearBidang,
       },
       kinerja: _toKinerja(k),
     });
