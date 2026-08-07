@@ -15,6 +15,7 @@ let _sub        = { k4: 'A' };
 let _sortKey    = 'instansi';
 let _sortDir    = 1;
 let _k4Bidang   = '';
+let _dampakWindow = 2; // tahun sebelum 2021
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ function _renderK4() {
     <div class="space-y-4">
       <div class="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
         <button class="k4-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="A">K-4A Lag Tahun</button>
-        <button class="k4-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="B">K-4B Transisi Kategori</button>
+        <button class="k4-sub px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-sub="B">K-4B Dampak (Grup Intensitas)</button>
       </div>
       <div id="k4-content"></div>
     </div>`;
@@ -245,88 +246,115 @@ function _renderK4B() {
   if (_charts.main) { _charts.main.destroy(); delete _charts.main; }
   const el = document.getElementById('k4-content');
 
-  // Kelompok intensitas
+  const WINDOW_OPTIONS = [1, 2, 3, 5];
+  const BASE_YEAR = 2021, END_YEAR = 2023;
+
   const group = total =>
     total === 0 ? 'Tidak Ada' :
     total <= 10  ? 'Rendah (1–10)' :
     total <= 30  ? 'Sedang (11–30)' : 'Tinggi (31+)';
 
   const GROUPS = ['Tidak Ada', 'Rendah (1–10)', 'Sedang (11–30)', 'Tinggi (31+)'];
-  const TRANS  = { naik: 'Naik', tetap: 'Tetap', turun: 'Turun', 'n/a': 'Tidak Lengkap' };
   const KAT_RANK = { SEHAT: 3, 'KURANG SEHAT': 2, SAKIT: 1 };
 
+  const windowStart = BASE_YEAR - _dampakWindow;
+  const windowEnd   = BASE_YEAR - 1;
+
   const matrix = {};
-  GROUPS.forEach(g => { matrix[g] = { naik: 0, tetap: 0, turun: 0, 'n/a': 0 }; });
+  GROUPS.forEach(g => { matrix[g] = { naik: 0, tetap: 0, turun: 0, na: 0, deltas: [] }; });
 
-  _filtered()
-    .filter(d => d.kinerja)
-    .forEach(d => {
-      const total = d.alumni?.total ?? 0;
-      const g     = group(total);
-      const k21   = d.kinerja.byYear['2021']?.kategori;
-      const k23   = d.kinerja.byYear['2023']?.kategori;
+  let excluded = 0;
 
-      let trans = 'n/a';
-      if (k21 && k23) {
-        const r21 = KAT_RANK[k21] ?? 0;
-        const r23 = KAT_RANK[k23] ?? 0;
-        trans = r23 > r21 ? 'naik' : r23 < r21 ? 'turun' : 'tetap';
-      }
-      matrix[g][trans]++;
-    });
+  _filtered().forEach(d => {
+    const k21 = d.kinerja?.byYear?.[String(BASE_YEAR)];
+    const k23 = d.kinerja?.byYear?.[String(END_YEAR)];
+    if (!k21 || !k23) { excluded++; return; }
 
-  // Bar chart data
-  const labels   = GROUPS;
-  const datasets = [
-    { label: 'Naik',           data: labels.map(g => matrix[g].naik),  backgroundColor: 'rgba(52,211,153,0.8)' },
-    { label: 'Tetap',          data: labels.map(g => matrix[g].tetap), backgroundColor: 'rgba(148,163,184,0.6)' },
-    { label: 'Turun',          data: labels.map(g => matrix[g].turun), backgroundColor: 'rgba(248,113,113,0.8)' },
-    { label: 'Tidak Lengkap',  data: labels.map(g => matrix[g]['n/a']), backgroundColor: 'rgba(75,85,99,0.5)' },
-  ];
+    let intensitas = 0;
+    for (let y = windowStart; y <= windowEnd; y++) {
+      intensitas += d.alumni?.byYear?.[String(y)] ?? 0;
+    }
+    const g = group(intensitas);
+
+    let trans = 'na';
+    if (k21.kategori && k23.kategori) {
+      const r21 = KAT_RANK[k21.kategori] ?? 0;
+      const r23 = KAT_RANK[k23.kategori] ?? 0;
+      trans = r23 > r21 ? 'naik' : r23 < r21 ? 'turun' : 'tetap';
+    }
+    matrix[g][trans]++;
+
+    if (k21.total != null && k23.total != null) {
+      matrix[g].deltas.push(k23.total - k21.total);
+    }
+  });
+
+  const rowTotal = g => matrix[g].naik + matrix[g].tetap + matrix[g].turun + matrix[g].na;
+  const pct = (n, total) => total === 0 ? '–' : `${Math.round((n / total) * 100)}%`;
+  const avgDelta = g => {
+    const arr = matrix[g].deltas;
+    if (!arr.length) return null;
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+  };
 
   el.innerHTML = `
-    <div class="space-y-3">
-      <p class="text-xs text-gray-500">
-        Kelompok instansi berdasarkan intensitas bimtek BTAM (total lifetime), dibandingkan dengan
-        <strong class="text-white">perubahan kategori kinerja 2021→2023</strong>.
-      </p>
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <div style="height:300px;position:relative;"><canvas id="chart-k4b"></canvas></div>
+    <div class="space-y-4">
+      <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-3">
+        <p class="text-xs text-yellow-400 font-semibold mb-1">⚠️ Asosiasi, bukan bukti sebab-akibat</p>
+        <p class="text-xs text-gray-400">
+          Belum mengontrol ukuran/kapasitas PDAM. Perhatikan N per sel — sel dengan N kecil (redup di bawah)
+          tidak bisa disimpulkan.
+        </p>
       </div>
-      <!-- Tabel ringkasan -->
+
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-gray-400">Window intensitas: N tahun sebelum ${BASE_YEAR}</label>
+        <select id="dampak-window" class="form-select text-xs">
+          ${WINDOW_OPTIONS.map(w => `<option value="${w}"${w === _dampakWindow ? ' selected' : ''}>${w} tahun (${BASE_YEAR - w}–${BASE_YEAR - 1})</option>`).join('')}
+        </select>
+      </div>
+
+      <p class="text-xs text-gray-500">
+        Grup intensitas dihitung dari peserta bimtek ${windowStart}–${windowEnd} saja (sebelum window kinerja).
+        Outcome: transisi kategori kinerja ${BASE_YEAR}→${END_YEAR}. ${excluded} instansi dikecualikan (data kinerja ${BASE_YEAR}/${END_YEAR} tidak lengkap).
+      </p>
+
       <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <table class="btam-table text-xs w-full">
-          <thead><tr><th>Intensitas Bimtek</th><th class="text-center text-emerald-400">Naik</th><th class="text-center text-gray-400">Tetap</th><th class="text-center text-red-400">Turun</th><th class="text-center text-gray-600">N/A</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Intensitas (${windowStart}–${windowEnd})</th>
+              <th class="text-center text-emerald-400">Naik</th>
+              <th class="text-center text-gray-400">Tetap</th>
+              <th class="text-center text-red-400">Turun</th>
+              <th class="text-center text-gray-600">Tdk Lengkap</th>
+              <th class="text-center text-white">N</th>
+              <th class="text-center text-blue-400">Rata² Δ Skor</th>
+            </tr>
+          </thead>
           <tbody>
-            ${GROUPS.map(g => `
-              <tr>
+            ${GROUPS.map(g => {
+              const n = rowTotal(g);
+              const dim = n < 5 ? ' text-gray-600 italic' : '';
+              const ad  = avgDelta(g);
+              return `
+              <tr class="${dim}">
                 <td class="font-medium text-white">${g}</td>
-                <td class="text-center text-emerald-400">${matrix[g].naik}</td>
-                <td class="text-center text-gray-400">${matrix[g].tetap}</td>
-                <td class="text-center text-red-400">${matrix[g].turun}</td>
-                <td class="text-center text-gray-600">${matrix[g]['n/a']}</td>
-              </tr>`).join('')}
+                <td class="text-center text-emerald-400">${pct(matrix[g].naik, n)}</td>
+                <td class="text-center text-gray-400">${pct(matrix[g].tetap, n)}</td>
+                <td class="text-center text-red-400">${pct(matrix[g].turun, n)}</td>
+                <td class="text-center text-gray-600">${pct(matrix[g].na, n)}</td>
+                <td class="text-center text-white">${n}</td>
+                <td class="text-center text-blue-400">${ad === null ? '–' : (ad >= 0 ? '+' : '') + ad.toFixed(2)}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
 
-  if (_charts.k4b) { _charts.k4b.destroy(); delete _charts.k4b; }
-  const ctx = document.getElementById('chart-k4b').getContext('2d');
-  _charts.k4b = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#9ca3af', boxWidth: 14, font: { size: 10 } } },
-        tooltip: { backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1, bodyColor: '#9ca3af' },
-      },
-      scales: {
-        x: { stacked: false, ticks: { color: '#6b7280' }, grid: { color: '#1f2937' } },
-        y: { stacked: false, beginAtZero: true, ticks: { color: '#6b7280', precision: 0 }, grid: { color: '#1f2937' } },
-      },
-    },
+  document.getElementById('dampak-window').addEventListener('change', e => {
+    _dampakWindow = +e.target.value; _renderK4B();
   });
 }
 
