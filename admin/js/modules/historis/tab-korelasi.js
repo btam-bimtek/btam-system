@@ -190,7 +190,7 @@ function _renderK4A() {
         return {
           x: xVal, y: yVal,
           instansi: d.instansi, provinsi: d.provinsi,
-          kategori: _latestKat(d),
+          kategori: d.kinerja.byYear[p.t1]?.kategori ?? null,
         };
       })
       .filter(p => p.y !== null);
