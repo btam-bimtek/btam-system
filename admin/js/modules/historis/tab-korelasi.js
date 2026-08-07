@@ -264,8 +264,10 @@ function _renderK4B() {
   GROUPS.forEach(g => { matrix[g] = { naik: 0, tetap: 0, turun: 0, na: 0, deltas: [] }; });
 
   let excluded = 0;
+  let noKinerja = 0;
 
   _filtered().forEach(d => {
+    if (!d.kinerja) { noKinerja++; return; }
     const k21 = d.kinerja?.byYear?.[String(BASE_YEAR)];
     const k23 = d.kinerja?.byYear?.[String(END_YEAR)];
     if (!k21 || !k23) { excluded++; return; }
@@ -316,7 +318,7 @@ function _renderK4B() {
 
       <p class="text-xs text-gray-500">
         Grup intensitas dihitung dari peserta bimtek ${windowStart}–${windowEnd} saja (sebelum window kinerja).
-        Outcome: transisi kategori kinerja ${BASE_YEAR}→${END_YEAR}. ${excluded} instansi dikecualikan (data kinerja ${BASE_YEAR}/${END_YEAR} tidak lengkap).
+        Outcome: transisi kategori kinerja ${BASE_YEAR}→${END_YEAR}. ${excluded} instansi dikecualikan (data kinerja ${BASE_YEAR}/${END_YEAR} tidak lengkap), ${noKinerja} instansi tanpa data kinerja sama sekali.
       </p>
 
       <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -335,15 +337,20 @@ function _renderK4B() {
           <tbody>
             ${GROUPS.map(g => {
               const n = rowTotal(g);
-              const dim = n < 5 ? ' text-gray-600 italic' : '';
+              const dim = n < 5 ? ' opacity-40 italic' : '';
               const ad  = avgDelta(g);
+              const cell = (val, colorClass) => {
+                const cnt = matrix[g][val];
+                const cntCls = cnt < 5 ? 'text-gray-600 italic' : 'text-gray-600';
+                return `<td class="text-center ${colorClass}">${pct(cnt, n)} <span class="${cntCls}">(${cnt})</span></td>`;
+              };
               return `
               <tr class="${dim}">
                 <td class="font-medium text-white">${g}</td>
-                <td class="text-center text-emerald-400">${pct(matrix[g].naik, n)}</td>
-                <td class="text-center text-gray-400">${pct(matrix[g].tetap, n)}</td>
-                <td class="text-center text-red-400">${pct(matrix[g].turun, n)}</td>
-                <td class="text-center text-gray-600">${pct(matrix[g].na, n)}</td>
+                ${cell('naik', 'text-emerald-400')}
+                ${cell('tetap', 'text-gray-400')}
+                ${cell('turun', 'text-red-400')}
+                ${cell('na', 'text-gray-600')}
                 <td class="text-center text-white">${n}</td>
                 <td class="text-center text-blue-400">${ad === null ? '–' : (ad >= 0 ? '+' : '') + ad.toFixed(2)}</td>
               </tr>`;
