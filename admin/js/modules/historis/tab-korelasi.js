@@ -363,7 +363,6 @@ function _renderK4B() {
 function _renderK5() {
   const el = document.getElementById('kor-sub-content');
 
-  // Agregasi per provinsi
   const provMap = {};
   _filtered().forEach(d => {
     const prov = d.provinsi;
@@ -375,34 +374,48 @@ function _renderK5() {
     if (v !== null) { p.scores.push(v); p.count++; }
   });
 
-  const points = Object.entries(provMap)
-    .filter(([, p]) => p.scores.length > 0)
+  const rows = Object.entries(provMap)
     .map(([prov, p]) => ({
-      x:        p.bimtek,
-      y:        p.scores.reduce((a,b) => a+b, 0) / p.scores.length,
-      instansi: prov,
-      provinsi: prov,
-      kategori: null,
-      extra:    `${p.count} PDAM dengan data kinerja`,
+      prov,
+      bimtek:    p.bimtek,
+      avgSkor:   p.scores.length ? p.scores.reduce((a,b) => a+b, 0) / p.scores.length : null,
+      nInstansi: p.count,
     }))
-    .sort((a, b) => b.y - a.y);
+    .sort((a, b) => b.bimtek - a.bimtek);
 
   el.innerHTML = `
     <div class="space-y-4">
-      <p class="text-xs text-gray-500">
-        Total peserta bimtek BTAM per provinsi vs rata-rata skor kinerja PDAM di provinsi tersebut.
-        Satu titik = satu provinsi.
-      </p>
-      <div id="k5-chart"></div>
-    </div>`;
+      <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-3">
+        <p class="text-xs text-yellow-400 font-semibold mb-1">⚠️ Deskriptif, bukan korelasi</p>
+        <p class="text-xs text-gray-400">
+          Dua angka independen per provinsi (jangkauan bimtek, rata-rata kinerja terkini) — bukan pasangan
+          X/Y yang dihubungkan. Pola di level provinsi tidak mewakili pola di level instansi individual
+          (ecological fallacy).
+        </p>
+      </div>
 
-  _scatter('k5-chart', points, {
-    xLabel:   'Total Peserta Bimtek dari Provinsi',
-    yLabel:   'Rata-rata Skor Kinerja PDAM',
-    title:    'K-5 — Agregasi Provinsi: Intensitas Bimtek → Rata-rata Kinerja',
-    subtitle: `${points.length} provinsi`,
-    isProvinsi: true,
-  });
+      <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <table class="btam-table text-xs w-full">
+          <thead>
+            <tr>
+              <th>Provinsi</th>
+              <th class="text-center">Total Peserta Bimtek</th>
+              <th class="text-center">Rata-rata Skor Kinerja</th>
+              <th class="text-center">N PDAM (data kinerja)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="font-medium text-white">${_esc(r.prov)}</td>
+                <td class="text-center text-blue-400">${r.bimtek}</td>
+                <td class="text-center text-emerald-400">${r.avgSkor === null ? '–' : r.avgSkor.toFixed(2)}</td>
+                <td class="text-center text-gray-400">${r.nInstansi}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 // ─── Scatter helper ───────────────────────────────────────────────────────────
