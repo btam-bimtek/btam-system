@@ -1,0 +1,394 @@
+﻿nama,wilayah,provinsi,kategori_2023,jumlah_pelanggan_num,rasio_aset_sr_num,pipa_total_per_pelanggan,pegawai_per_1000pel,cluster,nama_klaster
+PDAM Tirta Fulawan Kabupaten Simeulue,Wilayah I — Sumatera (10 Provinsi),Aceh,SAKIT,4456.0,1897162.0,14.384649910233394,3.3662477558348294,1,Kecil-Sedang Tipikal
+PDAM Tirta Singkil Kabupaten Aceh Singkil,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,3483.0,2999793.0,15.611541774332473,9.474590869939709,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Naga Kabupaten Aceh Selatan,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,3977.0,1377797.0,52.06965049031933,7.543374402816193,1,Kecil-Sedang Tipikal
+PDAM Tirta Agara Kabupaten Aceh Tenggara,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,5929.0,5463477.0,26.394670264800133,7.421150278293135,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Peusada Kabupaten Aceh Timur,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,1982.0,2651149.0,261.93895055499496,68.61755802219979,0,Kecil-Tidak Efisien
+PDAM Tirta Tawar Kabupaten Aceh Tengah,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,8977.0,4319282.0,10.12309234710928,6.795143143589173,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Meulaboh Kabupaten Aceh Barat,Wilayah I — Sumatera (10 Provinsi),Aceh,SAKIT,10993.0,1357738.0,5.012280542163195,4.821249886291276,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Mountala Kabupaten Aceh Besar,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,42783.0,2439154.0,12.213612883622,3.9501671224551806,2,Besar-Efisien
+PERUMDAM Tirta Mon Krueng Baro Kabupaten Pidie,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,12179.0,3332238.0,27.4793497003038,4.6801872074883,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Krueng Peusangan Kabupaten Bireuen,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,33267.0,892423.0,26.452340156912257,4.208374665584513,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Pase Kabupaten Aceh Utara,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,47426.0,1571909.0,32.34978703664657,5.250284653987265,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Sejuk Kabupaten Gayo Lues,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,6469.0,7226759.0,31.271448446436853,8.656670273612614,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Tamiang Kabupaten Aceh Tamiang,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,29852.0,2805534.0,14.78091920139354,4.723301621331904,2,Besar-Efisien
+PDAM Tirta Bengi Kabupaten Bener Meriah,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,578.0,3079981.0,210.55363321799308,88.23529411764706,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Krueng Meureudu Kabupaten Pidie Jaya,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,8301.0,2687961.0,15.54499457896639,5.300566196843754,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Daroy Kota Banda Aceh,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,54557.0,2481133.0,19.755741701339883,4.380739410158183,2,Besar-Efisien
+PERUMDA Tirta Aneuk Laot Kota Sabang,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,8192.0,1710596.0,27.0306396484375,8.9111328125,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Keumueneng Kota Langsa,Wilayah I — Sumatera (10 Provinsi),Aceh,SEHAT,16106.0,3193478.0,25.482987706444803,8.444058114988204,4,Kecil-Sedang Aset Tinggi
+PDAM Ie Beusaree Rata Kota Lhokseumawe,Wilayah I — Sumatera (10 Provinsi),Aceh,SAKIT,235.0,3635640.0,425.3744680851064,131.91489361702128,3,Ekstrem Terisolasi
+PERUMDAM Tirta Abdya Kabupaten Aceh Barat Daya,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,2995.0,1141865.0,24.191652754590987,8.013355592654424,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Mon Mata Kabupaten Aceh Jaya,Wilayah I — Sumatera (10 Provinsi),Aceh,KURANG SEHAT,11834.0,4702836.0,29.21108669934088,4.225114078080108,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Umbu Kabupaten Nias,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,10546.0,1145594.0,16.756210885643846,6.16347430305329,1,Kecil-Sedang Tipikal
+PDAM Tirta Madina Kabupaten Mandailing Natal,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,5737.0,1070763.0,30.10702457730521,0.3486142583231654,1,Kecil-Sedang Tipikal
+PDAM Mual Nauli Kabupaten Tapanuli Tengah,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,10344.0,942452.0,19.861078886310903,8.31399845320959,1,Kecil-Sedang Tipikal
+PERUMDA Mual Na Tio Kabupaten Tapanuli Utara,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,16941.0,1983371.0,17.906558054424178,4.6042146272357005,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Bina Kabupaten Labuhanbatu,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,18391.0,2394749.0,17.09716709259964,5.437442227176336,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Silaupiasa Kabupaten Asahan,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,31771.0,1728726.0,10.173334172673192,5.098989644644487,2,Besar-Efisien
+PDAM Tirta Lihou Kabupaten Simalungun,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,44263.0,1277293.0,19.38580755936109,6.551747509206336,1,Kecil-Sedang Tipikal
+PERUMDAM Lae Nciho Kabupaten Dairi,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,23059.0,1166919.0,0.0,8.673403009670844,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Malem Kabupaten Karo,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SAKIT,17643.0,1059067.0,20.08099529558465,5.384571784843847,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Deli Kabupaten Deli Serdang,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,34704.0,4295251.0,17.670441447671738,5.446058091286306,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Wampu Kabupaten Langkat,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,28148.0,1920843.0,13.562633224385392,4.902657382407275,2,Besar-Efisien
+PERUMDAM Tirta Nauli Kota Sibolga,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,17949.0,2096158.0,10.45902278678478,7.019889687447768,1,Kecil-Sedang Tipikal
+PDAM Tirta Kualo Kota Tanjungbalai,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SAKIT,27641.0,1235770.0,7.182627256611555,9.551029268116205,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Uli Kota Pematangsiantar,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,77438.0,1259496.0,10.420943206177846,3.499573852630492,2,Besar-Efisien
+PERUMDAM Tirta Bulian Kota Tebing Tinggi,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,1714.0,2833019.0,202.2934655775963,36.756126021003496,0,Kecil-Tidak Efisien
+PERUMDA Tirtanadi Provinsi Sumatera Utara,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,SEHAT,567727.0,1976632.0,8.257169378944457,2.626262270422228,2,Besar-Efisien
+PDAM Tirta Sari Kota Binjai,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,19286.0,707301.0,17.512651664419785,6.325832209893187,1,Kecil-Sedang Tipikal
+PDAM Tirta Ayumi Kota Padangsidimpuan,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,2904.0,2353378.0,20.176997245179063,6.198347107438017,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Tanjung Kabupaten Batu Bara,Wilayah I — Sumatera (10 Provinsi),Sumatera Utara,KURANG SEHAT,7412.0,13915957.0,25.481921208850512,7.960064759848893,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Langkisau Kabupaten Pesisir Selatan,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,3577.0,2177625.0,263.62258876153203,64.02012859938496,0,Kecil-Tidak Efisien
+PDAM Tirta Dharma Kabupaten Solok,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,KURANG SEHAT,18453.0,3223022.0,10.96190321356961,4.985639191459383,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Sanjung Buana Kabupaten Sijunjung,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,20399.0,1995394.0,16.200303936467474,4.608069022991323,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Alami Kabupaten Tanah Datar,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,27898.0,1561470.0,24.310739121083948,3.692020933400244,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Anai Kabupaten Padang Pariaman,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,KURANG SEHAT,3763.0,1502280.0,211.0728142439543,50.49162901939942,0,Kecil-Tidak Efisien
+PDAM Tirta Antokan Kabupaten Agam,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,KURANG SEHAT,18203.0,1475949.0,20.899906608800748,3.735647970114816,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Luak Nan Bungsu Kabupaten Lima Puluh Kota,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,KURANG SEHAT,18647.0,2047958.0,27.144634525660965,2.252373035877085,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Saiyo Kabupaten Pasaman,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,26066.0,1915822.0,12.268472339446022,3.682958643443566,2,Besar-Efisien
+PERUMDAM Tirta Saribu Sungai Kabupaten Solok Selatan,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,14361.0,2897625.0,22.01072348722234,4.943945407701413,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Gemilang Kabupaten Pasaman Barat,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SAKIT,18672.0,3178812.0,31.92448586118252,5.141388174807197,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Kota Padang,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,14717.0,2245560.0,160.00278589386423,18.88971937215465,0,Kecil-Tidak Efisien
+PERUMDAM Pincuran Gadang Kota Solok,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,20125.0,4292983.0,7.199552795031056,4.322981366459628,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Kota Sawahlunto,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,KURANG SEHAT,9413.0,959013.0,19.46000212472113,4.568150430256028,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Serambi Kota Padang Panjang,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,11821.0,2370753.0,14.992132645292276,3.9759749598172736,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Jam Gadang Kota Bukittinggi,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,16092.0,1828762.0,21.068232662192397,4.1014168530947055,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Sago Kota Payakumbuh,Wilayah I — Sumatera (10 Provinsi),Sumatera Barat,SEHAT,34843.0,2686383.0,13.542605401371867,2.697815917113911,2,Besar-Efisien
+PERUMDAM Tirta Indra Kabupaten Indragiri Hulu,Wilayah I — Sumatera (10 Provinsi),Riau,SEHAT,15851.0,2920348.0,27.268942022585325,7.8859377957226675,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Indragiri Kabupaten Indragiri Hilir,Wilayah I — Sumatera (10 Provinsi),Riau,KURANG SEHAT,12036.0,1847416.0,42.75689597873048,10.136257892987704,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Kampar Kabupaten Kampar,Wilayah I — Sumatera (10 Provinsi),Riau,SEHAT,11112.0,771054.0,43.75611951043916,9.899208063354932,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Terubuk Kabupaten Bengkalis,Wilayah I — Sumatera (10 Provinsi),Riau,SEHAT,20042.0,1663285.0,23.884043508631876,6.087216844626285,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Siak Kota Pekanbaru,Wilayah I — Sumatera (10 Provinsi),Riau,SAKIT,13657.0,4886783.0,18.28022259647068,7.615142417807717,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Dumai Bersemai Kota Dumai,Wilayah I — Sumatera (10 Provinsi),Riau,KURANG SEHAT,8781.0,3207978.0,29.61701400751623,8.08563944880993,4,Kecil-Sedang Aset Tinggi
+PERUMDA Tirta Mulia Karimun Kabupaten Karimun,Wilayah I — Sumatera (10 Provinsi),Kepulauan Riau,SEHAT,11122.0,657668.0,15.650782233411258,7.1030390217586765,1,Kecil-Sedang Tipikal
+PERUMDA AM Tirta Nusa Kabupaten Natuna,Wilayah I — Sumatera (10 Provinsi),Kepulauan Riau,KURANG SEHAT,9587.0,1069567.0,8.807343277354752,5.841243350370293,1,Kecil-Sedang Tipikal
+PERUMDA AM Tirta Lingga Kabupaten Lingga,Wilayah I — Sumatera (10 Provinsi),Kepulauan Riau,SEHAT,6784.0,544580.0,18.987470518867923,3.832547169811321,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Kepri Provinsi Kepulauan Riau,Wilayah I — Sumatera (10 Provinsi),Kepulauan Riau,SEHAT,30645.0,3095863.0,11.111306901615272,3.752651329743841,2,Besar-Efisien
+PERUMDAM Tirta Sakti Kabupaten Kerinci,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,34682.0,2965034.0,12.283028660400207,3.373507871518367,2,Besar-Efisien
+PERUMDAM Tirta Merangin Kabupaten Merangin,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,18498.0,1567406.0,24.875662233755,5.351929938371716,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Sako Batuah Kabupaten Sarolangun,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,11179.0,5283539.0,42.18910457107076,6.530101082386618,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Batang Hari Kabupaten Batang Hari,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,20819.0,3167090.0,26.342811854555933,4.707238580143138,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Muaro Jambi Kabupaten Muaro Jambi,Wilayah I — Sumatera (10 Provinsi),Jambi,KURANG SEHAT,1752.0,3142189.0,249.1187214611872,95.8904109589041,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Pengabuan Kabupaten Tanjung Jabung Barat,Wilayah I — Sumatera (10 Provinsi),Jambi,SAKIT,11497.0,2765878.0,42.01417761155084,8.263025136992258,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Muaro Kabupaten Tebo,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,24076.0,3961238.0,20.199036384781525,3.4889516530985216,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Pancuran Telago Kabupaten Bungo,Wilayah I — Sumatera (10 Provinsi),Jambi,KURANG SEHAT,12406.0,1920706.0,32.08383040464292,5.884249556666129,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Mayang Kota Jambi,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,100221.0,3023167.0,14.67805150617136,3.0233184661897208,2,Besar-Efisien
+PERUMDAM Tirta Khayangan Kota Sungai Penuh,Wilayah I — Sumatera (10 Provinsi),Jambi,SEHAT,16636.0,3734781.0,11.902500601106036,6.011060351045924,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Raja Kabupaten Ogan Komering Ulu,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,KURANG SEHAT,21387.0,1678291.0,16.62813858886239,7.621452284097816,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Agung Kabupaten Ogan Komering Ilir,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,9837.0,6935241.0,30.43244891735285,7.115990647555149,4,Kecil-Sedang Aset Tinggi
+PDAM Lematang Enim Kabupaten Muara Enim,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,41022.0,6425851.0,33.44122665886597,7.751937984496124,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Lematang Kabupaten Lahat,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SEHAT,8182.0,2454988.0,11.286971400635542,5.2554387680273775,4,Kecil-Sedang Aset Tinggi
+PERUMDA AM Tirta Randik Kabupaten Musi Banyuasin,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SEHAT,51524.0,7724704.0,18.310806614393293,7.142302616256502,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Betuah Kabupaten Banyuasin,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,KURANG SEHAT,3813.0,3585320.0,103.9795436664044,67.13873590348807,0,Kecil-Tidak Efisien
+PDAM Tirta Saka Selabung Kabupaten Ogan Komering Ulu Selatan,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,KURANG SEHAT,14421.0,2418009.0,17.971291866028707,8.45988489009084,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Way Komering Kabupaten Ogan Komering Ulu Timur,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,4163.0,1358301.0,42.43117943790536,34.83065097285611,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Ogan Kabupaten Ogan Ilir,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,12418.0,3634305.0,32.07481075857626,7.569656949589306,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta PALI Anugerah Kabupaten Penukal Abab Lematang Ilir,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,7643.0,7879579.0,0.3303676566793144,10.72877142483318,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Seguring Betung Kabupaten Empat Lawang,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,4188.0,3554628.0,16.202960840496658,12.177650429799426,4,Kecil-Sedang Aset Tinggi
+PERUMDA Tirta Musi Kota Palembang,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SEHAT,335682.0,2919491.0,12.572714652558076,1.7725108882811709,2,Besar-Efisien
+PDAM Tirta Prabujaya Kota Prabumulih,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,9119.0,10191060.0,53.40377234345871,7.456957999780678,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Bukit Sulap Kota Lubuklinggau,Wilayah I — Sumatera (10 Provinsi),Sumatera Selatan,SAKIT,23216.0,3415319.0,16.202446588559614,3.359751895244659,2,Besar-Efisien
+PERUMDA Tirta Bangka Kabupaten Bangka,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,SEHAT,14143.0,890845.0,30.31011807961536,10.88877890122322,1,Kecil-Sedang Tipikal
+PERUMDAM AM Tirta Batu Mentas Kabupaten Belitung,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,SEHAT,2538.0,8236512.0,88.26792750197005,9.850275807722616,4,Kecil-Sedang Aset Tinggi
+PERUMDAM AM Tirta Sejiran Setason Kabupaten Bangka Barat,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,SEHAT,5535.0,1685203.0,49.17958446251129,7.407407407407407,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Bangka Tengah Kabupaten Bangka Tengah,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,SEHAT,1521.0,2065595.0,101.2215647600263,9.861932938856016,0,Kecil-Tidak Efisien
+PERUMDAM Pelangi Timur Kabupaten Belitung Timur,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,SEHAT,3857.0,2173737.0,48.01659320715582,8.037334716100595,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Pinang Kota Pangkalpinang,Wilayah I — Sumatera (10 Provinsi),Bangka Belitung,KURANG SEHAT,7489.0,10773602.0,38.12965683001736,4.807050340499399,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Manna Kabupaten Bengkulu Selatan,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SEHAT,7599.0,3224086.0,6.958810369785498,8.8169495986314,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Bukit Kaba Kabupaten Rejang Lebong,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SEHAT,20225.0,3463343.0,15.842224969097652,4.598269468479605,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Ratu Samban Kabupaten Bengkulu Utara,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SEHAT,19303.0,4264555.0,23.732994871263536,6.3720665181578,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Tebo Emas Kabupaten Lebong,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SAKIT,9448.0,5156638.0,13.896591871295511,5.60965283657917,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Alami Kabupaten Kepahiang,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SAKIT,6181.0,4095065.0,12.425173920077658,3.5592946125222458,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Rafflesia Kabupaten Bengkulu Tengah,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SEHAT,7434.0,2698977.0,22.703524347592143,4.977132095776163,4,Kecil-Sedang Aset Tinggi
+PERUMDA Tirta Hidayah Kota Bengkulu,Wilayah I — Sumatera (10 Provinsi),Bengkulu,SEHAT,39531.0,2249698.0,20.370519339252738,7.816650223874934,2,Besar-Efisien
+PERUMDA Limau Kunci Kabupaten Lampung Barat,Wilayah I — Sumatera (10 Provinsi),Lampung,KURANG SEHAT,15394.0,489198.0,11.435364427699104,8.055086397297648,1,Kecil-Sedang Tipikal
+PDAM Way Agung Kabupaten Tanggamus,Wilayah I — Sumatera (10 Provinsi),Lampung,KURANG SEHAT,7175.0,694011.0,24.046829268292683,7.94425087108014,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Jasa Kabupaten Lampung Selatan,Wilayah I — Sumatera (10 Provinsi),Lampung,KURANG SEHAT,9688.0,1356371.0,43.9592279108175,9.599504541701071,1,Kecil-Sedang Tipikal
+PERUMDAM Way Guruh Kabupaten Lampung Timur,Wilayah I — Sumatera (10 Provinsi),Lampung,SEHAT,2431.0,2122344.0,26.863019333607568,7.81571369806664,4,Kecil-Sedang Aset Tinggi
+PDAM Way Tulang Bawang Kabupaten Tulang Bawang,Wilayah I — Sumatera (10 Provinsi),Lampung,SAKIT,4520.0,6917756.0,36.019911504424776,3.982300884955752,4,Kecil-Sedang Aset Tinggi
+PERUMDA Pesawaran Kabupaten Pesawaran,Wilayah I — Sumatera (10 Provinsi),Lampung,SEHAT,7093.0,1530107.0,38.1236430283378,7.61313971521218,1,Kecil-Sedang Tipikal
+PDAM Way Sekampung Kabupaten Pringsewu,Wilayah I — Sumatera (10 Provinsi),Lampung,SEHAT,7074.0,1270605.0,50.41631325982471,4.382244840260108,1,Kecil-Sedang Tipikal
+PERUMDAM Way Rilau Kota Bandar Lampung,Wilayah I — Sumatera (10 Provinsi),Lampung,KURANG SEHAT,48475.0,4084101.0,14.980794223826717,5.095410005157297,2,Besar-Efisien
+PERUMDAM Tirta Berkah Kabupaten Pandeglang,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,23617.0,2289996.0,19.26447050853199,3.472075200067748,2,Besar-Efisien
+PDAM Kabupaten Lebak,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,5011.0,2590564.0,209.54280582718025,31.33107164238675,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Kerta Raharja Kabupaten Tangerang,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,222006.0,6741752.0,14.87617902218859,2.270208913272614,2,Besar-Efisien
+PERUMDA Tirta Albantani Kabupaten Serang,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,69926.0,2121138.0,24.577238795297887,2.7171581386036667,2,Besar-Efisien
+PERUMDA Tirta Benteng Kota Tangerang,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,106738.0,2493408.0,14.696687215424683,1.9299593396915813,2,Besar-Efisien
+PERUMDA Cilegon Mandiri Kota Cilegon,Wilayah II — Jawa (6 Provinsi),Banten,SEHAT,28452.0,2961135.0,17.422676788977927,2.143961760157458,2,Besar-Efisien
+PERUMDAM Jaya (PAM JAYA) DKI Jakarta,Wilayah II — Jawa (6 Provinsi),DKI Jakarta,SEHAT,93879.0,5139019.0,120.02264617220038,16.585178793979484,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Kahuripan Kabupaten Bogor,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,224164.0,4381694.0,10.661752110062276,2.7122999232704625,2,Besar-Efisien
+PERUMDAM Tirta Jaya Mandiri Kabupaten Sukabumi,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,8973.0,4121109.0,57.59322411679483,20.39451688398529,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Mukti Kabupaten Cianjur,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,7681.0,2490077.0,179.3779455800026,41.79143340710845,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Raharja Kabupaten Bandung,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,11668.0,4428071.0,145.61098731573534,30.167980802194037,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Intan Kabupaten Garut,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,5977.0,1867115.0,248.425464279739,58.05588087669399,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Sukapura Kabupaten Tasikmalaya,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,49222.0,1593746.0,24.56775425622689,4.794604038844419,2,Besar-Efisien
+PERUMDAM Tirta Galuh Kabupaten Ciamis,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,3627.0,3474111.0,173.24345188861318,46.59498207885305,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Kamuning Kabupaten Kuningan,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,63624.0,1280168.0,1.0896359864202187,3.1277505343895387,2,Besar-Efisien
+PERUMDAM Tirta Jati Kabupaten Cirebon,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,420.0,2446190.0,2410.204761904762,773.8095238095239,3,Ekstrem Terisolasi
+PERUMDAM Tirta Bhakti Raharja Kabupaten Majalengka,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,3299.0,1652971.0,150.32312822067294,44.25583510154593,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Medal Kabupaten Sumedang,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,45082.0,1063640.0,20.505855995741094,10.758173994055277,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Darma Ayu Kabupaten Indramayu,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,170531.0,1777559.0,11.21854677448675,3.219356011516968,2,Besar-Efisien
+PERUMDAM Tirta Rangga Kabupaten Subang,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,68238.0,1944571.0,40.73634924821947,4.117940150649199,2,Besar-Efisien
+PERUMDAM Gapura Tirta Rahayu Kabupaten Purwakarta,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,31708.0,1852055.0,13.787593036457675,6.244480888103948,2,Besar-Efisien
+PERUMDAM Tirta Tarum Kabupaten Karawang,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,136957.0,1601968.0,13.048431259446396,2.5701497550326016,2,Besar-Efisien
+PERUMDA Tirta Bhagasasi Kabupaten Bekasi,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,368694.0,2290697.0,8.548967436410683,2.967230277682848,2,Besar-Efisien
+PERUMDAM Tirta Prabawa Mukti Kabupaten Pangandaran,Wilayah II — Jawa (6 Provinsi),Jawa Barat,KURANG SEHAT,345.0,3922093.0,313.8927536231884,118.84057971014494,3,Ekstrem Terisolasi
+PERUMDAM Tirta Wibawa Mukti Kabupaten Bandung Barat,Wilayah II — Jawa (6 Provinsi),Jawa Barat,KURANG SEHAT,7098.0,6809771.0,24.996336996337,3.0994646379261765,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Pakuan Kota Bogor,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,177454.0,4086906.0,8.660774059756331,2.5302331871921737,2,Besar-Efisien
+PERUMDA Tirtawening Kota Bandung,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,169373.0,4657862.0,9.528212879266473,4.132890130067956,2,Besar-Efisien
+PERUMDAM Tirta Bumi Wibawa Kota Sukabumi,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,21032.0,3830596.0,44.78922594142259,5.039939140357551,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Patriot Kota Bekasi,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,74557.0,4936438.0,15.60043993186421,4.117654948562845,2,Besar-Efisien
+PERUMDAM Tirta Giri Nata Kota Cirebon,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,58183.0,3060435.0,4.841036041455408,4.142103363525429,2,Besar-Efisien
+PERUMDAM Tirta Anom Kota Banjar,Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,14183.0,4286775.0,21.385249947119792,5.2880208700557,4,Kecil-Sedang Aset Tinggi
+PT. Tirta Asasta Kota Depok (Perseroda),Wilayah II — Jawa (6 Provinsi),Jawa Barat,SEHAT,101805.0,9963979.0,17.06544865183439,3.40847699032464,2,Besar-Efisien
+PERUMDAM Tirta Wijaya Kabupaten Cilacap,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,121061.0,3018977.0,19.954064479890302,2.007252542106872,2,Besar-Efisien
+PERUMDAM Tirta Satria Kabupaten Banyumas,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,97432.0,2625972.0,0.6725511125708187,2.853272025617867,2,Besar-Efisien
+PERUMDAM Tirta Perwira Kabupaten Purbalingga,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,63885.0,2130497.0,16.012976442044298,2.645378414338264,2,Besar-Efisien
+PERUMDAM Tirta Serayu Kabupaten Banjarnegara,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,9071.0,1255928.0,22.20372616029104,6.724727152463896,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Bumi Sentosa Kabupaten Kebumen,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,36484.0,1941183.0,24.52592917443263,2.795746080473632,2,Besar-Efisien
+PERUMDAM Tirta Perwitasari Kabupaten Purworejo,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,32786.0,1292442.0,46.63298359055695,4.270115293112914,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Aji Kabupaten Wonosobo,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,111094.0,1602751.0,15.048742506345976,2.3493618017174644,2,Besar-Efisien
+PERUMDAM Tirta Gemilang Kabupaten Magelang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,72599.0,1357795.0,13.852394661083483,2.162564222647695,2,Besar-Efisien
+PERUMDAM Tirta Ampera Kabupaten Boyolali,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,66414.0,3413902.0,24.6732917758304,2.951184991116331,2,Besar-Efisien
+PERUMDAM Tirta Merapi Kabupaten Klaten,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,50511.0,2188555.0,22.875393478648217,3.108233850052464,2,Besar-Efisien
+PERUMDAM Tirta Makmur Kabupaten Sukoharjo,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,51717.0,3286985.0,21.77529632422608,2.184968192277201,2,Besar-Efisien
+PERUMDAM Giri Tirta Sari Kabupaten Wonogiri,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,41551.0,1367288.0,15.13956342807634,5.992635556304301,1,Kecil-Sedang Tipikal
+PUDAM Tirta Lawu Kabupaten Karanganyar,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,77283.0,1277615.0,15.19062406997658,4.839356650233557,2,Besar-Efisien
+PERUMDAM Tirto Negoro Kabupaten Sragen,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,75808.0,1927489.0,21.745818383284085,3.759497678345293,2,Besar-Efisien
+PERUMDAM Purwa Tirta Dharma Kabupaten Grobogan,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,36962.0,2620072.0,27.564796277257724,7.30479952383529,2,Besar-Efisien
+PERUMDAM Tirta Amerta Kabupaten Blora,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,24893.0,631710.0,24.37950427831117,6.668541357007994,1,Kecil-Sedang Tipikal
+PERUMDAM Banyumili Kabupaten Rembang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,27131.0,1953455.0,16.89303748479599,3.6858206479672697,2,Besar-Efisien
+PERUMDAM Tirta Bening Kabupaten Pati,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,39092.0,1975770.0,13.7944080630308,5.602169241788601,2,Besar-Efisien
+PERUMDAM Tirta Muria Kabupaten Kudus,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,555.0,2561212.0,2750.0396396396395,214.4144144144144,3,Ekstrem Terisolasi
+PERUMDAM Tirta Jungporo Kabupaten Jepara,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,60506.0,2085045.0,21.141093445278155,2.247710970812812,2,Besar-Efisien
+PERUMDAM Kabupaten Demak,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,67685.0,2296501.0,11.675807047351702,2.925315801137623,2,Besar-Efisien
+PERUMDAM Tirta Bumi Serasi Kabupaten Semarang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,56036.0,1618153.0,18.40880862302805,3.337140409736598,2,Besar-Efisien
+PERUMDAM Tirta Agung Kabupaten Temanggung,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,51524.0,1620459.0,13.644631627979194,1.5138576197500195,2,Besar-Efisien
+PERUMDAM Tirto Panguripan Kabupaten Kendal,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,105238.0,1110702.0,0.0408787700260362,2.4705904711225983,2,Besar-Efisien
+PERUMDAM Sendang Kamulyan Kabupaten Batang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,58209.0,1470519.0,14.136765792231442,3.5733305846174988,2,Besar-Efisien
+PERUMDAM Tirta Kajen Kabupaten Pekalongan,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,29947.0,1970234.0,14.278892710455136,3.372624970781714,2,Besar-Efisien
+PERUMDAM Tirta Mulia Kabupaten Pemalang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,62292.0,2687485.0,16.475422205098567,3.1464714570089254,2,Besar-Efisien
+PERUMDAM Tirta Ayu Kabupaten Tegal,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,58052.0,2791741.0,13.670364500792394,2.5494384345069934,2,Besar-Efisien
+PERUMDAM Tirta Baribis Kabupaten Brebes,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,62245.0,2171109.0,16.891171981685275,2.891798538035183,2,Besar-Efisien
+PERUMDAM Kota Magelang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,37329.0,1379734.0,13.14157893326904,5.813174743497013,1,Kecil-Sedang Tipikal
+PERUMDAM Kota Surakarta,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,58492.0,3422572.0,14.856869315461944,4.992135676673733,2,Besar-Efisien
+PERUMDAM Kota Salatiga,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,40876.0,1681984.0,11.601428711224193,3.278207260984441,2,Besar-Efisien
+PERUMDAM Tirta Moedal Kota Semarang,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,225836.0,2593313.0,14.853429037000302,1.6472130218388563,2,Besar-Efisien
+PERUMDAM Tirtayasa Kota Pekalongan,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,28172.0,1896689.0,18.0547706943064,3.65611245208008,2,Besar-Efisien
+PERUMDAM Tirta Bahari Kota Tegal,Wilayah II — Jawa (6 Provinsi),Jawa Tengah,SEHAT,3942.0,1431484.0,129.5865043125317,38.55910705225774,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Binangun Kabupaten Kulon Progo,Wilayah II — Jawa (6 Provinsi),D.I Yogyakarta,SEHAT,42684.0,1936974.0,24.918517477274857,3.0690656920626,2,Besar-Efisien
+PERUMDAM Tirta Projotamansari Kabupaten Bantul,Wilayah II — Jawa (6 Provinsi),D.I Yogyakarta,SEHAT,46123.0,2530425.0,23.66522125620623,2.948637339288424,2,Besar-Efisien
+PERUMDAM Tirta Handayani Kabupaten Gunung Kidul,Wilayah II — Jawa (6 Provinsi),D.I Yogyakarta,SEHAT,6084.0,1901316.0,328.60486522024985,26.134122287968445,0,Kecil-Tidak Efisien
+PUDAM Tirta Sembada Kabupaten Sleman,Wilayah II — Jawa (6 Provinsi),D.I Yogyakarta,SEHAT,44187.0,4572927.0,38.212958562473126,5.770928101025188,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirtamarta Kota Yogyakarta,Wilayah II — Jawa (6 Provinsi),D.I Yogyakarta,SEHAT,319.0,2604835.0,3054.689655172414,532.9153605015674,3,Ekstrem Terisolasi
+PERUMDAM Kabupaten Pacitan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,21753.0,1574994.0,22.29600514871512,4.597067071208569,1,Kecil-Sedang Tipikal
+PUDAM Tirta Katong Kabupaten Ponorogo,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,32686.0,1667122.0,16.78844153460197,2.416936914887108,2,Besar-Efisien
+PERUMDAM Tirta Wening Kabupaten Trenggalek,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,20563.0,2698398.0,33.01133103146428,4.133638087827651,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Cahya Agung Kabupaten Tulungagung,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,29514.0,1984970.0,25.62563529172596,4.5063359761469135,2,Besar-Efisien
+PERUMDAM Tirta Penataran Kabupaten Blitar,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,17759.0,2130901.0,27.47356270060251,5.630947688495974,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Kediri,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,18688.0,1674388.0,31.891748715753423,5.190496575342466,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Kanjuruhan Kabupaten Malang,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,160027.0,1863248.0,19.291125872509014,2.97449805345348,2,Besar-Efisien
+PERUMDAM Tirta Mahameru Kabupaten Lumajang,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,45205.0,1278183.0,46.66775799137264,3.517310032076098,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Pandalungan Kabupaten Jember,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,54423.0,1675852.0,5.429671278687319,4.465023978832479,2,Besar-Efisien
+PUDAM Kabupaten Banyuwangi,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,89778.0,1724753.0,18.73640535543229,1.2029673193878234,2,Besar-Efisien
+PDAM Kabupaten Bondowoso,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,2057.0,2324785.0,253.54739912493923,78.75546912980067,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Baluran Kabupaten Situbondo,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,38191.0,1348564.0,31.299520829514808,2.6184179518734783,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Argapura Kabupaten Probolinggo,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,2398.0,2780085.0,319.3932443703086,62.96914095079233,0,Kecil-Tidak Efisien
+PERUMDAM Giri Nawa Tirta Kabupaten Pasuruan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,41027.0,1220810.0,11.155824213322934,2.218051527043167,2,Besar-Efisien
+PERUMDA Delta Tirta Kabupaten Sidoarjo,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,215084.0,2549176.0,13.011195625895,3.063919212958658,2,Besar-Efisien
+PERUMDAM Mojopahit Kabupaten Mojokerto,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,32522.0,2057497.0,22.15168193838017,3.8743004735256137,2,Besar-Efisien
+PERUMDAM Tirta Kencana Kabupaten Jombang,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,22268.0,2486289.0,24.95643973414765,4.625471528650979,2,Besar-Efisien
+PDAM Kabupaten Nganjuk,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,33042.0,1867293.0,24.29138671993221,2.93565764784214,2,Besar-Efisien
+PERUMDAM Tirta Dharma Purabaya Kabupaten Madiun,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,60389.0,1896834.0,15.672721853317658,2.2686250807266224,2,Besar-Efisien
+PERUMDAM Lawu Tirta Kabupaten Magetan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,79307.0,1593822.0,29.95387544605142,2.4083624396333234,2,Besar-Efisien
+PERUMDAM Kabupaten Ngawi,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,518.0,1308060.0,2495.030888030888,517.3745173745174,3,Ekstrem Terisolasi
+PERUMDAM Tirta Buana Kabupaten Bojonegoro,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,46876.0,1511022.0,13.32976363170919,3.263930369485451,2,Besar-Efisien
+PERUMDAM Tirta Lestari Kabupaten Tuban,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,5219.0,2853777.0,92.41942900938878,21.843264993293733,0,Kecil-Tidak Efisien
+PERUMDAM Kabupaten Lamongan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,31628.0,3605375.0,14.67927153155432,5.09042620462881,2,Besar-Efisien
+PERUMDA Giri Tirta Kabupaten Gresik,Wilayah II — Jawa (6 Provinsi),Jawa Timur,KURANG SEHAT,123205.0,1288299.0,2.250403798547137,2.6135302950367274,2,Besar-Efisien
+PERUMDA Sumber Sejahtera Kabupaten Bangkalan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,3306.0,1299474.0,102.77828191167576,79.24984875983061,0,Kecil-Tidak Efisien
+PERUMDAM Trunojoyo Kabupaten Sampang,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,17602.0,865720.0,31.092716736734463,4.488126349278491,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Jaya Kabupaten Pamekasan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,KURANG SEHAT,17849.0,2872404.0,15.4018712532915,5.042299288475545,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Sumekar Kabupaten Sumenep,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,18318.0,1213342.0,16.14199148378644,4.531062343050551,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Dhaha Kota Kediri,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,25181.0,1201113.0,16.817163734561774,3.613835828600929,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Patria Kota Blitar,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,13281.0,996544.0,26.06550711542805,3.237708003915368,1,Kecil-Sedang Tipikal
+PERUMDAM Tugu Tirta Kota Malang,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,182235.0,2602664.0,18.700853293823908,1.459653743792356,2,Besar-Efisien
+PERUMDAM Bayuangga Kota Probolinggo,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,25024.0,1179286.0,11.373601342710998,3.2368925831202047,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Umbulan Kota Pasuruan,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,33758.0,2193808.0,17.865394869364298,3.0511286213638247,2,Besar-Efisien
+PERUMDAM Maja Tirta Kota Mojokerto,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,5431.0,1915656.0,41.65273430307494,6.076229055422575,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Taman Sari Kota Madiun,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,51243.0,1632000.0,11.388013972640165,2.107604941162696,2,Besar-Efisien
+PDAM Surya Sembada Kota Surabaya,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,644275.0,2523746.0,9.86037173567188,1.1346086686585697,2,Besar-Efisien
+PERUMDAM Among Tirto Kota Batu,Wilayah II — Jawa (6 Provinsi),Jawa Timur,SEHAT,22111.0,1774692.0,9.335760481208448,3.979919497082901,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Muare Ulakan Kabupaten Sambas,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,13721.0,1821719.0,11.39997084760586,6.267764740179287,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Bengkayang Kabupaten Bengkayang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,10881.0,867996.0,13.811230585424134,5.973715651135007,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Landak Kabupaten Landak,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,7059.0,1350706.0,15.573027340983142,4.816546253010341,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Galaherang Kabupaten Mempawah,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,KURANG SEHAT,6537.0,1091736.0,17.19810310540003,7.801743919229004,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Pancur Aji Kabupaten Sanggau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,14801.0,6227134.0,23.421930950611443,5.810418214985474,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Pawan Kabupaten Ketapang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,16679.0,694677.0,16.137837999880087,4.436716829546136,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Senentang Kabupaten Sintang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,13957.0,4016062.0,28.678655871605645,4.657161281077595,4,Kecil-Sedang Aset Tinggi
+PERUMDA Tirta Uncak Kapuas Kabupaten Kapuas Hulu,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,19838.0,2409473.0,20.763534630507102,5.494505494505495,4,Kecil-Sedang Aset Tinggi
+PERUMDA Sirin Meragun Kabupaten Sekadau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,923.0,14371064.0,269.03033586132176,35.75297941495124,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Melawi Kabupaten Melawi,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,11088.0,8014827.0,23.08712121212121,6.493506493506494,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Raya Kabupaten Kubu Raya,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,24009.0,4475459.0,2.2975134324628264,3.915198467241451,2,Besar-Efisien
+PERUMDAM Tirta Khatulistiwa Kota Pontianak,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,154452.0,3108642.0,15.885174682101884,2.14306062724989,2,Besar-Efisien
+PERUMDAM Gunung Poteng Kota Singkawang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Barat,SEHAT,23822.0,3753569.0,46.23360758962304,2.476702208042985,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Arut Kabupaten Kotawaringin Barat,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,28002.0,1967100.0,26.470430683522604,3.428326548103706,2,Besar-Efisien
+PERUMDAM Tirta Mentaya Kabupaten Kotawaringin Timur,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,37273.0,3964407.0,16.240951895473934,3.7560700775360174,2,Besar-Efisien
+PERUMDAM Tirta Pambelom Kabupaten Kapuas,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SAKIT,27882.0,967942.0,17.519546660928196,9.57607058317194,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Barito Kabupaten Barito Selatan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,14311.0,3618091.0,20.535811613444203,7.756271399622668,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Barito Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,16697.0,2227991.0,12.943882134515182,6.528118823740792,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Sukma Kabupaten Sukamara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,2838.0,2755419.0,26.987315010570825,6.694855532064834,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Lamandau Kabupaten Lamandau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,4797.0,1445522.0,17.70189701897019,5.420054200542006,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Seruyan Kabupaten Seruyan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,SEHAT,5308.0,2355803.0,31.56254709871892,8.100979653353429,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Katingan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,5106.0,1742407.0,23.179200940070505,8.617312965139051,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Gunung Mas,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,6681.0,4677291.0,28.39036072444245,9.130369705133962,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Janang Kabupaten Barito Timur,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,5069.0,1818017.0,30.571907674097456,10.258433616097848,1,Kecil-Sedang Tipikal
+PERUMDA Danum Pomolum Kabupaten Murung Raya,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,5068.0,1235037.0,15.993685872138911,7.695343330702447,1,Kecil-Sedang Tipikal
+PERUMDAM Palangka Raya Kota Palangka Raya,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Tengah,KURANG SEHAT,121.0,2062306.0,6221.793388429752,586.7768595041323,3,Ekstrem Terisolasi
+PT. Air Minum Berkah Banua (Perseroda) Kabupaten Tanah Laut,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,13354.0,2003488.0,18.675078628126403,3.968848285158005,1,Kecil-Sedang Tipikal
+PDAM Kotabaru Kabupaten Kotabaru,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,21592.0,4759402.0,20.426083734716563,5.372360133382734,4,Kecil-Sedang Aset Tinggi
+PT. Air Minum Intan Banjar (Perseroda) Kabupaten Banjar & Kota Banjar,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,124282.0,4605363.0,11.996620588661273,0.8207141822629183,2,Besar-Efisien
+PDAM Kabupaten Barito Kuala,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,39012.0,3546239.0,16.869911822003488,3.5373731159643187,2,Besar-Efisien
+PT Bastari Maju Tapin (Perseroda) Kabupaten Tapin,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,2599.0,4136213.0,158.07733743747596,44.24778761061947,0,Kecil-Tidak Efisien
+PT. Tirta Amandit (Perseroda) Kabupaten Hulu Sungai Selatan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,23728.0,1505741.0,11.342338165879973,4.383007417397168,1,Kecil-Sedang Tipikal
+PT. Air Minum Murakata Lestari (Perseroda) Kabupaten Hulu Sungai Tengah,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,19575.0,5956931.0,20.731289910600257,5.874840357598979,4,Kecil-Sedang Aset Tinggi
+PDAM Hulu Sungai Utara Kabupaten Hulu Sungai Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,31991.0,2548747.0,61.51930230377294,3.782313775749429,2,Besar-Efisien
+PT. Air Minum Tabalong Bersinar (Perseroda) Kabupaten Tabalong,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,33562.0,6849119.0,17.061706692092248,2.741195399559025,4,Kecil-Sedang Aset Tinggi
+PT. Air Minum Bersujud (Perseroda) Kabupaten Tanah Bumbu,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,3836.0,2406748.0,193.67778936392077,40.92805005213764,0,Kecil-Tidak Efisien
+PT. Air Minum Sanggam Balangan (Perseroda) Kabupaten Balangan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,25925.0,3177043.0,15.0325168756027,3.548698167791707,2,Besar-Efisien
+PT. Air Minum Bandarmasih (Perseroda) Kota Banjarmasin,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Selatan,SEHAT,184913.0,4027347.0,10.799916717591517,2.0604284176883185,2,Besar-Efisien
+PERUMDAM Tirta Kandilo Kabupaten Paser,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,31372.0,3657663.0,23.11261634578605,4.590080326405713,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Sendawar Kabupaten Kutai Barat,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,18855.0,2869988.0,24.37204985415009,6.73561389551843,4,Kecil-Sedang Aset Tinggi
+PERUMDA Tirta Mahakam Kabupaten Kutai Kartanegara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,106334.0,3862975.0,16.351091842684372,3.667688603833205,2,Besar-Efisien
+PERUMDAM Tirta Tuah Benua Kabupaten Kutai Timur,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,45847.0,3107179.0,17.55779004078784,6.478068357798765,2,Besar-Efisien
+PERUMDAM Batiwakkal Kabupaten Berau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,37456.0,5574455.0,18.47922896198206,2.963477146518582,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Danum Taka Kabupaten Penajam Paser Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,14775.0,1911539.0,17.419560067681896,5.482233502538072,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Kencana Kota Samarinda,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,173654.0,3629611.0,9.416339387517707,3.570317988644085,2,Besar-Efisien
+PERUMDA Tirta Manuntung Kota Balikpapan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,116389.0,4776120.0,16.305870829717584,3.5398534225742986,2,Besar-Efisien
+PERUMDAM Tirta Taman Kota Bontang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Timur,SEHAT,33769.0,3208407.0,0.7736385442269537,2.4578755663478336,2,Besar-Efisien
+PERUMDAM Apa’ Mening Kabupaten Malinau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Utara,SEHAT,14964.0,1812169.0,28.143076717455227,4.210104250200481,1,Kecil-Sedang Tipikal
+PERUMDAM Danum Benuanta Kabupaten Bulungan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Utara,SEHAT,17526.0,4519940.0,15.033378979801435,4.336414469930389,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Taka Kabupaten Nunukan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Utara,SEHAT,19369.0,1597009.0,27.1286075687955,4.078682430688214,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Alam Kota Tarakan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Utara,SEHAT,49377.0,5599933.0,14.299046114587764,3.827693055471171,2,Besar-Efisien
+PERUMDAM Tirta Sungoi Sesayap Kabupaten Tana Tidung,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Kalimantan Utara,KURANG SEHAT,2223.0,1220002.0,19.613135402609085,5.847953216374268,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Bolaang Mongondow,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SEHAT,26448.0,2298357.0,13.594978826376286,5.104355716878403,2,Besar-Efisien
+PDAM Kabupaten Minahasa,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SAKIT,20758.0,1678785.0,18.614124674824165,6.5998651122458805,1,Kecil-Sedang Tipikal
+PUDAM Ake’u Banua Kabupaten Kepulauan Sangihe,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SAKIT,17777.0,6101596.0,16.8579062833999,11.419249592169658,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Kepulauan Talaud,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,KURANG SEHAT,4789.0,4295698.0,32.97744831906452,6.890791396951348,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Minahasa Selatan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SAKIT,7103.0,5503284.0,8.0247782627059,5.068281008024778,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Minahasa Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,KURANG SEHAT,13206.0,794624.0,9.205285476298652,6.057852491291837,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Kepulauan Siau Tagulandang Biaro,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SAKIT,369.0,4288715.0,209.479674796748,75.88075880758807,0,Kecil-Tidak Efisien
+PERUMDAM Duasudara Kota Bitung,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SEHAT,33419.0,3587783.0,14.100960531434216,5.47592686794937,2,Besar-Efisien
+PDAM Kota Tomohon,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,KURANG SEHAT,11229.0,1382974.0,12.318550182563008,6.768189509306261,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Minahasa Tenggara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,KURANG SEHAT,6127.0,3432717.0,14.21903052064632,6.3652684837604045,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Wanua Wenang Kota Manado,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Utara,SEHAT,29886.0,2757044.0,14.956635213812488,8.365120792344241,2,Besar-Efisien
+PERUMDAM Tirta Mandar Kabupaten Majene,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Barat,KURANG SEHAT,6657.0,5333058.0,30.471683941715487,11.566771819137749,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Wai Tipalayo Kabupaten Polewali Mandar,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Barat,SEHAT,22104.0,1551843.0,26.86653999276149,5.65508505247919,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Mamasa,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Barat,SAKIT,5018.0,1268900.0,24.984057393383814,9.565563969709046,1,Kecil-Sedang Tipikal
+PDAM Tirta Manakarra Kabupaten Mamuju,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Barat,SEHAT,21929.0,3686139.0,16.065666469059238,7.934698344657759,4,Kecil-Sedang Aset Tinggi
+PDAM Paisu Molino Kepulauan Kabupaten Banggai Kepulauan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,10512.0,1008755.0,41.87490487062405,6.754185692541856,1,Kecil-Sedang Tipikal
+PERUMDAM Kabupaten Banggai,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,23729.0,1211538.0,10.725357157908045,7.627797210164777,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Poso,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,SEHAT,16562.0,977564.0,15.861369399830938,4.890713681922473,1,Kecil-Sedang Tipikal
+PERUMDAM Uwe Lino Kabupaten Donggala,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,SEHAT,27728.0,1044011.0,29.07620455856896,4.724466243508367,1,Kecil-Sedang Tipikal
+PDAM Ogo Malane Kabupaten Tolitoli,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,SEHAT,18867.0,1668984.0,18.06418614512111,3.7101817989081463,1,Kecil-Sedang Tipikal
+PERUMDAM Motanang Kabupaten Buol,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,7422.0,1508182.0,8.993667475074105,4.985179196981946,1,Kecil-Sedang Tipikal
+PDAM Ue’ Tanah Kabupaten Tojo Una-Una,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,20702.0,1064168.0,21.329919814510674,4.105883489517922,1,Kecil-Sedang Tipikal
+PERUMDAM AVO Kota Palu,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,10471.0,643734.0,16.082131601566232,5.252602425747303,1,Kecil-Sedang Tipikal
+PERUMDAM Paisu Moute Kabupaten Banggai laut,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,5431.0,975292.0,22.520714417234394,7.549254280979562,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Morowali,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tengah,KURANG SEHAT,5755.0,3645882.0,30.54874022589053,5.734144222415291,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Takawa Kabupaten Buton,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SEHAT,26217.0,1198322.0,15.465766487393676,5.797764809093336,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Sugi Laende Kabupaten Muna,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,10131.0,1864308.0,14.447241141052215,5.034053893988748,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Konawe,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SAKIT,1788.0,4518645.0,166.079418344519,12.863534675615211,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Sorume Kabupaten Kolaka,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SAKIT,11766.0,1609218.0,30.05966343702193,7.989121196668366,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Moico Kabupaten Bombana,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,7967.0,7709243.0,42.06100163173089,8.158654449604619,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Wakatobi Kabupaten Wakatobi,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SEHAT,1357.0,5763476.0,163.43478260869566,38.31982313927782,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Tampanama Kabupaten Kolaka Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,15018.0,1953360.0,26.9521241177254,9.12238646956985,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Simbune Kabupaten Kolaka Timur,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,3234.0,6159831.0,37.41156462585034,6.802721088435374,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Lamaindo Kabupaten Buton Selatan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,12883.0,4581091.0,18.9925483194908,6.287355429635954,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Mata Iwoi Kabupaten Konawe Selatan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SAKIT,1484.0,43626864.0,82.93800539083558,10.107816711590296,4,Kecil-Sedang Aset Tinggi
+PERUMDA Oeno Lia Kabupaten Buton Tengah,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SAKIT,3883.0,4449226.0,8.292557301055885,6.438320885912954,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Semerbak Kota Baubau,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,KURANG SEHAT,18369.0,3181340.0,13.346725461375144,7.294899014644238,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Anoa Kota Kendari,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Tenggara,SAKIT,13003.0,5047580.0,86.64569714681227,20.76443897562101,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Tanadong Kabupaten Kepulauan Selayar,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SAKIT,8018.0,1407475.0,31.13544524819157,6.859565976552756,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Bulukumba,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SAKIT,10954.0,2396425.0,25.339419390177103,4.473251780171627,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Eremerasa Kabupaten Bantaeng,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,22457.0,606956.0,13.15736741327871,4.987309079574297,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Panrannuangku Kabupaten Takalar,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,23384.0,1375158.0,39.362598357851525,4.875128292849811,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Jeneberang Kabupaten Gowa,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,56992.0,1501666.0,16.807499298147107,5.807832678270635,2,Besar-Efisien
+PERUMDAM Tirta Sinjai Bersatu Kabupaten Sinjai,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,17581.0,3237164.0,23.641487969967574,7.109948239576815,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Bantimurung Kabupaten Maros,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,23063.0,1338994.0,0.126089407275723,6.547283527728395,1,Kecil-Sedang Tipikal
+PERUMDAM Je’ne Tagari Kabupaten Pangkajene dan Kepulauan,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SAKIT,17339.0,78127.0,26.998788857488897,6.17105946132995,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Waesai Kabupaten Barru,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,1444.0,2370533.0,190.5373961218837,53.32409972299169,0,Kecil-Tidak Efisien
+PERUMDAM Wae Manurung Kabupaten Bone,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,21521.0,993061.0,21.692579341108683,12.87114911017146,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Ompo Kabupaten Soppeng,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SAKIT,12347.0,2849098.0,10.861585810318296,6.641289382036122,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Danau Tempe Kabupaten Wajo,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,19963.0,558802.0,16.662124931122577,4.808896458448129,1,Kecil-Sedang Tipikal
+PDAM Tirta Nene Mallomo Kabupaten Sidenreng Rappang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,7019.0,1731313.0,74.38538253312437,7.69340361874911,1,Kecil-Sedang Tipikal
+PERUMDAM TIRTA MASSENREMPULU Kabupaten Enrekang,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,13854.0,3323785.0,13.102425292334344,4.54742312689476,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Latimojong Kabupaten Luwu,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,13285.0,2737407.0,36.95566428302597,7.753105005645465,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Buisun Kabupaten Tana Toraja,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,9343.0,1173911.0,29.81890185165365,7.278176174676228,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Bukae Kabupaten Luwu Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,13034.0,1200077.0,26.544729169863437,5.984348626668713,1,Kecil-Sedang Tipikal
+PERUMDAM Waemami Kabupaten Luwu Timur,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,1936.0,5696637.0,359.35743801652893,69.21487603305786,0,Kecil-Tidak Efisien
+PERUMDAM Kabupaten Toraja Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,15105.0,1399212.0,24.23508771929825,9.069844422376695,1,Kecil-Sedang Tipikal
+PERUMDAM Kota Makassar,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,221286.0,2256617.0,16.265895718662726,6.326654194119827,2,Besar-Efisien
+PERUMDAM Tirta Karajae Kota Parepare,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,27966.0,2319835.0,14.314703568619038,4.934563398412358,2,Besar-Efisien
+PERUMDA Tirta Mangkaluku Kota Palopo,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,SEHAT,41599.0,2084549.0,14.430058414865742,7.572297410995457,2,Besar-Efisien
+PDAM Kabupaten Jeneponto,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Sulawesi Selatan,KURANG SEHAT,10077.0,1363674.0,9.350898084747444,9.22893718368562,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Boalemo Kabupaten Boalemo,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Gorontalo,SEHAT,16781.0,2751660.0,32.00148978010846,5.720755616471009,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Limutu Kabupaten Gorontalo,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Gorontalo,KURANG SEHAT,25177.0,1779278.0,23.34765857727291,5.918099853040474,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Moolango Kabupaten Pohuwato,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Gorontalo,KURANG SEHAT,20027.0,3015861.0,18.66784840465372,5.892045738253358,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Gerbang Emas Kabupaten Gorontalo Utara,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Gorontalo,KURANG SEHAT,10244.0,1383110.0,31.26239750097618,5.173760249902382,1,Kecil-Sedang Tipikal
+PERUMDAM Muara Tirta Kota Gorontalo,Wilayah III — Kalimantan & Sulawesi (11 Provinsi),Gorontalo,SEHAT,31782.0,2552400.0,13.859889245484863,5.317475300484551,2,Besar-Efisien
+PERUMDAM Tirta Amertha Jati Kabupaten Jembrana,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,25893.0,1090953.0,29.265863360753876,6.410999111729039,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Amertha Buana Kabupaten Tabanan,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,66219.0,2153727.0,17.850964224769324,5.678128633775804,2,Besar-Efisien
+PERUMDAM Tirta Mangutama Kabupaten Badung,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,90901.0,5194398.0,17.134739991859277,3.245288830705933,2,Besar-Efisien
+PERUMDAM Tirta Sanjiwani Kabupaten Gianyar,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,6111.0,2469819.0,209.1507118311242,35.34609720176731,0,Kecil-Tidak Efisien
+PERUMDAM Panca Mahottama Kabupaten Klungkung,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,39409.0,1416311.0,24.86617270166713,4.288360526783221,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Danu Arta Kabupaten Bangli,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,23173.0,1435465.0,19.92322962067924,5.73943813921374,1,Kecil-Sedang Tipikal
+PERUMDA Tirta Tohlangkir Kabupaten Karangasem,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,42619.0,2247459.0,24.024613435322276,3.144137591215186,2,Besar-Efisien
+PERUMDAM Tirta Hita Buleleng Kabupaten Buleleng,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,64264.0,1785236.0,16.299670110792977,5.2439935267023525,2,Besar-Efisien
+PERUMDAM Tirta Sewakadarma Kota Denpasar,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Bali,SEHAT,90126.0,3842967.0,25.11986552160309,3.2620997270487986,2,Besar-Efisien
+PT Air Minum Giri Menang (Perseroda) Kabupaten Lombok Barat dan Kota Mataram,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SEHAT,154892.0,4655584.0,14.867010562198177,1.6785889523022497,2,Besar-Efisien
+PERUMDAM Tirta Ardhia Rinjani Kabupaten Lombok Tengah,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SEHAT,56053.0,1231204.0,21.41592778263429,5.209355431466648,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Lombok Timur,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SEHAT,3285.0,2099000.0,247.2048706240487,52.66362252663623,0,Kecil-Tidak Efisien
+PERUMDAM Batulanteh Kabupaten Sumbawa,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,KURANG SEHAT,22588.0,637731.0,15.059234992031168,7.171949707809456,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Bima,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SAKIT,13614.0,2697207.0,16.002938151902452,4.1868664609960335,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Bintang Bano Kabupaten Sumbawa Barat,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,KURANG SEHAT,16779.0,1628231.0,23.52821979855772,5.900232433398892,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Rora Kabupaten Dompu,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SAKIT,8654.0,3866180.0,13.079500808874508,5.546568061012249,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Amerta Dayan Gunung Kabupaten Lombok Utara,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Barat,SEHAT,24229.0,2827038.0,18.75661397498865,4.003466919806844,2,Besar-Efisien
+PERUMDAM Matawai Amahu Kabupaten Sumba Timur,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,12472.0,2303523.0,19.612973059653623,4.329698524695317,1,Kecil-Sedang Tipikal
+PERUMDAM Kabupaten Kupang,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,36835.0,1077357.0,13.334247319125833,5.592507126374372,1,Kecil-Sedang Tipikal
+PERUMDAM Kabupaten Timor Tengah Selatan,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,KURANG SEHAT,819.0,1210930.0,297.5811965811966,86.69108669108668,0,Kecil-Tidak Efisien
+PERUMDAM Tirta Cendana Kabupaten Timor Tengah Utara,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,737.0,851099.0,242.45590230664857,48.84667571234736,0,Kecil-Tidak Efisien
+PDAM Kabupaten Belu,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,7467.0,10022364.0,35.70537029596893,5.62474889513861,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Nusa Kenari Kabupaten Alor,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,KURANG SEHAT,5811.0,416840.0,17.819652383410773,5.334710032696609,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Lembata,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,7216.0,1252045.0,12.239606430155211,5.12749445676275,1,Kecil-Sedang Tipikal
+PERUMDAM Ina Gelekat Kabupaten Flores Timur,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,8304.0,1875477.0,27.636078998073216,6.502890173410405,1,Kecil-Sedang Tipikal
+PERUMDAM Wair Pu'an Kabupaten Sikka,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,KURANG SEHAT,21058.0,1649393.0,19.27633203533099,4.986228511729509,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Kelimutu Kabupaten Ende,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,KURANG SEHAT,1468.0,4843666.0,156.73705722070844,47.68392370572207,0,Kecil-Tidak Efisien
+PERUMDAM Kabupaten Ngada,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,11697.0,3567349.0,24.32384372061212,7.095836539283577,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Komodo Kabupaten Manggarai,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,36141.0,2458737.0,2.9862483052488864,4.427104950056722,2,Besar-Efisien
+PDAM Kabupaten Rote Ndao,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,KURANG SEHAT,7424.0,1832801.0,22.01643318965517,9.832974137931034,1,Kecil-Sedang Tipikal
+PERUMDAM Wae Mbeliling Kabupaten Manggarai Barat,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,11329.0,17103382.0,28.30549916144408,10.06267102127284,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Kota Kupang,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Nusa Tenggara Timur,SEHAT,15257.0,2652646.0,20.06265976273186,5.440125843874943,4,Kecil-Sedang Aset Tinggi
+PDAM Kabupaten Kepulauan Tanimbar,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,SAKIT,7671.0,825101.0,20.53343762221353,10.950332420805632,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Evav Sejahtera Kabupaten Maluku Tenggara,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,SAKIT,10492.0,1771395.0,8.665650019062143,5.051467784979032,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Nusa Ina Kabupaten Maluku Tengah,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,SEHAT,9602.0,3113890.0,22.392314101228912,9.997917100604042,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Azwa Bupolo Kabupaten Buru,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,KURANG SEHAT,5903.0,3652137.0,16.016432322547857,7.962053193291546,4,Kecil-Sedang Aset Tinggi
+PDAM Gwar Gwamar Kabupaten Kepulauan Aru,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,KURANG SEHAT,7303.0,2110339.0,7.1956730110913325,5.2033410927016295,1,Kecil-Sedang Tipikal
+Perumdam Tirta Kalwedo Kabupaten Maluku Barat Daya,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,SEHAT,2651.0,2100743.0,42.51527725386647,23.010184835910977,0,Kecil-Tidak Efisien
+PERUMDAM Maren Kota Tual,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,SEHAT,9109.0,1916188.0,81.6248764957734,4.2814798550883735,1,Kecil-Sedang Tipikal
+PERUMDAM Tirta Yapono Kota Ambon,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku,KURANG SEHAT,20615.0,1785168.0,4.798981324278438,4.899345137036139,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Halmahera Barat,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,10861.0,1454625.0,12.41929840714483,6.168861062517263,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Halmahera Selatan,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,SEHAT,17483.0,1579037.0,15.708059257564493,5.090659497797861,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Halmahera Utara,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,22145.0,1095629.0,9.121336644840822,3.477082862948747,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Pulau Morotai,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,SAKIT,5512.0,2575300.0,12.429970972423805,5.986937590711175,4,Kecil-Sedang Aset Tinggi
+PERUMDA Ake Gaale Kota Ternate,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,34387.0,2217776.0,7.589321545933056,5.961555238898422,2,Besar-Efisien
+PERUMDAM Ake Mayora Kota Tidore Kepulauan,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,8421.0,1345446.0,17.246170288564304,9.381308633178955,1,Kecil-Sedang Tipikal
+PDAM Kabupaten Kepulauan Sula,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,6474.0,2282861.0,8.415508186592524,4.170528266913809,1,Kecil-Sedang Tipikal
+PERUMDAM Kabupaten Halmahera Tengah,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Maluku Utara,KURANG SEHAT,4456.0,3378941.0,19.691202872531417,10.323159784560143,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Tirta Pala Kabupaten Fakfak,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua Barat,KURANG SEHAT,7144.0,2690150.0,15.808930571108622,5.45912653975364,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Minyei Arfak Kabupaten Manokwari,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua Barat,KURANG SEHAT,7851.0,2491981.0,6.978601452044326,2.547446185199337,4,Kecil-Sedang Aset Tinggi
+PT. Air Minum Jayapura Robongholo Nanwani (Perseroda) Kabupaten Jayapura dan Kota Jayapura,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua,SEHAT,38213.0,3409518.0,21.83950488053804,5.102975427210635,2,Besar-Efisien
+PDAM Kabupaten Kepulauan Yapen,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua,SEHAT,6941.0,2501343.0,8.644863852470825,4.466215242760409,4,Kecil-Sedang Aset Tinggi
+PDAM Tirta Adrian Kabupaten Nabire,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua Tengah,SAKIT,1836.0,7459202.0,51.16448801742919,13.0718954248366,4,Kecil-Sedang Aset Tinggi
+PERUMDAM Jereukom Kabupaten Merauke,"Wilayah IV — Bali, Nusa Tenggara, Maluku & Papua (9 Provinsi)",Papua Selatan,KURANG SEHAT,454.0,2738547.0,764.3700440528635,112.33480176211454,3,Ekstrem Terisolasi

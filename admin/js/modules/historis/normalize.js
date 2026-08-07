@@ -228,6 +228,28 @@ export function normalizeKinerjaBPPSPAM(raw) {
   };
 }
 
+/**
+ * Normalisasi satu baris CSV hasil clustering struktural PDAM (K-means, sumber:
+ * riset terpisah "Relasi Kinerja PDAM"). Kolom: nama, cluster, nama_klaster.
+ * Provisional — lihat docs/superpowers/specs/2026-08-07-klaster-struktural-dampak-design.md.
+ * @param {object} raw - satu baris dari CSV
+ * @returns {{ data: object|null, errors: string[] }}
+ */
+export function normalizeKlasterRow(raw) {
+  const errors = [];
+
+  const nama = _str(raw.nama);
+  if (!nama) { errors.push('nama kosong'); return { data: null, errors }; }
+
+  const cluster = parseInt(raw.cluster, 10);
+  if (isNaN(cluster)) { errors.push(`cluster tidak valid: "${raw.cluster}"`); return { data: null, errors }; }
+
+  const nama_klaster = _str(raw.nama_klaster);
+  if (!nama_klaster) { errors.push('nama_klaster kosong'); return { data: null, errors }; }
+
+  return { data: { nama, cluster, nama_klaster }, errors };
+}
+
 // ─── Helpers internal ────────────────────────────────────────────────────────
 
 function _str(val) {

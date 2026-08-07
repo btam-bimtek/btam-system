@@ -329,6 +329,53 @@ export async function batchImportKinerja(rows, sourceFile, performedBy) {
   return { imported };
 }
 
+/**
+ * Batch import klaster struktural (K-means, riset terpisah) ke field `klaster`
+ * pada dokumen kinerja_instansi yang match. Merge (bukan overwrite dokumen),
+ * bisa diulang kapan saja kalau cluster di-refresh.
+ * @param {{nama: string, cluster: number, nama_klaster: string}[]} rows
+ * @returns {{ matched: number, unmatched: string[] }}
+ */
+export async function batchImportKlaster(rows, sourceFile, performedBy) {
+  const snap = await getDocs(collection(db, COL.KINERJA_INSTANSI));
+  const exactMap = {};
+  const normMap  = {};
+  snap.docs.forEach(d => {
+    const nama_bumd = d.data().nama_bumd;
+    if (!nama_bumd) return;
+    exactMap[nama_bumd] = d.ref;
+    const nk = _normInstansi(nama_bumd);
+    if (nk) normMap[nk] = d.ref;
+  });
+
+  const matches   = [];
+  const unmatched = [];
+  rows.forEach(row => {
+    const ref = exactMap[row.nama] || normMap[_normInstansi(row.nama)] || null;
+    if (ref) matches.push({ ref, row });
+    else     unmatched.push(row.nama);
+  });
+
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < matches.length; i += BATCH_SIZE) {
+    const chunk = matches.slice(i, i + BATCH_SIZE);
+    const batch = writeBatch(db);
+    chunk.forEach(({ ref, row }) => {
+      batch.set(ref, { klaster: { cluster: row.cluster, nama_klaster: row.nama_klaster } }, { merge: true });
+    });
+    await batch.commit();
+  }
+
+  await logAudit({
+    action:     'import_klaster_struktural',
+    entityType: 'kinerja_instansi',
+    entityId:   sourceFile,
+    metadata:   { matched: matches.length, unmatched: unmatched.length, sourceFile, performedBy },
+  });
+
+  return { matched: matches.length, unmatched };
+}
+
 export async function listKinerjaInstansi() {
   const snap = await getDocs(query(
     collection(db, COL.KINERJA_INSTANSI),

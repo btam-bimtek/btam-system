@@ -6,10 +6,10 @@ import { showToast }            from '../../components/toast.js';
 import { confirmDialog }        from '../../components/modal.js';
 import { requireWrite }         from '../../auth-guard.js';
 import { getState }             from '../../store.js';
-import { batchImportAlumni, batchImportKinerja, clearAlumniHistoris, clearKinerjaInstansi, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
+import { batchImportAlumni, batchImportKinerja, batchImportKlaster, clearAlumniHistoris, clearKinerjaInstansi, countAlumniHistoris, listKinerjaInstansi, buildMasterExportRows }
   from './api.js';
 import { renderKorelasiTab } from './tab-korelasi.js';
-import { normalizeAlumniRow, normalizeKinerjaBPPSPAM } from './normalize.js';
+import { normalizeAlumniRow, normalizeKinerjaBPPSPAM, normalizeKlasterRow } from './normalize.js';
 import { HISTORIS_BIDANG, HISTORIS_TIPE, HISTORIS_MODE, HISTORIS_LOKASI } from '../../../../shared/constants.js';
 
 // Field Grup A alumni — wajib di-mapping
@@ -91,6 +91,9 @@ export async function renderHistoris() {
         <button id="tab-kinerja"  class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           Kinerja PDAM
         </button>
+        <button id="tab-klaster"  class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          Klaster
+        </button>
         <button id="tab-korelasi" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           Korelasi
         </button>
@@ -145,12 +148,13 @@ async function _doExportMaster() {
 function _bindTabs() {
   document.getElementById('tab-alumni')  .addEventListener('click', () => _switchTab('alumni'));
   document.getElementById('tab-kinerja') .addEventListener('click', () => _switchTab('kinerja'));
+  document.getElementById('tab-klaster') .addEventListener('click', () => _switchTab('klaster'));
   document.getElementById('tab-korelasi').addEventListener('click', () => _switchTab('korelasi'));
 }
 
 function _switchTab(tab) {
   S.tab = tab;
-  ['alumni','kinerja','korelasi'].forEach(t => {
+  ['alumni','kinerja','klaster','korelasi'].forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (!btn) return;
     btn.classList.toggle('bg-gray-700',   t === tab);
@@ -159,6 +163,7 @@ function _switchTab(tab) {
   });
   if (tab === 'alumni')   _renderAlumniTab();
   if (tab === 'kinerja')  _renderKinerjaTab();
+  if (tab === 'klaster')  _renderKlasterTab();
   if (tab === 'korelasi') renderKorelasiTab();
 }
 
@@ -734,6 +739,156 @@ async function _doImportKinerja(valid, fileName) {
     showToast('Import gagal: ' + err.message, 'error');
     document.getElementById('btn-do-import-kinerja').disabled = false;
     progressEl.classList.add('hidden');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB KLASTER STRUKTURAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function _renderKlasterTab() {
+  const el = document.getElementById('tab-content');
+  el.innerHTML = `
+    <div class="space-y-5">
+      <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-4">
+        <p class="text-xs font-semibold text-yellow-400 mb-1">Klaster struktural PDAM (provisional)</p>
+        <p class="text-xs text-gray-400">
+          Hasil K-means berdasarkan 4 variabel struktural (skala, aset/SR, kepadatan pipa, rasio SDM) — riset terpisah,
+          belum pakai variabel ideal (sumber air baku, kelembagaan, dst). Dipakai sbg stratifikasi di view Dampak (Tab Korelasi).
+          Import ini men-update field <code>klaster</code> pada dokumen Kinerja PDAM yang match — bisa diulang kalau cluster di-refresh.
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-3">Upload File CSV Klaster</h2>
+        <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg
+                       bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] text-sm transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Pilih File CSV
+          <input id="klaster-file-input" type="file" accept=".csv,.xlsx,.xls" class="hidden" />
+        </label>
+        <span id="klaster-filename" class="ml-3 text-xs text-gray-500"></span>
+        <p class="text-xs text-gray-600 mt-2">Kolom wajib: <code>nama</code>, <code>cluster</code>, <code>nama_klaster</code></p>
+      </div>
+
+      <div id="klaster-preview-section" class="hidden"></div>
+      <div id="klaster-import-section" class="hidden"></div>
+    </div>`;
+
+  document.getElementById('klaster-file-input').addEventListener('change', _onKlasterFileSelected);
+}
+
+async function _onKlasterFileSelected(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  document.getElementById('klaster-filename').textContent = file.name;
+
+  const XLSX = await _loadXLSX();
+  const wb   = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const all  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+  if (!all.length) { showToast('File kosong atau tidak terbaca.', 'error'); return; }
+
+  const valid   = [];
+  const invalid = [];
+  all.forEach((row, i) => {
+    const { data, errors } = normalizeKlasterRow(row);
+    if (data) valid.push(data);
+    else invalid.push({ row: i + 2, errors });
+  });
+
+  _renderKlasterPreview(valid, invalid, file.name);
+}
+
+function _renderKlasterPreview(valid, invalid, fileName) {
+  const elPrev = document.getElementById('klaster-preview-section');
+  const elImp  = document.getElementById('klaster-import-section');
+  elPrev.classList.remove('hidden');
+
+  const previewRows = valid.slice(0, 8).map(r => `
+    <tr>
+      <td class="max-w-[280px] truncate font-medium text-white">${_esc(r.nama)}</td>
+      <td class="text-center text-gray-400">${r.cluster}</td>
+      <td class="text-gray-400">${_esc(r.nama_klaster)}</td>
+    </tr>`).join('');
+
+  elPrev.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+      <h2 class="text-sm font-semibold text-white">Preview & Validasi</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-gray-800 rounded-lg p-3 text-center">
+          <p class="text-lg font-bold text-white">${valid.length}</p>
+          <p class="text-xs text-green-400">Baris siap import</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3 text-center">
+          <p class="text-lg font-bold text-white">${invalid.length}</p>
+          <p class="text-xs text-red-400">Ditolak (field wajib kosong/tidak valid)</p>
+        </div>
+      </div>
+      ${valid.length > 0 ? `
+        <div class="overflow-x-auto">
+          <table class="btam-table text-xs">
+            <thead><tr><th>Nama</th><th class="text-center">Cluster</th><th>Nama Klaster</th></tr></thead>
+            <tbody>${previewRows}</tbody>
+          </table>
+        </div>` : ''}
+    </div>`;
+
+  if (valid.length > 0) {
+    elImp.classList.remove('hidden');
+    elImp.innerHTML = `
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <p class="text-xs text-gray-400">
+          Nama dicocokkan ke dokumen Kinerja PDAM existing (exact, lalu normalisasi nama). Baris yang tidak match akan dilaporkan, tidak dihentikan diam-diam.
+        </p>
+        <button id="btn-do-import-klaster"
+                class="px-5 py-2.5 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6]
+                       text-[#f0fdfa] font-medium transition-colors">
+          Import ${valid.length} Klaster
+        </button>
+        <div id="klaster-progress" class="hidden">
+          <div class="flex items-center gap-2 text-sm text-gray-400">
+            <div class="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+            <span>Mencocokkan & mengimport…</span>
+          </div>
+        </div>
+        <div id="klaster-result"></div>
+      </div>`;
+
+    document.getElementById('btn-do-import-klaster').addEventListener('click', async () => {
+      await _doImportKlaster(valid, fileName);
+    });
+  }
+}
+
+async function _doImportKlaster(valid, fileName) {
+  document.getElementById('btn-do-import-klaster').disabled = true;
+  document.getElementById('klaster-progress').classList.remove('hidden');
+  const resultEl = document.getElementById('klaster-result');
+
+  const profile = getState('auth.profile');
+
+  try {
+    const { matched, unmatched } = await batchImportKlaster(valid, fileName, profile?.email ?? 'admin');
+    showToast(`${matched} klaster berhasil diimport.`, 'success');
+    resultEl.innerHTML = `
+      <div class="mt-3 text-xs">
+        <p class="text-emerald-400">${matched} dokumen berhasil di-update.</p>
+        ${unmatched.length > 0 ? `
+          <p class="text-red-400 mt-1">${unmatched.length} nama tidak ditemukan di Kinerja PDAM:</p>
+          <ul class="text-gray-500 list-disc list-inside max-h-40 overflow-y-auto mt-1">
+            ${unmatched.map(n => `<li>${_esc(n)}</li>`).join('')}
+          </ul>` : ''}
+      </div>`;
+  } catch (err) {
+    showToast('Import gagal: ' + err.message, 'error');
+  } finally {
+    document.getElementById('btn-do-import-klaster').disabled = false;
+    document.getElementById('klaster-progress').classList.add('hidden');
   }
 }
 

@@ -15,7 +15,8 @@ let _sub        = { k4: 'A' };
 let _sortKey    = 'instansi';
 let _sortDir    = 1;
 let _k4Bidang   = '';
-let _dampakWindow = 2; // tahun sebelum 2021
+let _dampakWindow  = 2;  // tahun sebelum 2021
+let _dampakCluster = ''; // '' = semua cluster, string angka '0'..'4' kalau dipilih
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -283,10 +284,23 @@ function _renderK4B() {
   const matrix = {};
   GROUPS.forEach(g => { matrix[g] = { naik: 0, tetap: 0, turun: 0, na: 0, deltas: [] }; });
 
+  const CLUSTER_OPTIONS = [];
+  const seenCluster = new Set();
+  _data.forEach(d => {
+    const k = d.kinerja?.klaster;
+    if (k && !seenCluster.has(k.cluster)) {
+      seenCluster.add(k.cluster);
+      CLUSTER_OPTIONS.push({ cluster: k.cluster, label: k.nama_klaster });
+    }
+  });
+  CLUSTER_OPTIONS.sort((a, b) => a.cluster - b.cluster);
+
   let excluded = 0;
   let noKinerja = 0;
 
-  _filtered().forEach(d => {
+  _filtered()
+    .filter(d => _dampakCluster === '' || String(d.kinerja?.klaster?.cluster) === _dampakCluster)
+    .forEach(d => {
     if (!d.kinerja) { noKinerja++; return; }
     const k21 = d.kinerja?.byYear?.[String(BASE_YEAR)];
     const k23 = d.kinerja?.byYear?.[String(END_YEAR)];
@@ -324,17 +338,33 @@ function _renderK4B() {
       <div class="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-3">
         <p class="text-xs text-yellow-400 font-semibold mb-1">⚠️ Asosiasi, bukan bukti sebab-akibat</p>
         <p class="text-xs text-gray-400">
-          Belum mengontrol ukuran/kapasitas PDAM. Perhatikan N per sel — sel dengan N kecil (redup di bawah)
-          tidak bisa disimpulkan.
+          Belum mengontrol ukuran/kapasitas PDAM${CLUSTER_OPTIONS.length ? ' kecuali difilter Cluster di bawah' : ''}.
+          Perhatikan N per sel — sel dengan N kecil (redup di bawah) tidak bisa disimpulkan.
+          ${CLUSTER_OPTIONS.length ? 'Cluster struktural masih provisional (4 variabel: skala, aset/SR, kepadatan pipa, rasio SDM) — akan diperbarui kalau variabel ideal sudah tersedia.' : ''}
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-gray-400">Window intensitas: N tahun sebelum ${BASE_YEAR}</label>
-        <select id="dampak-window" class="form-select text-xs">
-          ${WINDOW_OPTIONS.map(w => `<option value="${w}"${w === _dampakWindow ? ' selected' : ''}>${w} tahun (${BASE_YEAR - w}–${BASE_YEAR - 1})</option>`).join('')}
-        </select>
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-400">Window intensitas: N tahun sebelum ${BASE_YEAR}</label>
+          <select id="dampak-window" class="form-select text-xs">
+            ${WINDOW_OPTIONS.map(w => `<option value="${w}"${w === _dampakWindow ? ' selected' : ''}>${w} tahun (${BASE_YEAR - w}–${BASE_YEAR - 1})</option>`).join('')}
+          </select>
+        </div>
+        ${CLUSTER_OPTIONS.length ? `
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-400">Cluster struktural</label>
+          <select id="dampak-cluster" class="form-select text-xs">
+            <option value=""${_dampakCluster === '' ? ' selected' : ''}>Semua Cluster</option>
+            ${CLUSTER_OPTIONS.map(o => `<option value="${o.cluster}"${String(o.cluster) === _dampakCluster ? ' selected' : ''}>${_esc(o.label)}</option>`).join('')}
+          </select>
+        </div>` : ''}
       </div>
+
+      ${_dampakCluster !== '' && CLUSTER_OPTIONS.find(o => String(o.cluster) === _dampakCluster)?.cluster === 3 ? `
+      <p class="text-xs text-orange-400">
+        Cluster "Ekstrem Terisolasi" cuma berisi 8 PDAM secara nasional — N di dalam BTAM kemungkinan sangat kecil (0-2). Hati-hati menyimpulkan apa pun dari sini.
+      </p>` : ''}
 
       <p class="text-xs text-gray-500">
         Grup intensitas dihitung dari peserta bimtek ${windowStart}–${windowEnd} saja (sebelum window kinerja).
@@ -382,6 +412,9 @@ function _renderK4B() {
 
   document.getElementById('dampak-window').addEventListener('change', e => {
     _dampakWindow = +e.target.value; _renderK4B();
+  });
+  document.getElementById('dampak-cluster')?.addEventListener('change', e => {
+    _dampakCluster = e.target.value; _renderK4B();
   });
 }
 
