@@ -14,6 +14,7 @@ let _view       = 'k4';
 let _sub        = { k4: 'A' };
 let _sortKey    = 'instansi';
 let _sortDir    = 1;
+let _k4Bidang   = '';
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -169,6 +170,19 @@ function _renderK4A() {
   ];
   let selPair = 0;
 
+  const BIDANG_OPTIONS = [
+    { v: '',            l: 'Semua Bidang' },
+    { v: 'produksi',    l: 'Produksi' },
+    { v: 'trandis',     l: 'Trandis' },
+    { v: 'me',          l: 'ME' },
+    { v: 'pendukung',   l: 'Pendukung' },
+  ];
+
+  const xForRow = (d, tahun) => {
+    if (!_k4Bidang) return d.alumni.byYear[tahun] ?? 0;
+    return d.alumni.byYearBidang?.[tahun]?.[_k4Bidang] ?? 0;
+  };
+
   const render = () => {
     const p = PAIRS[selPair];
     const isFirst = selPair === 0;
@@ -176,7 +190,7 @@ function _renderK4A() {
     const points = _filtered()
       .filter(d => d.alumni && d.kinerja)
       .map(d => {
-        const xVal = d.alumni.byYear[p.t] ?? 0;
+        const xVal = xForRow(d, p.t);
         const k1 = d.kinerja.byYear[p.t1]?.total;
         const k0 = isFirst ? null : d.kinerja.byYear[p.t]?.total;
         const yVal = isFirst ? k1 : (k1 != null && k0 != null ? k1 - k0 : null);
@@ -188,29 +202,38 @@ function _renderK4A() {
       })
       .filter(p => p.y !== null);
 
+    const bidangLabel = BIDANG_OPTIONS.find(b => b.v === _k4Bidang)?.l ?? 'Semua Bidang';
+
     el.innerHTML = `
       <div class="space-y-3">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2 items-center">
           ${PAIRS.map((pr, i) =>
             `<button class="k4a-pair px-3 py-1.5 rounded-lg text-xs ${i === selPair ? 'bg-gray-700 text-white' : 'bg-gray-900 border border-gray-700 text-gray-400'} transition-colors" data-i="${i}">${_esc(pr.label)}</button>`
           ).join('')}
+          <select id="k4a-bidang" class="form-select text-xs ml-2">
+            ${BIDANG_OPTIONS.map(b => `<option value="${b.v}"${b.v === _k4Bidang ? ' selected' : ''}>${b.l}</option>`).join('')}
+          </select>
         </div>
         <p class="text-xs text-gray-500">
-          ${isFirst ? `Peserta bimtek BTAM tahun ${p.t} → skor kinerja tahun ${p.t1}` :
-                      `Peserta bimtek BTAM tahun ${p.t} → perubahan skor kinerja ${p.t}→${p.t1}`}
+          ${isFirst ? `Peserta bimtek BTAM (${_esc(bidangLabel)}) tahun ${p.t} → skor kinerja tahun ${p.t1}` :
+                      `Peserta bimtek BTAM (${_esc(bidangLabel)}) tahun ${p.t} → perubahan skor kinerja ${p.t}→${p.t1}`}
         </p>
+        <p class="text-xs text-gray-600">Hypothesis-generating — N kecil per kombinasi, bukan bukti kausal.</p>
         <div id="k4a-chart"></div>
       </div>`;
 
     document.querySelectorAll('.k4a-pair').forEach(b => {
       b.addEventListener('click', () => { selPair = +b.dataset.i; render(); });
     });
+    document.getElementById('k4a-bidang').addEventListener('change', e => {
+      _k4Bidang = e.target.value; render();
+    });
 
     _scatter('k4a-chart', points, {
-      xLabel:   `Peserta Bimtek ${p.t}`,
+      xLabel:   `Peserta Bimtek ${p.t}${_k4Bidang ? ` (${bidangLabel})` : ''}`,
       yLabel:   isFirst ? `Skor Kinerja ${p.t1}` : `Δ Kinerja ${p.t}→${p.t1}`,
       title:    `K-4A — ${p.label}`,
-      subtitle: `${points.length} instansi dengan data lengkap`,
+      subtitle: `${points.length} instansi dengan data lengkap · ${bidangLabel}`,
       zeroLine: !isFirst,
     });
   };
