@@ -973,8 +973,10 @@ function _aggregateProvinsiRange(provinsiByYear, from, to) {
   return result;
 }
 
-// URL GeoJSON peta Indonesia (superpikar, nama provinsi dalam Bahasa Indonesia, property: state)
-const _GEOJSON_URL = 'https://cdn.jsdelivr.net/gh/superpikar/indonesia-geojson@master/indonesia.geojson';
+// URL GeoJSON peta Indonesia — 38 provinsi (termasuk hasil pemekaran Papua 2022:
+// Papua Tengah, Papua Pegunungan, Papua Selatan, Papua Barat Daya), property: PROVINSI.
+// Sumber lama (superpikar) cuma 34 provinsi, tidak punya poligon Papua hasil DOB.
+const _GEOJSON_URL = 'https://raw.githubusercontent.com/denyherianto/indonesia-geojson-topojson-maps-with-38-provinces/main/GeoJSON/indonesia-38-provinces.geojson';
 
 // GeoJSON peta Leaflet yang sedang aktif (untuk resetStyle)
 let _geoLayer = null;
@@ -1097,7 +1099,7 @@ async function _renderMapProvinsi(provinsiCount) {
   // Debug: GeoJSON state → norm → hasil match (tampilkan setelah GeoJSON siap)
   const geoDebug = {};
   _geoJsonData.features.forEach(f => {
-    const raw   = f.properties.state || '';
+    const raw   = f.properties.PROVINSI || '';
     const normd = _norm(raw);
     const match = normCount[normd];
     geoDebug[raw] = { normd, count: match?.count ?? 0, matched: !!match };
@@ -1129,7 +1131,7 @@ async function _renderMapProvinsi(provinsiCount) {
   // Debug: tampilkan GeoJSON names vs match result
   console.group('[Map Debug] GeoJSON state → norm → match:');
   (_geoJsonData.features || []).forEach(f => {
-    const raw   = f.properties.state || '';
+    const raw   = f.properties.PROVINSI || '';
     const normd = _norm(raw);
     const hit   = normCount[normd];
     console.log(`  "${raw}" → "${normd}" → ${hit ? `✅ ${hit.count}` : '❌ tidak match'}`);
@@ -1138,7 +1140,7 @@ async function _renderMapProvinsi(provinsiCount) {
 
   _geoLayer = L.geoJSON(_geoJsonData, {
     style: feature => {
-      const rawName = feature.properties.state || '';
+      const rawName = feature.properties.PROVINSI || '';
       const count   = normCount[_norm(rawName)]?.count || 0;
       return {
         fillColor:   _getColor(count),
@@ -1148,7 +1150,7 @@ async function _renderMapProvinsi(provinsiCount) {
       };
     },
     onEachFeature: (feature, layer) => {
-      const rawName = feature.properties.state || '?';
+      const rawName = feature.properties.PROVINSI || '?';
       const count   = normCount[_norm(rawName)]?.count || 0;
       layer.bindTooltip(
         `<div style="font-size:12px;padding:4px 8px"><b>${rawName}</b><br>${count.toLocaleString('id-ID')} peserta</div>`,
