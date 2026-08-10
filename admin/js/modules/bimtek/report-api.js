@@ -43,22 +43,28 @@ export const DEFAULT_REPORT_THRESHOLDS = {
  * @returns {object} reportData
  */
 export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengajars = []) {
+  // pesertaIds saat ini dipakai untuk filter di listBimtekScores — mencegah dokumen
+  // bimtek_scores "hantu" milik peserta yang sudah dikeluarkan dari bimtek tetap
+  // ikut terhitung di laporan (lihat komentar listBimtekScores di penilaian-api.js).
+  const noPesertaList = bimtek.pesertaIds || [];
+
   const [scores, examResults, exams, sesis] = await Promise.all([
-    listBimtekScores(bimtekId),
+    listBimtekScores(bimtekId, noPesertaList),
     listExamResults(bimtekId),
     listExams(bimtekId),
     listSesi(bimtekId)
   ]);
 
-  // Fetch peserta master data (batch)
-  const noPesertaList = bimtek.pesertaIds || [];
+  // Fetch peserta master data (batch) — _batchGetPeserta sudah exclude peserta
+  // yang deleted, jadi pesertaMap cuma berisi peserta yang masih aktif.
   const pesertaMap = await _batchGetPeserta(noPesertaList);
 
-  // Enrich scores dengan peserta info + lulus (sudah dari listBimtekScores)
-  const enriched = scores.map(s => ({
-    ...s,
-    peserta: pesertaMap[s.noPeserta] ?? { nama: s.noPeserta, jabatan: null, instansi: null }
-  }));
+  // Enrich scores dengan peserta info + lulus (sudah dari listBimtekScores).
+  // Peserta yang sudah dihapus (soft delete di peserta_master) tidak ada di
+  // pesertaMap — buang dari laporan alih-alih ditampilkan pakai noPeserta saja.
+  const enriched = scores
+    .filter(s => pesertaMap[s.noPeserta])
+    .map(s => ({ ...s, peserta: pesertaMap[s.noPeserta] }));
 
   // Statistik agregat
   const total = enriched.length;
