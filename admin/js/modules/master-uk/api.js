@@ -236,8 +236,81 @@ export async function syncBankSoalUK() {
     await batch.commit();
   }
 
-  await logAudit({ action: 'sync_bank_soal_uk', entityType: 'bank_soal', entityId: 'all', metadata: { updated, skipped: soalSnap.size - updated } });
-  return { updated, skipped: soalSnap.size - updated };
+  // 4. Kelompokkan soal yang TIDAK match UK manapun ("asing") untuk direview admin.
+  //    Dikelompokkan per nilai unitKompetensi unik (case-insensitive).
+  const strayMap = {}; // key lowercase → { value, count, ekNamaSample }
+  soalSnap.docs.forEach(d => {
+    const uk = d.data().unitKompetensi;
+    if (!uk) return;
+    if (ukMap[uk.toLowerCase()] !== undefined) return; // sudah match
+    const key = uk.toLowerCase();
+    if (!strayMap[key]) strayMap[key] = { value: uk, count: 0, ekNamaSample: d.data().ekNama || null };
+    strayMap[key].count++;
+  });
+  const strays = Object.values(strayMap).sort((a, b) => b.count - a.count);
+
+  await logAudit({ action: 'sync_bank_soal_uk', entityType: 'bank_soal', entityId: 'all', metadata: { updated, skipped: soalSnap.size - updated, strayCount: strays.length } });
+  return { updated, skipped: soalSnap.size - updated, strays };
+}
+
+/**
+ * Selesaikan satu grup unitKompetensi "asing" yang ditemukan di bank_soal
+ * (nilai yang tidak match UK manapun di Master) sesuai keputusan admin.
+ * @param {string} value  - nilai unitKompetensi asli di soal (bukan lowercase)
+ * @param {'create'|'map'|'ignore'} action
+ * @param {object} [payload]
+ * @param {object} [payload.newUK]   - { kode, nama, isSKKNI, bidangIds, status } — untuk action 'create'
+ * @param {string} [payload.mapToId] - doc ID UK master tujuan — untuk action 'map'
+ * @returns {{ action: string, affected: number, ukId?: string }}
+ */
+export async function resolveStrayUK(value, action, payload = {}) {
+  if (action === 'ignore') {
+    await logAudit({ action: 'sync_stray_uk_ignore', entityType: 'bank_soal', entityId: value, metadata: { value } });
+    return { action: 'ignore', affected: 0 };
+  }
+
+  // Cari semua soal yang memakai nilai ini (persis, case-insensitive lewat query ganda)
+  const variants = [...new Set([value, value.toUpperCase(), value.toLowerCase()])];
+  const found = [];
+  for (const v of variants) {
+    const snap = await getDocs(
+      query(collection(db, COL.BANK_SOAL), where('deleted', '==', false), where('unitKompetensi', '==', v))
+    );
+    snap.docs.forEach(d => { if (!found.find(x => x.id === d.id)) found.push(d); });
+  }
+
+  let targetKode, targetNama, ukId;
+
+  if (action === 'create') {
+    ukId = await createUK(payload.newUK);
+    const ukSnap = await getDoc(doc(db, COL_NAME, ukId));
+    targetKode = ukSnap.data().kode ?? ukId.toUpperCase();
+    targetNama = ukSnap.data().nama;
+  } else if (action === 'map') {
+    ukId = payload.mapToId;
+    const ukSnap = await getDoc(doc(db, COL_NAME, ukId));
+    if (!ukSnap.exists()) throw new Error('UK tujuan mapping tidak ditemukan.');
+    targetKode = ukSnap.data().kode ?? ukId.toUpperCase();
+    targetNama = ukSnap.data().nama;
+  } else {
+    throw new Error(`Aksi tidak dikenal: ${action}`);
+  }
+
+  const CHUNK = 500;
+  for (let i = 0; i < found.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    found.slice(i, i + CHUNK).forEach(d => {
+      batch.update(d.ref, { unitKompetensi: targetKode, ekNama: targetNama, updatedAt: serverTimestamp() });
+    });
+    await batch.commit();
+  }
+
+  await logAudit({
+    action: `sync_stray_uk_${action}`, entityType: 'bank_soal', entityId: value,
+    metadata: { value, targetKode, ukId, affected: found.length }
+  });
+
+  return { action, affected: found.length, ukId };
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import { showToast } from '../../components/toast.js';
 import { requireWrite } from '../../auth-guard.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import {
-  listUK, countUK, createUK, updateUK, deleteUK, bulkImportUK, syncBankSoalUK
+  listUK, listUKAktif, countUK, createUK, updateUK, deleteUK, bulkImportUK, syncBankSoalUK, resolveStrayUK
 } from './api.js';
 import { openImportUK } from './import.js';
 
@@ -33,7 +33,7 @@ export async function renderMasterUK({ query = {} } = {}) {
         <div class="flex items-center gap-2">
           <button id="btn-sync" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Sinkronkan ke Bank Soal
+            Sinkronkan dengan Bank Soal
           </button>
           <button id="btn-import" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors">
             Import Excel
@@ -420,6 +420,109 @@ async function _submitForm(close, existing) {
   }
 }
 
+// ─── SYNC — REVIEW UK ASING ────────────────────────────────────────────────────
+
+/**
+ * Modal review untuk unitKompetensi di bank_soal yang tidak match UK manapun di Master.
+ * Admin memutuskan per grup: buat UK baru, map ke UK master yang sudah ada, atau abaikan.
+ */
+async function _openStrayReview(strays) {
+  const ukList = await listUKAktif();
+
+  const optionsHTML = ukList.map(uk =>
+    `<option value="${uk.id}">${uk.kode ? uk.kode + ' — ' : ''}${uk.nama}</option>`
+  ).join('');
+
+  const rowsHTML = strays.map((s, i) => `
+    <div class="border border-[#1e3a3f] rounded-lg p-3 mb-3" data-row="${i}">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <div class="text-sm text-white font-medium">${s.value}</div>
+          ${s.ekNamaSample ? `<div class="text-xs text-gray-500">${s.ekNamaSample}</div>` : ''}
+        </div>
+        <span class="text-xs text-gray-400 whitespace-nowrap">${s.count} soal</span>
+      </div>
+      <select data-action-select class="form-input text-xs w-full mb-2">
+        <option value="ignore">Abaikan (biarkan apa adanya)</option>
+        <option value="create">Buat sebagai UK baru di Master</option>
+        <option value="map">Map ke UK Master yang sudah ada</option>
+      </select>
+      <div data-create-fields class="hidden grid grid-cols-2 gap-2 mb-1">
+        <input type="text" data-create-kode placeholder="Kode (opsional)" class="form-input text-xs" />
+        <input type="text" data-create-nama placeholder="Nama UK" value="${(s.ekNamaSample || s.value).replace(/"/g, '&quot;')}" class="form-input text-xs" />
+      </div>
+      <div data-map-fields class="hidden">
+        <select data-map-target class="form-input text-xs w-full">
+          <option value="">— pilih UK tujuan —</option>
+          ${optionsHTML}
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  const { close, bodyEl } = openModal({
+    title: `Unit Kompetensi Asing di Bank Soal (${strays.length})`,
+    size: 'lg',
+    body: `
+      <p class="text-xs text-gray-500 mb-3">
+        Nilai unitKompetensi berikut ditemukan di Bank Soal tapi tidak cocok dengan UK manapun di Master.
+        Tentukan tindakan untuk masing-masing sebelum melanjutkan.
+      </p>
+      <div id="stray-rows">${rowsHTML}</div>
+    `,
+    actions: [
+      { label: 'Tutup', type: 'secondary', onClick: ({ close }) => close() },
+      {
+        label: 'Terapkan Keputusan',
+        type: 'primary',
+        onClick: async ({ close: closeModal }) => {
+          const rows = [...bodyEl.querySelectorAll('[data-row]')];
+          let applied = 0, errors = [];
+          for (const row of rows) {
+            const idx = Number(row.dataset.row);
+            const action = row.querySelector('[data-action-select]').value;
+            if (action === 'ignore') continue;
+            try {
+              if (action === 'create') {
+                const kode = row.querySelector('[data-create-kode]').value.trim();
+                const nama = row.querySelector('[data-create-nama]').value.trim();
+                if (!nama) throw new Error('Nama UK wajib diisi.');
+                await resolveStrayUK(strays[idx].value, 'create', {
+                  newUK: { isSKKNI: !!kode, kode: kode || null, nama, bidangIds: [], status: 'aktif' }
+                });
+              } else if (action === 'map') {
+                const mapToId = row.querySelector('[data-map-target]').value;
+                if (!mapToId) throw new Error('Pilih UK tujuan mapping.');
+                await resolveStrayUK(strays[idx].value, 'map', { mapToId });
+              }
+              applied++;
+            } catch (err) {
+              errors.push(`${strays[idx].value}: ${err.message}`);
+            }
+          }
+          if (errors.length) {
+            showToast(`${applied} keputusan diterapkan, ${errors.length} gagal: ${errors.join('; ')}`, 'error');
+          } else if (applied) {
+            showToast(`${applied} keputusan diterapkan.`, 'success');
+          }
+          closeModal();
+          _reload();
+        }
+      }
+    ]
+  });
+
+  bodyEl.querySelectorAll('[data-row]').forEach(row => {
+    const sel = row.querySelector('[data-action-select]');
+    const createFields = row.querySelector('[data-create-fields]');
+    const mapFields = row.querySelector('[data-map-fields]');
+    sel.addEventListener('change', () => {
+      createFields.classList.toggle('hidden', sel.value !== 'create');
+      mapFields.classList.toggle('hidden', sel.value !== 'map');
+    });
+  });
+}
+
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
 
 function _bindEvents() {
@@ -447,13 +550,16 @@ function _bindEvents() {
     btn.disabled = true;
     btn.textContent = 'Menyinkronkan...';
     try {
-      const { updated, skipped } = await syncBankSoalUK();
-      showToast(`Sinkronisasi selesai: ${updated} soal diperbarui, ${skipped} soal tidak cocok.`, 'success');
+      const { updated, strays } = await syncBankSoalUK();
+      showToast(`Sinkronisasi selesai: ${updated} soal diperbarui.`, 'success');
+      if (strays.length) {
+        await _openStrayReview(strays);
+      }
     } catch (err) {
       showToast('Sinkronisasi gagal: ' + err.message, 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Sinkronkan ke Bank Soal';
+      btn.textContent = 'Sinkronkan dengan Bank Soal';
     }
   });
 document.getElementById('btn-import')?.addEventListener('click', () => {
