@@ -327,7 +327,7 @@ async function _downloadDocxSingle(btnEl, noPeserta) {
     const docHtml = _buildDocxFullHtml([data], kopB64);
     const blob    = window.htmlDocx.asBlob(docHtml, {
       orientation: 'portrait',
-      margins: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+      margins: { top: 1134, right: 1417, bottom: 1134, left: 1417 }, // kiri/kanan 2,5cm, atas/bawah 2cm
     });
     _triggerDownload(blob, `laporan-${noPeserta}.docx`);
   } catch (err) {
@@ -358,7 +358,7 @@ async function _downloadDocxTerpilih(container) {
     const docHtml = _buildDocxFullHtml(allData, kopB64);
     const blob    = window.htmlDocx.asBlob(docHtml, {
       orientation: 'portrait',
-      margins: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+      margins: { top: 1134, right: 1417, bottom: 1134, left: 1417 }, // kiri/kanan 2,5cm, atas/bawah 2cm
     });
     const nama = (S.bimtek?.nama ?? 'bimtek').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
     _triggerDownload(blob, `laporan-peserta-${nama}.docx`);
@@ -402,57 +402,118 @@ function _buildDocxFullHtml(dataList, kopBase64) {
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: "Times New Roman", serif; font-size: 12pt; color: #000000; margin: 0; padding: 0; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { font-size: 11pt; vertical-align: top; padding: 5pt 8pt; }
-  p { margin: 0 0 6pt 0; }
+  body, table, th, td, p, div { font-family: Calibri, Arial, sans-serif; }
+  body { font-size: 11pt; color: #1a1a1a; margin: 0; padding: 0; line-height: 1.15; }
+  table { border-collapse: collapse; width: 100%; border-spacing: 0; }
+  th, td { font-size: 10.5pt; vertical-align: top; }
+  /* Word (via html-docx-js) membungkus teks jadi paragraf bergaya "Normal" yang
+     punya spacing-after ~8pt bawaan Office — reset di sini supaya baris rapat
+     sesuai CSS, bukan ikut jarak default Word. */
+  p, td, div, th { margin: 0; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }
 </style>
 </head>
 <body>${pages}</body>
 </html>`;
 }
 
+// Palet netral untuk docx — garis tipis abu-abu, bukan grid hitam tebal.
+const _DOCX_ACCENT = '#0d9488';
+const _DOCX_MUTED  = '#595959';
+const _DOCX_RULE   = '#c9c9c9';
+const _DOCX_HEAD_BG = '#f2f2f2';
+const _DOCX_FONT   = 'Calibri, Arial, sans-serif';
+// Reset paragraf: mso-margin-*-alt:0 mencegah Word menyisipkan spacing-after
+// gaya "Normal" bawaan di setiap <p> yang kita bungkus manual.
+const _flP = 'margin:0;mso-margin-top-alt:0;mso-margin-bottom-alt:0;mso-line-height-rule:exactly;line-height:100%;';
+
+// ─── BAR NATIF HTML (bukan gambar) UNTUK C.1 PENGUASAAN PER UNIT KOMPETENSI ───
+//
+// Versi sebelumnya pakai tabel bersarang untuk bar proporsional, tapi Word
+// SELALU menyisipkan paragraf-wajib (dengan spacing bawaan) setiap kali ada
+// <table> di dalam sel — trik CSS apapun tidak bisa menekan itu sepenuhnya.
+// Solusinya: bar digambar pakai KARAKTER BLOK UNICODE (█ terisi / ░ kosong)
+// yang diwarnai lewat <span>, bukan tabel — jadi sama sekali tidak ada tabel
+// bersarang, dan tidak ada lagi pemicu spacing-after itu.
+const _UK_BAR_CHARS = 43; // jumlah blok penuh untuk mewakili 0-100% — makin banyak, makin panjang bar-nya
+
+function _ukBarText(pct, color) {
+  const w = Math.max(0, Math.min(100, pct ?? 0));
+  const filled = Math.round((w / 100) * _UK_BAR_CHARS);
+  const empty  = _UK_BAR_CHARS - filled;
+  return `<span style="letter-spacing:-1pt;color:${color};">${'█'.repeat(filled)}</span><span style="letter-spacing:-1pt;color:#e0e0e0;">${'█'.repeat(empty)}</span> <span style="font-weight:600;color:${color};">${pct != null ? pct + '%' : '—'}</span>`;
+}
+
+/** Bar Pre/Post per Unit Kompetensi — nama unit rata kiri, sejajar (satu baris) dengan bar-nya. */
+function _buildUKBarsHtml(ekComparison) {
+  if (!ekComparison?.length) return '';
+
+  const legend = `<p style="${_flP}font-size:10pt;font-weight:600;"><span style="color:#9ca3af;">■ Pre Test</span> &nbsp;&nbsp; <span style="color:#0d9488;">■ Post Test</span></p>`;
+
+  const rows = ekComparison.map(ek => `
+      <tr>
+        <td style="width:45%;padding:1pt 8pt 1pt 0;border-bottom:0.5pt solid ${_DOCX_RULE};font-size:9.5pt;text-align:left;vertical-align:middle;"><p style="${_flP}">${_esc(ek.ekNama)}</p></td>
+        <td style="padding:1pt 0;border-bottom:0.5pt solid ${_DOCX_RULE};vertical-align:middle;font-size:9pt;">
+          <p style="${_flP}">${_ukBarText(ek.prePct,  '#9ca3af')}</p>
+          <p style="${_flP}">${_ukBarText(ek.postPct, '#0d9488')}</p>
+        </td>
+      </tr>`).join('');
+
+  return `${legend}<table style="width:100%;">${rows}</table>`;
+}
+
 function _buildDocxPageHtml(data, kopBase64) {
-  const { peserta, scores, kehadiranDetail, ekComparison, thresholds } = data;
+  const { peserta, scores, kehadiranDetail, ekComparison, thresholds, violationSummary } = data;
   const b   = S.bimtek;
   const kkm = b.kkm ?? 60;
 
-  const TD  = 'style="padding:4pt 6pt;border:1px solid #000000;"';
-  const TDC = 'style="padding:4pt 6pt;border:1px solid #000000;text-align:center;"';
-  const TH  = 'style="padding:4pt 6pt;border:1px solid #000000;font-weight:bold;text-align:left;"';
+  // Header section (A/B/C/D): underline aksen tipis, bukan bingkai kotak.
+  const secHeader = (num, title) => `
+    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;padding-bottom:3pt;border-bottom:1pt solid ${_DOCX_ACCENT};">${num}. ${title}</div>`;
+  // Sub-header (A.1, B.1, dst): label kecil abu tua, tanpa garis, rapat ke isinya.
+  const subHeader = (label) => `
+    <div style="font-size:10pt;font-weight:bold;color:${_DOCX_MUTED};margin:0;text-transform:uppercase;letter-spacing:0.3pt;">${label}</div>`;
 
+  // Baris label:value rapat (tanpa "space after paragraph") untuk Identitas &
+  // Data Kegiatan. Word (via altchunk HTML import) selalu MEMBUNGKUS teks di
+  // dalam <td> jadi <p class="MsoNormal"> miliknya sendiri — style di <td>
+  // tidak mempengaruhi spacing paragraf itu. Makanya kita bungkus manual pakai
+  // <p> ber-style eksplisit supaya Word pakai <p> kita, bukan bikin sendiri.
+  const _flCell = 'padding:0;vertical-align:top;';
   const fl = (label, val) => val
     ? `<tr>
-         <td style="width:38mm;padding:2pt 0;vertical-align:top;">${label}</td>
-         <td style="width:6mm;padding:2pt 3pt;vertical-align:top;">:</td>
-         <td style="padding:2pt 0;">${_esc(val)}</td>
+         <td style="${_flCell}width:32mm;color:${_DOCX_MUTED};"><p style="${_flP}">${label}</p></td>
+         <td style="${_flCell}width:6mm;color:${_DOCX_MUTED};"><p style="${_flP}">:</p></td>
+         <td style="${_flCell}"><p style="${_flP}">${_esc(val)}</p></td>
        </tr>`
     : '';
 
   // ── Kop Surat ──
   const kopImg = kopBase64
     ? `<img src="${kopBase64}" style="width:17cm;height:auto;display:block;" />`
-    : `<div style="text-align:center;font-size:14pt;font-weight:bold;padding:8pt 0;border:1px solid #000000;">BALAI TEKNIK AIR MINUM</div>`;
+    : `<div style="text-align:center;font-size:14pt;font-weight:bold;padding:8pt 0;">BALAI TEKNIK AIR MINUM</div>`;
 
   // ── Judul ──
   const judul = `
-    <div style="text-align:center;margin:14pt 0 16pt;">
-      <div style="font-size:14pt;font-weight:bold;text-transform:uppercase;">LAPORAN HASIL PEMBELAJARAN</div>
-      <div style="font-size:11pt;margin-top:4pt;">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</div>
+    <div style="text-align:center;margin:12pt 0 14pt;">
+      <p style="${_flP}font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.5pt;">LAPORAN HASIL PEMBELAJARAN</p>
+      <p style="${_flP}font-size:14pt;color:${_DOCX_MUTED};">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</p>
     </div>`;
 
   // ── Section A ──
   const sectionA = `
-    <div style="font-size:12pt;font-weight:bold;margin:0 0 8pt;">A. Identitas</div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:14pt;">
-      <tr><th ${TH} colspan="3">Identitas Peserta</th></tr>
+    ${secHeader('A', 'Identitas')}
+    ${subHeader('Identitas Peserta')}
+    <table style="width:100%;">
       ${fl('Nama',         peserta?.nama)}
       ${fl('Jabatan',      peserta?.jabatan)}
       ${fl('Instansi',     peserta?.instansi)}
       ${fl('Provinsi',     peserta?.provinsi)}
-      <tr><th ${TH} colspan="3">Data Kegiatan</th></tr>
-      ${fl('Nama Kegiatan', b.nama)}
-      ${fl('Tanggal',       `${_fmtDate(b.periode?.mulai)} s.d. ${_fmtDate(b.periode?.selesai)}`)}
+    </table>
+    <div style="height:6pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
+    ${subHeader('Data Kegiatan')}
+    <table style="width:100%;">
+      ${fl('Judul Bimtek', b.nama)}
+      ${fl('Periode',      `${_fmtDate(b.periode?.mulai)} s.d. ${_fmtDate(b.periode?.selesai)}`)}
       ${fl('Lokasi',        b.lokasi)}
     </table>`;
 
@@ -463,16 +524,77 @@ function _buildDocxPageHtml(data, kopBase64) {
   const lulus = scores?.lulus ?? false;
   const kat   = kategoriNilai(na);
 
-  const nilaiRows = [
-    ['Pre Test',    pre,  'Penilaian awal sebelum kegiatan'],
-    ['Post Test',   post, 'Penilaian akhir setelah kegiatan'],
-    ['Nilai Akhir', na,   'Kategori: Sangat Baik (≥86), Baik (71-85), Cukup (61-70), Kurang (51-60), Sangat Kurang (≤50)'],
-  ].map(([lbl, val, ket]) => `
+  // Tabel lengkap Nilai Kuantitatif — angka pasti + keterangan tiap komponen.
+  const TD_  = `padding:4pt 6pt;border-bottom:0.5pt solid ${_DOCX_RULE};`;
+  const TDC_ = `${TD_}text-align:center;`;
+  const TH_  = `padding:4pt 6pt;background-color:${_DOCX_HEAD_BG};border-bottom:1pt solid #999999;font-weight:bold;text-align:left;`;
+  const THC_ = `padding:4pt 6pt;background-color:${_DOCX_HEAD_BG};border-bottom:1pt solid #999999;font-weight:bold;text-align:center;`;
+
+  // <p> eksplisit ber-margin:0 supaya Word tidak menyisipkan spacing-after
+  // "Normal" style bawaan (lihat catatan yang sama di fl()). Kolom Keterangan
+  // sekarang cukup lebar untuk kelima kategori dalam satu baris.
+  const kategoriList = 'Sangat Baik ≥86 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Baik 71-85 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Cukup 61-70 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Kurang 51-60 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Sangat Kurang ≤50';
+
+  // Catatan indikasi pelanggaran (bukan vonis kecurangan) — dirangkai jadi
+  // kalimat naratif, ditampilkan sebagai footnote kecil di bawah tabel nilai,
+  // BUKAN baris tabel. Reset tidak menghapus histori (lihat getViolationSummary
+  // di report-api.js), jadi setiap attempt yang punya indikasi tetap disebut
+  // satu per satu — termasuk yang terjadi sebelum sesi di-reset admin.
+  const _fmtAttempt = (a) => {
+    const detail = a.reasons.length ? ` (${a.reasons.join(', ')})` : '';
+    const auto   = a.autoSubmit ? ', ujian ter-submit otomatis' : '';
+    return `${a.warningCount} kali peringatan${detail}${auto}`;
+  };
+  const _fmtSesi = (label, attempts) => {
+    if (!attempts?.length) return '';
+    if (attempts.length === 1) {
+      return `pada sesi ${label} tercatat ${_fmtAttempt(attempts[0])}`;
+    }
+    // >1 attempt berarti peserta pernah di-reset di antara percobaan-percobaan ini.
+    const per = attempts.map((a, i) =>
+      `percobaan ${i === 0 ? 'pertama' : `ke-${i + 1} (setelah sesi di-reset)`} tercatat ${_fmtAttempt(a)}`
+    ).join('; ');
+    return `pada sesi ${label} tercatat indikasi pada ${attempts.length} percobaan pengerjaan — ${per}`;
+  };
+  const violationSentences = [
+    _fmtSesi('pre-test',  violationSummary?.pretest),
+    _fmtSesi('post-test', violationSummary?.posttest),
+  ].filter(Boolean);
+  const hasIndikasi = violationSentences.length > 0;
+  const violationNote = hasIndikasi
+    ? `<p style="${_flP}font-size:8.5pt;font-style:italic;color:#92400e;margin-top:3pt;">Catatan sistem: ${violationSentences.join('; ')}.</p>`
+    : '';
+
+  const _rowNilai = (lbl, val, ket) => `
     <tr>
-      <td ${TD}>${lbl}</td>
-      <td ${TDC}>${val != null ? val : '—'}</td>
-      <td ${TD}>${ket}</td>
-    </tr>`).join('');
+      <td style="${TD_}"><p style="${_flP}">${lbl}</p></td>
+      <td style="${TDC_}"><p style="${_flP}">${val != null ? val : '—'}</p></td>
+      <td style="${TD_}color:${_DOCX_MUTED};font-size:9pt;"><p style="${_flP}">${ket}</p></td>
+    </tr>`;
+
+  const nilaiRows = _rowNilai('Pre Test', pre, 'Penilaian awal sebelum kegiatan Bimtek')
+    + _rowNilai('Post Test', post, 'Penilaian akhir setelah kegiatan Bimtek')
+    + _rowNilai('Nilai Akhir', na, kategoriList);
+
+  const nilaiTable = `
+    <table style="width:100%;margin:4pt 0;">
+      <thead>
+        <tr>
+          <th style="${TH_}width:11%;">Komponen</th>
+          <th style="${THC_}width:14%;">Nilai</th>
+          <th style="${TH_}">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${nilaiRows}
+        <tr><td colspan="3" style="padding:0.5pt 0;line-height:1pt;font-size:1pt;border-bottom:none;"></td></tr>
+        <tr>
+          <td style="${TD_}font-weight:bold;border-bottom:none;white-space:nowrap;"><p style="${_flP}">Status</p></td>
+          <td colspan="2" style="${TD_}text-align:left;padding-left:28pt;font-weight:bold;color:${lulus ? '#166534' : '#991b1b'};border-bottom:none;white-space:nowrap;"><p style="${_flP}">${lulus ? 'LULUS' : 'TIDAK LULUS'} dengan Kualifikasi ${kat.kategori}</p></td>
+        </tr>
+      </tbody>
+    </table>
+    ${violationNote}`;
 
   const kehadiranPct   = kehadiranDetail?.persentase ?? scores?.kehadiran ?? null;
   const kehadiranLabel = kehadiranPct != null ? mapToLabel(kehadiranPct, thresholds.kehadiran) : null;
@@ -482,113 +604,92 @@ function _buildDocxPageHtml(data, kopBase64) {
   const keaktifanLabel = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
   const respekLabel    = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
 
-  const deskRows = [
-    ['Kehadiran',      kehadiranLabel, kehadiranFakta],
-    ['Keaktifan',      keaktifanLabel, null],
-    ['Sikap & Respek', respekLabel,    null],
-  ].filter(([, l]) => l).map(([k, l, f]) => `
-    <tr>
-      <td ${TD}>${k}</td>
-      <td ${TD}>${_esc(l)}</td>
-      <td ${TD}>${f ? _esc(f) : ''}</td>
-    </tr>`).join('');
+  // Daftar (bukan tabel) untuk komponen deskriptif — kategorikal, dengan narasi
+  // singkat per komponen (sama seperti generateNarasiDeskriptif di preview HTML).
+  const deskItems = [
+    ['Kehadiran',      'kehadiran', kehadiranLabel, kehadiranPct,          kehadiranFakta],
+    ['Keaktifan',      'keaktifan', keaktifanLabel, scores?.keaktifan ?? null, null],
+    ['Sikap & Respek', 'respek',    respekLabel,    scores?.respek    ?? null, null],
+  ].filter(([, , l]) => l).map(([k, key, l, nilaiRaw, f]) => `
+    <div style="margin-bottom:6pt;">
+      <span style="font-weight:bold;">${k}:</span>
+      <span style="font-weight:600;color:${_DOCX_ACCENT};"> ${_esc(l)}</span>
+      <div style="color:${_DOCX_MUTED};margin-top:1pt;">${generateNarasiDeskriptif(key, l, nilaiRaw, f)}</div>
+    </div>`).join('');
 
   const sectionB = `
-    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">B. Ringkasan Hasil Pembelajaran</div>
-    <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">B.1 Nilai Kuantitatif</div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
-      <thead>
-        <tr>
-          <th ${TH} style="width:35%;">Komponen</th>
-          <th ${TH} style="width:15%;text-align:center;">Nilai</th>
-          <th ${TH}>Keterangan</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${nilaiRows}
-        <tr>
-          <td ${TD} style="padding:4pt 6pt;border:1px solid #000000;font-weight:bold;">Status</td>
-          <td ${TDC} style="font-weight:bold;">${kat.kategori.toUpperCase()} (${lulus ? 'LULUS' : 'TIDAK LULUS'})</td>
-          <td ${TD}></td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">B.2 Komponen Deskriptif</div>
-    ${deskRows
-      ? `<table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
-           <thead><tr>
-             <th ${TH} style="width:30%;">Komponen</th>
-             <th ${TH} style="width:25%;">Kategori</th>
-             <th ${TH}>Fakta</th>
-           </tr></thead>
-           <tbody>${deskRows}</tbody>
-         </table>`
-      : '<p style="font-size:10pt;">Data komponen deskriptif belum tersedia.</p>'}`;
+    ${secHeader('B', 'Ringkasan Hasil Pembelajaran')}
+    ${subHeader('B.1 Nilai Kuantitatif')}
+    ${nilaiTable}
+    <div style="height:6pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
+    ${subHeader('B.2 Komponen Deskriptif')}
+    ${deskItems || `<p style="font-size:9.5pt;color:${_DOCX_MUTED};">Data komponen deskriptif belum tersedia.</p>`}`;
 
   // ── Section C ──
-  let ekTable = '';
-  if (ekComparison?.length) {
-    const ekRows = ekComparison.map(ek => {
-      const delta = ek.delta != null ? `${ek.delta >= 0 ? '+' : ''}${ek.delta}%` : '—';
-      return `<tr>
-        <td ${TD}>${_esc(ek.ekNama)}</td>
-        <td ${TDC}>${ek.prePct  != null ? ek.prePct  + '%' : '—'}</td>
-        <td ${TDC}>${ek.postPct != null ? ek.postPct + '%' : '—'}</td>
-        <td ${TDC} style="font-weight:bold;">${delta}</td>
-      </tr>`;
-    }).join('');
-    ekTable = `
-      <div style="font-size:11pt;font-weight:bold;margin-bottom:6pt;">C.1 Penguasaan per Unit Kompetensi</div>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12pt;">
-        <thead><tr>
-          <th ${TH}>Unit Kompetensi</th>
-          <th ${TH} style="text-align:center;">Pre (%)</th>
-          <th ${TH} style="text-align:center;">Post (%)</th>
-          <th ${TH} style="text-align:center;">Perubahan</th>
-        </tr></thead>
-        <tbody>${ekRows}</tbody>
-      </table>`;
-  }
-
   const narasi      = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, na, kkm);
   const rekomendasi = generateRekomendasi(ekComparison, scores?.lulus ?? null, na, peserta?.nama, kkm);
+  const ukBars      = _buildUKBarsHtml(ekComparison);
+
+  // Catatan kenapa tidak lulus (kehadiran vs nilai) — sama seperti di preview HTML.
+  const kat2 = kategoriNilai(na);
+  const tidakLulusAlasan = !lulus && na != null ? (kat2.lulus ? 'kehadiran' : 'nilai') : null;
+  const tidakLulusNote = tidakLulusAlasan
+    ? `<div style="margin:4pt 0 8pt;padding:6pt 8pt;background-color:#fffbeb;border-left:2pt solid #d97706;font-size:9.5pt;color:#78350f;line-height:1.3;">
+         ${tidakLulusAlasan === 'kehadiran'
+           ? `Nilai akhir (${na}) berkategori "${kat2.kategori}" dan memenuhi syarat nilai kelulusan, namun kehadiran peserta tidak memenuhi syarat minimum 90% yang ditetapkan.`
+           : `Nilai akhir (${na}) berkategori "${kat2.kategori}" — belum mencapai kategori minimum kelulusan (Cukup, ≥61).`}
+       </div>`
+    : '';
 
   const sectionC = `
-    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">C. Perubahan Kompetensi</div>
-    ${ekTable}
-    <div style="font-size:11pt;font-weight:bold;margin-bottom:4pt;">C.2 Analisis Kompetensi</div>
-    <div style="border:1pt solid #000000;padding:8pt 10pt;line-height:1.6;margin-bottom:12pt;">${narasi}</div>
-    <div style="font-size:11pt;font-weight:bold;margin-bottom:4pt;">C.3 Rekomendasi Tindak Lanjut</div>
-    <div style="border:1pt solid #000000;padding:8pt 10pt;line-height:1.6;margin-bottom:12pt;">${rekomendasi}</div>`;
+    ${secHeader('C', 'Kompetensi')}
+    ${tidakLulusNote}
+    ${ukBars
+      ? `${subHeader('C.1 Penguasaan per Unit Kompetensi')}
+         <div style="margin:2pt 0 4pt;">${ukBars}</div>`
+      : ''}
+    <div style="height:14pt;line-height:14pt;font-size:1pt;">&nbsp;</div>
+    ${subHeader('C.2 Analisis Kompetensi')}
+    <div style="line-height:1.2;margin:2pt 0 4pt;text-align:justify;">${narasi}</div>
+    <div style="height:14pt;line-height:14pt;font-size:1pt;">&nbsp;</div>
+    ${subHeader('C.3 Rekomendasi Tindak Lanjut')}
+    <div style="line-height:1.2;margin:2pt 0;text-align:justify;">${rekomendasi}</div>`;
 
   // ── Section D ──
-  const tglStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const kota   = b.lokasi?.split(',')[0]?.trim() ?? 'Jakarta';
+  // Tanggal sengaja dikosongkan (diisi manual saat penandatanganan), lokasi
+  // ttd tetap Bekasi (lokasi kantor Balai Teknik Air Minum), dan penanggung
+  // jawab kegiatan memakai nama Kepala Balai dari Settings > Info Lembaga
+  // (field yang sama dipakai untuk penanda tangan sertifikat lembar 2).
+  const ls              = S.lembagaSettings;
+  const namaPenanggungJawab = ls?.penandaTangan2        || '';
+  const jabatanPenanggungJawab = ls?.jabatanPenandaTangan2 || 'Kepala Balai Teknik Air Minum';
 
   const sectionD = `
-    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;">D. Penutup</div>
-    <div style="line-height:1.8;margin-bottom:24pt;text-align:justify;">
+    ${secHeader('D', 'Penutup')}
+    <div style="line-height:1.25;margin-bottom:16pt;text-align:justify;">
       Dokumen ini diterbitkan sebagai laporan hasil pembelajaran peserta pada kegiatan bimbingan teknis
       tersebut di atas. Keberatan atau pertanyaan mengenai isi laporan dapat disampaikan kepada
       penyelenggara dalam waktu 7 (tujuh) hari kerja sejak tanggal penerbitan.
     </div>
-    <table style="width:100%;border-collapse:collapse;">
+    <table style="width:100%;">
       <tr>
-        <td style="padding:4pt 0;"></td>
-        <td style="width:180pt;text-align:center;padding:4pt 0;">
-          <div>${_esc(kota)}, ${tglStr}</div>
-          <div style="margin-top:4pt;">Penyelenggara,</div>
-          <div style="height:48pt;"></div>
-          <div style="border-top:1pt solid #000000;padding-top:4pt;font-style:italic;">Penanggung Jawab Kegiatan</div>
+        <td style="padding:0;"></td>
+        <td style="width:200pt;text-align:center;padding:0;">
+          <div>Bekasi, </div>
+          <div style="margin-top:2pt;">${_esc(jabatanPenanggungJawab)}</div>
+          <p>&nbsp;</p>
+          <p>&nbsp;</p>
+          <p>&nbsp;</p>
+          <p>&nbsp;</p>
+          <div>${_esc(namaPenanggungJawab) || '&nbsp;'}</div>
         </td>
       </tr>
     </table>`;
 
   return `
-    <div style="font-family:'Times New Roman',Times,serif;font-size:12pt;color:#000000;line-height:1.5;">
+    <div style="font-family:${_DOCX_FONT};font-size:11pt;color:#1a1a1a;line-height:1.15;">
       ${kopImg}
-      <div style="border-top:2.5pt solid #000000;margin:8pt 0 3pt;"></div>
-      <div style="border-top:1pt solid #000000;margin:0 0 10pt;"></div>
+      <div style="border-top:1.25pt solid ${_DOCX_ACCENT};margin:6pt 0 8pt;"></div>
       ${judul}
       ${sectionA}
       ${sectionB}
@@ -657,14 +758,14 @@ function _buildSectionA(peserta, b) {
 
     <!-- Identitas -->
     <div style="background:#f8f9fa; border-radius:8px; padding:16px; margin-bottom:0;">
-      <div style="font-size:13px; font-weight:600; margin-bottom:12px; font-family:sans-serif;">Identitas Peserta</div>
+      <div style="font-size:13px; font-weight:600; margin-bottom:2px; font-family:sans-serif;">Identitas Peserta</div>
       ${fieldLine('Nama', peserta?.nama)}
       ${peserta?.jabatan   ? fieldLine('Jabatan', peserta.jabatan)   : ''}
       ${peserta?.instansi  ? fieldLine('Instansi', peserta.instansi) : ''}
       ${peserta?.provinsi  ? fieldLine('Provinsi', peserta.provinsi) : ''}
 
       <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd;">
-        <div style="font-size:13px; font-weight:600; margin-bottom:8px; font-family:sans-serif;">Data Kegiatan</div>
+        <div style="font-size:13px; font-weight:600; margin-bottom:2px; font-family:sans-serif;">Data Kegiatan</div>
         ${fieldLine('Nama Kegiatan', b.nama)}
         ${fieldLine('Tanggal', `${_fmtDate(b.periode?.mulai)} – ${_fmtDate(b.periode?.selesai)}`)}
         ${fieldLine('Lokasi', b.lokasi)}
@@ -683,8 +784,8 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
 
   // B.1 — Nilai kuantitatif
   const nilaiRows = [
-    { label: 'Pre Test',    nilai: pre,  ket: 'Penilaian awal sebelum kegiatan' },
-    { label: 'Post Test',   nilai: post, ket: 'Penilaian akhir setelah kegiatan' },
+    { label: 'Pre Test',    nilai: pre,  ket: 'Penilaian awal sebelum kegiatan Bimtek' },
+    { label: 'Post Test',   nilai: post, ket: 'Penilaian akhir setelah kegiatan Bimtek' },
     { label: 'Nilai Akhir', nilai: na,   ket: 'Sangat Baik ≥86 · Baik 71-85 · Cukup 61-70 · Kurang 51-60 · Sangat Kurang ≤50', bold: true },
   ];
 

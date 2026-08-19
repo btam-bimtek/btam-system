@@ -108,13 +108,13 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (kuat.length > 0) {
 
-      isi += ` Penguasaan yang telah memadai (≥70%) terlihat pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}.`;
+      isi += ` Penguasaan yang telah memadai (≥70%) terlihat pada ${kuat.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')}.`;
 
     }
 
     if (lemah.length > 0) {
 
-      isi += ` Adapun unit kompetensi yang masih memerlukan penguatan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}, yang menjadi fokus utama pembelajaran dalam kegiatan bimbingan teknis ini.`;
+      isi += ` Adapun unit kompetensi yang masih memerlukan penguatan meliputi ${lemah.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')}, yang menjadi fokus utama pembelajaran dalam kegiatan bimbingan teknis ini.`;
 
     }
 
@@ -140,13 +140,13 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (kuat.length > 0) {
 
-      isi += ` Penguasaan yang memadai (≥70%) berhasil dicapai pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
+      isi += ` Penguasaan yang memadai (≥70%) berhasil dicapai pada ${kuat.map(ek => `${_esc(ek.ekNama)} (${ek.postPct}%)`).join(', ')}.`;
 
     }
 
     if (lemah.length > 0) {
 
-      isi += ` Sementara itu, unit kompetensi yang masih perlu ditingkatkan meliputi ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(', ')}.`;
+      isi += ` Sementara itu, unit kompetensi yang masih perlu ditingkatkan meliputi ${lemah.map(ek => `${_esc(ek.ekNama)} (${ek.postPct}%)`).join(', ')}.`;
 
     }
 
@@ -252,17 +252,17 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
       if (kuat.length > 0 && lemah.length > 0) {
 
-        isi += `${subjek} telah memperlihatkan penguasaan yang memadai (≥70%) pada ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. `;
+        isi += `${subjek} telah memperlihatkan penguasaan yang memadai (≥70%) pada ${kuat.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')}. `;
 
-        isi += `Sementara itu, ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')} teridentifikasi sebagai materi yang masih memerlukan penguatan, sehingga menjadi sasaran utama pembelajaran dalam kegiatan ini.`;
+        isi += `Sementara itu, ${lemah.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')} teridentifikasi sebagai materi yang masih memerlukan penguatan, sehingga menjadi sasaran utama pembelajaran dalam kegiatan ini.`;
 
       } else if (kuat.length > 0) {
 
-        isi += `${subjek} telah memperlihatkan penguasaan yang memadai pada seluruh unit kompetensi, yaitu ${kuat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Kegiatan bimbingan teknis berperan dalam memperdalam dan memperkuat kompetensi yang telah dimiliki tersebut.`;
+        isi += `${subjek} telah memperlihatkan penguasaan yang memadai pada seluruh unit kompetensi, yaitu ${kuat.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')}. Kegiatan bimbingan teknis berperan dalam memperdalam dan memperkuat kompetensi yang telah dimiliki tersebut.`;
 
       } else {
 
-        isi += `seluruh unit kompetensi masih memerlukan penguatan, yaitu ${lemah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}%)`).join(', ')}. Hal ini menjadikan kegiatan bimbingan teknis sebagai sarana yang sangat penting bagi ${subjek} untuk membangun fondasi kompetensi yang diperlukan.`;
+        isi += `seluruh unit kompetensi masih memerlukan penguatan, yaitu ${lemah.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}%)`).join(', ')}. Hal ini menjadikan kegiatan bimbingan teknis sebagai sarana yang sangat penting bagi ${subjek} untuk membangun fondasi kompetensi yang diperlukan.`;
 
       }
 
@@ -296,7 +296,7 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (signifikan.length > 0) {
 
-      isi += ` Peningkatan yang signifikan (≥15 poin) tercatat pada ${signifikan.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, dari ${ek.prePct}% menjadi ${ek.postPct}%)`).join('; ')}.`;
+      isi += ` Peningkatan yang signifikan (≥15 poin) tercatat pada ${signifikan.map(ek => `${_esc(ek.ekNama)} (+${ek.delta} poin, dari ${ek.prePct}% menjadi ${ek.postPct}%)`).join('; ')}.`;
 
       const dariLemah = signifikan.filter(ek => ek.prePct < 70);
 
@@ -310,13 +310,13 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (moderat.length > 0) {
 
-      isi += ` Peningkatan yang cukup berarti (5–14 poin) tercatat pada ${moderat.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}.`;
+      isi += ` Peningkatan yang cukup berarti (5–14 poin) tercatat pada ${moderat.map(ek => `${_esc(ek.ekNama)} (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}.`;
 
     }
 
     if (kecil.length > 0) {
 
-      isi += ` Peningkatan yang relatif kecil (kurang dari 5 poin) tercatat pada ${kecil.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}, yang menunjukkan adanya perkembangan positif meskipun masih diperlukan penguatan lebih lanjut.`;
+      isi += ` Peningkatan yang relatif kecil (kurang dari 5 poin) tercatat pada ${kecil.map(ek => `${_esc(ek.ekNama)} (+${ek.delta} poin, ${ek.prePct}% → ${ek.postPct}%)`).join('; ')}, yang menunjukkan adanya perkembangan positif meskipun masih diperlukan penguatan lebih lanjut.`;
 
     }
 
@@ -351,19 +351,19 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (stabilTinggi.length > 0) {
 
-      isi += ` Unit kompetensi ${stabilTinggi.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.postPct}%)`).join(' dan ')} menunjukkan nilai yang konsisten dan telah berada pada tingkat yang baik. Penguasaan pada unit-unit tersebut perlu terus dipertahankan dan diperkuat melalui penerapan langsung di lapangan.`;
+      isi += ` Unit kompetensi ${stabilTinggi.map(ek => `${_esc(ek.ekNama)} (${ek.postPct}%)`).join(' dan ')} menunjukkan nilai yang konsisten dan telah berada pada tingkat yang baik. Penguasaan pada unit-unit tersebut perlu terus dipertahankan dan diperkuat melalui penerapan langsung di lapangan.`;
 
     }
 
     if (stabilRendah.length > 0) {
 
-      isi += ` Adapun unit kompetensi ${stabilRendah.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} belum menunjukkan perkembangan yang berarti sehingga masih memerlukan pendalaman lebih lanjut.`;
+      isi += ` Adapun unit kompetensi ${stabilRendah.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} belum menunjukkan perkembangan yang berarti sehingga masih memerlukan pendalaman lebih lanjut.`;
 
     }
 
     if (menurun.length > 0) {
 
-      isi += ` Sementara itu, unit kompetensi ${menurun.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} mengalami penurunan nilai dari pre test ke post test. `;
+      isi += ` Sementara itu, unit kompetensi ${menurun.map(ek => `${_esc(ek.ekNama)} (${ek.prePct}% → ${ek.postPct}%)`).join(' dan ')} mengalami penurunan nilai dari pre test ke post test. `;
 
       isi += menurun.length === 1
 
@@ -455,7 +455,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
     if (ekTerbaik.length > 0) {
 
-      p2 += ` Khususnya pada ${ekTerbaik.map(ek => `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct}%)`).join(' dan ')}, penguasaan yang telah dicapai perlu terus diperkuat melalui praktik langsung di lapangan.`;
+      p2 += ` Khususnya pada ${ekTerbaik.map(ek => `${_esc(ek.ekNama)} (penguasaan akhir ${ek.postPct}%)`).join(' dan ')}, penguasaan yang telah dicapai perlu terus diperkuat melalui praktik langsung di lapangan.`;
 
     }
 
@@ -471,7 +471,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
       const ekList = ekPerlu.slice(0, 3).map(ek =>
 
-        `<strong>${_esc(ek.ekNama)}</strong> (penguasaan akhir ${ek.postPct ?? '-'}%${ek.delta < 0 ? ', mengalami penurunan' : ', stabil'})`
+        `${_esc(ek.ekNama)} (penguasaan akhir ${ek.postPct ?? '-'}%${ek.delta < 0 ? ', mengalami penurunan' : ', stabil'})`
 
       ).join('; ');
 
@@ -553,7 +553,7 @@ export function generateRekomendasi(ekComparison, lulus, nilaiAkhir, pesertaNama
 
           : `masih berada pada tingkat ${ek.postPct}% dan memerlukan penguatan lebih lanjut`;
 
-        return li(`<strong>${_esc(ek.ekNama)}</strong> — ${kondisi}.`);
+        return li(`${_esc(ek.ekNama)} — ${kondisi}.`);
 
       }).join('');
 

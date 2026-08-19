@@ -1,7 +1,7 @@
 // admin/js/modules/bimtek/report-api.js
 // Aggregasi data untuk report penyelenggara dan report peserta.
 
-import { db, doc, getDoc } from '../../../../shared/db.js';
+import { db, doc, getDoc, collection, query, where, getDocs } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
 import { listBimtekScores, listExamResults, hitungKehadiran } from './penilaian-api.js';
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
@@ -214,6 +214,8 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
   const _bloomPat = /^C[1-6]$/i;
   const hasIncompleteUKData = !!(ekComparison?.some(e => _bloomPat.test(e.ekKey)));
 
+  const violationSummary = await getViolationSummary(bimtekId, noPeserta);
+
   return {
     peserta,
     scores,
@@ -223,8 +225,64 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     ekComparison,
     hasUKBaseline: baselineUkIds.length > 0,
     hasIncompleteUKData,
+    violationSummary,
     thresholds: bimtek.reportThresholds ?? DEFAULT_REPORT_THRESHOLDS
   };
+}
+
+// ─── PELANGGARAN ANTI-CHEAT (indikator, bukan vonis) ──────────────────────────
+
+const SUBMIT_REASON_LABEL = {
+  tab_switch:      'pindah tab',
+  window_blur:     'keluar window',
+  exit_fullscreen: 'keluar fullscreen',
+  max_warnings:    'batas peringatan tercapai',
+  timeout:         'waktu habis',
+};
+
+/**
+ * Ringkas indikasi pelanggaran anti-cheat (exam_submissions.warningCount/violationLog)
+ * untuk satu peserta pada satu bimtek, dipisah pretest vs posttest. Peserta bisa
+ * punya lebih dari satu submission per sesi jika admin pernah me-reset dan
+ * peserta mengerjakan ulang (lihat exam-api.js resetSession — submission LAMA
+ * tidak dihapus saat reset, tetap arsip). SEMUA attempt yang punya indikasi
+ * pelanggaran harus tetap dicantumkan, bukan hanya yang warningCount-nya
+ * tertinggi — reset tidak menghapus riwayat, jadi laporan tidak boleh
+ * menyembunyikannya. Ini murni indikator teknis (bukan vonis kecurangan),
+ * dipakai sebagai catatan pendukung di laporan.
+ * @returns {{pretest: object[], posttest: object[]}} array attempt terurut
+ *   kronologis (submittedAt), hanya berisi attempt dengan warningCount > 0.
+ *   Array kosong berarti sesi tsb bersih atau peserta tidak ikut ujian.
+ */
+export async function getViolationSummary(bimtekId, noPeserta) {
+  const snap = await getDocs(
+    query(collection(db, COL.EXAM_SUBMISSIONS),
+      where('bimtekId', '==', bimtekId), where('noPeserta', '==', noPeserta))
+  );
+
+  const bySession = { pretest: [], posttest: [] };
+  snap.docs.forEach(d => {
+    const s = d.data();
+    const tipe = s.tipeSession;
+    if (tipe !== 'pretest' && tipe !== 'posttest') return;
+    const warn = s.warningCount || 0;
+    if (warn <= 0) return; // hanya catat attempt yang ada indikasinya
+
+    const reasons = (s.violationLog?.length ? s.violationLog : (s.submitReason ? [s.submitReason] : []))
+      .map(r => SUBMIT_REASON_LABEL[r] || r)
+      .filter((v, i, arr) => arr.indexOf(v) === i); // unique
+    bySession[tipe].push({
+      warningCount: warn,
+      autoSubmit:   !!(s.submitReason && s.submitReason !== 'manual'),
+      reasons,
+      submittedAt:  s.submittedAt?.toMillis?.() ?? s.submittedAt ?? 0,
+    });
+  });
+
+  bySession.pretest.sort((a, b) => a.submittedAt - b.submittedAt);
+  bySession.posttest.sort((a, b) => a.submittedAt - b.submittedAt);
+
+  return bySession;
 }
 
 // ─── PER-UK COMPARISON ────────────────────────────────────────────────────────
