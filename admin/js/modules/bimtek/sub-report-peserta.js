@@ -461,6 +461,35 @@ function _buildUKBarsHtml(ekComparison) {
   return `${legend}<table style="width:100%;">${rows}</table>`;
 }
 
+// Catatan indikasi pelanggaran (bukan vonis kecurangan) — dirangkai jadi
+// kalimat naratif, dipakai bareng oleh DOCX export dan preview HTML supaya
+// keduanya konsisten. Reset tidak menghapus histori (lihat getViolationSummary
+// di report-api.js), jadi setiap attempt yang punya indikasi tetap disebut
+// satu per satu — termasuk yang terjadi sebelum sesi di-reset admin.
+function _buildViolationNoteText(violationSummary) {
+  const _fmtAttempt = (a) => {
+    const detail = a.reasons.length ? ` (${a.reasons.join(', ')})` : '';
+    const auto   = a.autoSubmit ? ', ujian ter-submit otomatis' : '';
+    return `${a.warningCount} kali peringatan${detail}${auto}`;
+  };
+  const _fmtSesi = (label, attempts) => {
+    if (!attempts?.length) return '';
+    if (attempts.length === 1) {
+      return `pada sesi ${label} tercatat ${_fmtAttempt(attempts[0])}`;
+    }
+    // >1 attempt berarti peserta pernah di-reset di antara percobaan-percobaan ini.
+    const per = attempts.map((a, i) =>
+      `percobaan ${i === 0 ? 'pertama' : `ke-${i + 1} (setelah sesi di-reset)`} tercatat ${_fmtAttempt(a)}`
+    ).join('; ');
+    return `pada sesi ${label} tercatat indikasi pada ${attempts.length} percobaan pengerjaan — ${per}`;
+  };
+  const sentences = [
+    _fmtSesi('pre-test',  violationSummary?.pretest),
+    _fmtSesi('post-test', violationSummary?.posttest),
+  ].filter(Boolean);
+  return sentences.length ? `Catatan sistem: ${sentences.join('; ')}.` : '';
+}
+
 function _buildDocxPageHtml(data, kopBase64) {
   const { peserta, scores, kehadiranDetail, ekComparison, thresholds, violationSummary } = data;
   const b   = S.bimtek;
@@ -535,34 +564,11 @@ function _buildDocxPageHtml(data, kopBase64) {
   // sekarang cukup lebar untuk kelima kategori dalam satu baris.
   const kategoriList = 'Sangat Baik ≥86 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Baik 71-85 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Cukup 61-70 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Kurang 51-60 &nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp; Sangat Kurang ≤50';
 
-  // Catatan indikasi pelanggaran (bukan vonis kecurangan) — dirangkai jadi
-  // kalimat naratif, ditampilkan sebagai footnote kecil di bawah tabel nilai,
-  // BUKAN baris tabel. Reset tidak menghapus histori (lihat getViolationSummary
-  // di report-api.js), jadi setiap attempt yang punya indikasi tetap disebut
-  // satu per satu — termasuk yang terjadi sebelum sesi di-reset admin.
-  const _fmtAttempt = (a) => {
-    const detail = a.reasons.length ? ` (${a.reasons.join(', ')})` : '';
-    const auto   = a.autoSubmit ? ', ujian ter-submit otomatis' : '';
-    return `${a.warningCount} kali peringatan${detail}${auto}`;
-  };
-  const _fmtSesi = (label, attempts) => {
-    if (!attempts?.length) return '';
-    if (attempts.length === 1) {
-      return `pada sesi ${label} tercatat ${_fmtAttempt(attempts[0])}`;
-    }
-    // >1 attempt berarti peserta pernah di-reset di antara percobaan-percobaan ini.
-    const per = attempts.map((a, i) =>
-      `percobaan ${i === 0 ? 'pertama' : `ke-${i + 1} (setelah sesi di-reset)`} tercatat ${_fmtAttempt(a)}`
-    ).join('; ');
-    return `pada sesi ${label} tercatat indikasi pada ${attempts.length} percobaan pengerjaan — ${per}`;
-  };
-  const violationSentences = [
-    _fmtSesi('pre-test',  violationSummary?.pretest),
-    _fmtSesi('post-test', violationSummary?.posttest),
-  ].filter(Boolean);
-  const hasIndikasi = violationSentences.length > 0;
-  const violationNote = hasIndikasi
-    ? `<p style="${_flP}font-size:8.5pt;font-style:italic;color:#92400e;margin-top:3pt;">Catatan sistem: ${violationSentences.join('; ')}.</p>`
+  // Footnote kecil di bawah tabel nilai (BUKAN baris tabel) — logika kalimat
+  // dipakai bareng dengan preview HTML lewat _buildViolationNoteText().
+  const violationText = _buildViolationNoteText(violationSummary);
+  const violationNote = violationText
+    ? `<p style="${_flP}font-size:8.5pt;font-style:italic;color:#92400e;margin-top:3pt;">${violationText}</p>`
     : '';
 
   const _rowNilai = (lbl, val, ket) => `
@@ -701,7 +707,7 @@ function _buildDocxPageHtml(data, kopBase64) {
 // ─── REPORT HTML TEMPLATE ─────────────────────────────────────────────────────
 
 function _buildReportHTML(data) {
-  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, hasIncompleteUKData, hasUKBaseline, thresholds } = data;
+  const { peserta, scores, kehadiranDetail, pretestResult, posttestResult, ekComparison, hasIncompleteUKData, hasUKBaseline, thresholds, violationSummary } = data;
   const b = S.bimtek;
 
   return `
@@ -713,7 +719,7 @@ function _buildReportHTML(data) {
       <div style="border-top:2px solid #1a1a1a; margin:24px 0;"></div>
 
       <!-- SECTION B: HASIL PEMBELAJARAN -->
-      ${_buildSectionB(scores, kehadiranDetail, thresholds, b)}
+      ${_buildSectionB(scores, kehadiranDetail, thresholds, b, violationSummary)}
 
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
@@ -775,7 +781,7 @@ function _buildSectionA(peserta, b) {
 
 // ── Section B ─────────────────────────────────────────────────────────────────
 
-function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
+function _buildSectionB(scores, kehadiranDetail, thresholds, b, violationSummary) {
   const pre  = scores?.pretest  ?? null;
   const post = scores?.posttest ?? null;
   const na   = scores?.nilaiAkhir ?? null;
@@ -837,6 +843,14 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
       </div>`;
   };
 
+  // Catatan indikasi pelanggaran anti-cheat — pakai kalimat naratif yang sama
+  // dengan DOCX export (_buildViolationNoteText) supaya preview dan hasil
+  // download konsisten.
+  const violationText = _buildViolationNoteText(violationSummary);
+  const violationNote = violationText
+    ? `<div style="font-size:11.5px;font-style:italic;color:#92400e;margin-top:6px;padding:0 12px;">${_esc(violationText)}</div>`
+    : '';
+
   const tidakLulusAlasan = !lulus && na != null
     ? (kat.lulus ? 'kehadiran' : 'nilai')
     : null;
@@ -870,6 +884,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b) {
         ${statusRow}
       </tbody>
     </table>
+    ${violationNote}
 
     ${tidakLulusMsg}
 
