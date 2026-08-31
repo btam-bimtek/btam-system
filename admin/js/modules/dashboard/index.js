@@ -146,7 +146,7 @@ export async function renderDashboard() {
             </div>
           </div>
         </div>
-        <div id="map-provinsi" style="height:420px;border-radius:8px;">
+        <div id="map-provinsi" style="height:420px;border-radius:8px;background-color:#0f172a;">
           <div class="flex items-center justify-center h-full text-xs text-gray-500 animate-pulse">Memuat peta…</div>
         </div>
         <p id="map-total" class="text-xs text-gray-600 mt-2 text-right"></p>
@@ -1122,11 +1122,9 @@ async function _renderMapProvinsi(provinsiCount) {
     preferCanvas: true,
   });
 
-  // Tile layer gelap tanpa label (sesuai dark theme)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
-    maxZoom: 14,
-  }).addTo(_leafletMap);
+  // Tanpa tile basemap eksternal (choropleth provinsi saja) — menghindari
+  // ketergantungan pada layanan tile pihak ketiga yang bisa berubah jadi
+  // butuh API key. Background gelap di-set lewat CSS pada container.
 
   // Debug: tampilkan GeoJSON names vs match result
   console.group('[Map Debug] GeoJSON state → norm → match:');

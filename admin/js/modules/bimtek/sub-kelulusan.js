@@ -76,18 +76,26 @@ export async function renderSubKelulusan(container, bimtekId, bimtek, scores) {
 
   const _val = v => (v !== null && v !== undefined) ? v : '—';
 
+  const nilaiTertinggi = scores.length > 0
+    ? Math.max(...scores.map(s => s.nilaiAkhir ?? -Infinity))
+    : null;
+
   const _buildRow = (s) => {
     const kat = kategoriNilai(s.nilaiAkhir);
     // Kehadiran <90% membuat peserta tidak lulus walau nilai akhir cukup — tandai alasannya
     const gagalKehadiran = !s.lulus && kat.lulus;
+    const isTertinggi = nilaiTertinggi !== null && s.nilaiAkhir === nilaiTertinggi;
     return `
-    <tr>
-      <td class="sticky left-0 bg-gray-950 z-10 whitespace-nowrap">
-        <div class="font-medium text-sm text-gray-200">${_esc(namaMap[s.noPeserta] ?? s.noPeserta)}</div>
+    <tr class="${isTertinggi ? 'bg-teal-900/30' : ''}">
+      <td class="sticky left-0 ${isTertinggi ? 'bg-teal-900/30' : 'bg-gray-950'} z-10 whitespace-nowrap">
+        <div class="font-medium text-sm text-gray-200 flex items-center gap-1.5">
+          ${_esc(namaMap[s.noPeserta] ?? s.noPeserta)}
+          ${isTertinggi ? '<span title="Nilai akhir tertinggi">🏆</span>' : ''}
+        </div>
         <div class="text-xs text-gray-500 font-mono">${_esc(s.noPeserta)}</div>
       </td>
       ${komponen.map(k => `<td class="text-center text-sm">${_val(s[k.id])}</td>`).join('')}
-      <td class="text-center font-bold">${s.nilaiAkhir}</td>
+      <td class="text-center font-bold ${isTertinggi ? 'text-teal-300' : ''}">${s.nilaiAkhir}</td>
       <td class="text-center">
         <span class="badge ${KATEGORI_BADGE[kat.kategori]} text-xs">${kat.kategori}</span>
         ${gagalKehadiran ? '<div class="text-xs text-amber-400 mt-0.5">Kehadiran &lt;90%</div>' : ''}
