@@ -536,6 +536,7 @@ function _buildDocxPageHtml(data, kopBase64) {
       ${fl('Nama',         peserta?.nama)}
       ${fl('Jabatan',      peserta?.jabatan)}
       ${fl('Instansi',     peserta?.instansi)}
+      ${fl('Kabupaten/Kota', peserta?.kabKota)}
       ${fl('Provinsi',     peserta?.provinsi)}
     </table>
     <div style="height:6pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
@@ -613,13 +614,13 @@ function _buildDocxPageHtml(data, kopBase64) {
   // Daftar (bukan tabel) untuk komponen deskriptif — kategorikal, dengan narasi
   // singkat per komponen (sama seperti generateNarasiDeskriptif di preview HTML).
   const deskItems = [
-    ['Kehadiran',      'kehadiran', kehadiranLabel, kehadiranPct,          kehadiranFakta],
-    ['Keaktifan',      'keaktifan', keaktifanLabel, scores?.keaktifan ?? null, null],
-    ['Sikap & Respek', 'respek',    respekLabel,    scores?.respek    ?? null, null],
-  ].filter(([, , l]) => l).map(([k, key, l, nilaiRaw, f]) => `
+    ['Kehadiran',      'kehadiran', kehadiranLabel, kehadiranPct,          kehadiranFakta, true],
+    ['Keaktifan',      'keaktifan', keaktifanLabel, scores?.keaktifan ?? null, null,       false],
+    ['Sikap & Respek', 'respek',    respekLabel,    scores?.respek    ?? null, null,       false],
+  ].filter(([, , l]) => l).map(([k, key, l, nilaiRaw, f, showBadge]) => `
     <div style="margin-bottom:6pt;">
       <span style="font-weight:bold;">${k}:</span>
-      <span style="font-weight:600;color:${_DOCX_ACCENT};"> ${_esc(l)}</span>
+      ${showBadge ? `<span style="font-weight:600;color:${_DOCX_ACCENT};"> ${_esc(l)}</span>` : ''}
       <div style="color:${_DOCX_MUTED};margin-top:1pt;">${generateNarasiDeskriptif(key, l, nilaiRaw, f)}</div>
     </div>`).join('');
 
@@ -768,6 +769,7 @@ function _buildSectionA(peserta, b) {
       ${fieldLine('Nama', peserta?.nama)}
       ${peserta?.jabatan   ? fieldLine('Jabatan', peserta.jabatan)   : ''}
       ${peserta?.instansi  ? fieldLine('Instansi', peserta.instansi) : ''}
+      ${peserta?.kabKota   ? fieldLine('Kabupaten/Kota', peserta.kabKota) : ''}
       ${peserta?.provinsi  ? fieldLine('Provinsi', peserta.provinsi) : ''}
 
       <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd;">
@@ -827,15 +829,18 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b, violationSummary
   const keaktifanLabel = scores?.keaktifan != null ? mapToLabel(scores.keaktifan, thresholds.keaktifan) : null;
   const respekLabel    = scores?.respek    != null ? mapToLabel(scores.respek,    thresholds.respek)    : null;
 
-  const deskriptifItem = (icon, komponenLabel, komponenKey, label, nilaiRaw, fakta) => {
+  const deskriptifItem = (icon, komponenLabel, komponenKey, label, nilaiRaw, fakta, showBadge = true) => {
     if (!label) return '';
     const narasi = generateNarasiDeskriptif(komponenKey, label, nilaiRaw, fakta);
+    const badge = showBadge
+      ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600;">${_esc(label)}</span>`
+      : '';
     return `
       <div style="padding:14px 0; border-bottom:1px solid #f0f0f0;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
           <span style="font-size:16px;">${icon}</span>
           <span style="font-size:13px; font-weight:700; color:#1a1a1a;">${komponenLabel}</span>
-          <span style="background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600;">${_esc(label)}</span>
+          ${badge}
         </div>
         <div style="font-size:12.5px; color:#374151; line-height:1.75; padding-left:24px;">
           ${narasi}
@@ -894,8 +899,8 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b, violationSummary
     </div>
     <div style="background:#f8f9fa; border-radius:8px; padding:12px 16px;">
       ${deskriptifItem('📅', 'Kehadiran',     'kehadiran', kehadiran_label, kehadiranAttPct, kehadiranFakta)}
-      ${deskriptifItem('💬', 'Keaktifan',     'keaktifan', keaktifanLabel,  scores?.keaktifan ?? null, null)}
-      ${deskriptifItem('🤝', 'Sikap & Respek','respek',    respekLabel,     scores?.respek    ?? null, null)}
+      ${deskriptifItem('💬', 'Keaktifan',     'keaktifan', keaktifanLabel,  scores?.keaktifan ?? null, null, false)}
+      ${deskriptifItem('🤝', 'Sikap & Respek','respek',    respekLabel,     scores?.respek    ?? null, null, false)}
       ${!kehadiran_label && !keaktifanLabel && !respekLabel
         ? '<div style="color:#999; font-size:12px; text-align:center; padding:8px;">Data komponen deskriptif belum tersedia.</div>'
         : ''}
