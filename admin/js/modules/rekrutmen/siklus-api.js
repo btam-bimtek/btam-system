@@ -1,7 +1,7 @@
 // admin/js/modules/rekrutmen/siklus-api.js
 
 import {
-  db, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc,
+  db, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, Timestamp
 } from '../../../../shared/db.js';
 import { snapToArray, snapToDoc } from '../../../../shared/db.js';
@@ -82,6 +82,22 @@ export async function updateSiklus(tahun, changes, adminEmail) {
 
   await updateDoc(docRef, payload);
   await logAudit({ action: 'update', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: changes });
+}
+
+// ─── Delete ──────────────────────────────────────────────────
+
+export async function deleteSiklus(tahun, adminEmail) {
+  const docRef = doc(db, COL.SIKLUS_SELEKSI, String(tahun));
+
+  const calonSnap = await getDocs(
+    query(collection(db, COL.CALON_PESERTA), where('tahun', '==', tahun))
+  );
+  if (!calonSnap.empty) {
+    throw new Error(`Siklus tahun ${tahun} tidak bisa dihapus: sudah ada ${calonSnap.size} calon peserta terdaftar.`);
+  }
+
+  await deleteDoc(docRef);
+  await logAudit({ action: 'delete', entityType: 'siklus_seleksi', entityId: String(tahun), metadata: { tahun } });
 }
 
 // ─── Status Transition ───────────────────────────────────────

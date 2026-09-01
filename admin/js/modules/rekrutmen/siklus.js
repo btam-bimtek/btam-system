@@ -7,7 +7,7 @@ import { showToast } from '../../components/toast.js';
 import { requireWrite } from '../../auth-guard.js';
 import { getState } from '../../store.js';
 import {
-  listSiklus, getSiklus, createSiklus, updateSiklus,
+  listSiklus, getSiklus, createSiklus, updateSiklus, deleteSiklus,
   setSiklusStatus, togglePendaftaran, updateKuota
 } from './siklus-api.js';
 import { listBimtek } from '../bimtek/api.js';
@@ -118,6 +118,14 @@ function _renderSiklusCard(s) {
                          text-gray-300 transition-colors" data-id="${s.id}">
             Detail
           </button>
+          <button class="btn-edit px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700
+                         text-gray-300 transition-colors" data-id="${s.id}">
+            Edit
+          </button>
+          <button class="btn-hapus px-3 py-1.5 rounded-lg text-xs bg-red-900/40 hover:bg-red-900/70
+                         text-red-300 transition-colors" data-id="${s.id}">
+            Hapus
+          </button>
         </div>
       </div>
 
@@ -166,6 +174,36 @@ function _bindCardEvents(list) {
     btn.addEventListener('click', () => {
       const siklus = list.find(s => s.id === btn.dataset.id);
       if (siklus) _openDetailModal(siklus);
+    });
+  });
+
+  document.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const siklus = list.find(s => s.id === btn.dataset.id);
+      if (siklus) _openFormModal(siklus);
+    });
+  });
+
+  document.querySelectorAll('.btn-hapus').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!requireWrite()) return;
+      const siklus = list.find(s => s.id === btn.dataset.id);
+      if (!siklus) return;
+      const konfirmasi = await confirmDialog({
+        title: `Hapus Siklus ${siklus.tahun}?`,
+        message: `Siklus "${siklus.nama}" beserta seluruh periode, kuota, dan aturan bimtek di dalamnya akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`,
+        confirmLabel: 'Hapus',
+        danger: true
+      });
+      if (!konfirmasi) return;
+      const email = getState('auth')?.user?.email;
+      try {
+        await deleteSiklus(siklus.tahun, email);
+        showToast('Siklus dihapus', 'success');
+        await _loadList();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     });
   });
 }
