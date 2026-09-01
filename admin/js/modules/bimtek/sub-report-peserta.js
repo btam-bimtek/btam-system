@@ -496,11 +496,14 @@ function _buildDocxPageHtml(data, kopBase64) {
   const kkm = b.kkm ?? 60;
 
   // Header section (A/B/C/D): underline aksen tipis, bukan bingkai kotak.
+  // page-break-after:avoid (+ mso-*) supaya Word tidak memotong halaman
+  // tepat setelah judul, sehingga judul tidak berdiri sendiri terpisah
+  // dari isi bagiannya.
   const secHeader = (num, title) => `
-    <div style="font-size:12pt;font-weight:bold;margin:14pt 0 8pt;padding-bottom:3pt;border-bottom:1pt solid ${_DOCX_ACCENT};">${num}. ${title}</div>`;
+    <div style="font-size:12pt;font-weight:bold;margin:8pt 0 5pt;padding-bottom:2pt;border-bottom:1pt solid ${_DOCX_ACCENT};page-break-after:avoid;mso-page-break-after:avoid;">${num}. ${title}</div>`;
   // Sub-header (A.1, B.1, dst): label kecil abu tua, tanpa garis, rapat ke isinya.
   const subHeader = (label) => `
-    <div style="font-size:10pt;font-weight:bold;color:${_DOCX_MUTED};margin:0;text-transform:uppercase;letter-spacing:0.3pt;">${label}</div>`;
+    <div style="font-size:10pt;font-weight:bold;color:${_DOCX_MUTED};margin:0;text-transform:uppercase;letter-spacing:0.3pt;page-break-after:avoid;mso-page-break-after:avoid;">${label}</div>`;
 
   // Baris label:value rapat (tanpa "space after paragraph") untuk Identitas &
   // Data Kegiatan. Word (via altchunk HTML import) selalu MEMBUNGKUS teks di
@@ -523,7 +526,7 @@ function _buildDocxPageHtml(data, kopBase64) {
 
   // ── Judul ──
   const judul = `
-    <div style="text-align:center;margin:12pt 0 14pt;">
+    <div style="text-align:center;margin:6pt 0 8pt;">
       <p style="${_flP}font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.5pt;">LAPORAN HASIL PEMBELAJARAN</p>
       <p style="${_flP}font-size:14pt;color:${_DOCX_MUTED};">Bimbingan Teknis ${_esc(b.tipe === 'pnbp' ? 'PNBP' : 'Reguler')}</p>
     </div>`;
@@ -539,7 +542,7 @@ function _buildDocxPageHtml(data, kopBase64) {
       ${fl('Kabupaten/Kota', peserta?.kabKota)}
       ${fl('Provinsi',     peserta?.provinsi)}
     </table>
-    <div style="height:6pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
+    <div style="height:3pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
     ${subHeader('Data Kegiatan')}
     <table style="width:100%;">
       ${fl('Judul Bimtek', b.nama)}
@@ -584,7 +587,7 @@ function _buildDocxPageHtml(data, kopBase64) {
     + _rowNilai('Nilai Akhir', na, kategoriList);
 
   const nilaiTable = `
-    <table style="width:100%;margin:4pt 0;">
+    <table style="width:100%;margin:2pt 0;">
       <thead>
         <tr>
           <th style="${TH_}width:11%;">Komponen</th>
@@ -618,17 +621,17 @@ function _buildDocxPageHtml(data, kopBase64) {
     ['Keaktifan',      'keaktifan', keaktifanLabel, scores?.keaktifan ?? null, null,       false],
     ['Sikap & Respek', 'respek',    respekLabel,    scores?.respek    ?? null, null,       false],
   ].filter(([, , l]) => l).map(([k, key, l, nilaiRaw, f, showBadge]) => `
-    <div style="margin-bottom:6pt;">
+    <div style="margin-bottom:4pt;">
       <span style="font-weight:bold;">${k}:</span>
       ${showBadge ? `<span style="font-weight:600;color:${_DOCX_ACCENT};"> ${_esc(l)}</span>` : ''}
-      <div style="color:${_DOCX_MUTED};margin-top:1pt;">${generateNarasiDeskriptif(key, l, nilaiRaw, f)}</div>
+      <div style="color:${_DOCX_MUTED};margin-top:1pt;line-height:1.1;">${generateNarasiDeskriptif(key, l, nilaiRaw, f)}</div>
     </div>`).join('');
 
   const sectionB = `
     ${secHeader('B', 'Ringkasan Hasil Pembelajaran')}
     ${subHeader('B.1 Nilai Kuantitatif')}
     ${nilaiTable}
-    <div style="height:6pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
+    <div style="height:3pt;line-height:1pt;font-size:1pt;">&nbsp;</div>
     ${subHeader('B.2 Komponen Deskriptif')}
     ${deskItems || `<p style="font-size:9.5pt;color:${_DOCX_MUTED};">Data komponen deskriptif belum tersedia.</p>`}`;
 
@@ -671,15 +674,20 @@ function _buildDocxPageHtml(data, kopBase64) {
   const namaPenanggungJawab = ls?.penandaTangan2        || '';
   const jabatanPenanggungJawab = ls?.jabatanPenandaTangan2 || 'Kepala Balai Teknik Air Minum';
 
+  // Word (via html-docx-js) hanya benar-benar menghormati "keep together" HTML
+  // lewat: (1) page-break-after:avoid pada paragraf → dipetakan ke keepNext,
+  // dan (2) page-break-inside:avoid pada <tr> → dipetakan ke cantSplit baris
+  // tabel. page-break-inside pada <div> pembungkus biasa TIDAK dihormati Word,
+  // jadi judul, teks penutup, dan tabel ttd dirantai pakai keepNext + cantSplit.
   const sectionD = `
     ${secHeader('D', 'Penutup')}
-    <div style="line-height:1.25;margin-bottom:16pt;text-align:justify;">
+    <div style="line-height:1.25;margin-bottom:16pt;text-align:justify;page-break-after:avoid;mso-page-break-after:avoid;">
       Dokumen ini diterbitkan sebagai laporan hasil pembelajaran peserta pada kegiatan bimbingan teknis
       tersebut di atas. Keberatan atau pertanyaan mengenai isi laporan dapat disampaikan kepada
       penyelenggara dalam waktu 7 (tujuh) hari kerja sejak tanggal penerbitan.
     </div>
     <table style="width:100%;">
-      <tr>
+      <tr style="page-break-inside:avoid;mso-page-break-inside-avoid:always;">
         <td style="padding:0;"></td>
         <td style="width:200pt;text-align:center;padding:0;">
           <div>Bekasi, </div>

@@ -63,6 +63,9 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
   const subjek = pesertaNama ? `Peserta ${_esc(pesertaNama)}` : 'Peserta';
 
   const p = s => `<p style="margin:0 0 10px 0; text-align:justify;">${s}</p>`;
+  // Kalimat pembuka sebelum daftar <ul> — margin-bottom kecil supaya list
+  // pertama tidak menjorok jauh dari kalimat pengantarnya.
+  const pIntro = s => `<p style="margin:0 0 3px 0; text-align:justify;">${s}</p>`;
 
 
 
@@ -250,7 +253,13 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
   if (meningkat.length > 0 || stabilTinggi.length > 0) {
 
-    const li = ek => `<li style="margin-bottom:4px;">${_esc(_lcName(ek.ekNama))}</li>`;
+    // List manual pakai <p> + bullet karakter — BUKAN <ul>/<li>. Word selalu
+    // mengonversi <ul>/<li> jadi gaya "List Paragraph" bawaannya sendiri
+    // dengan spacing-before yang tidak bisa dikendalikan lewat margin CSS
+    // (sudah dicoba berbagai override mso-margin-*-alt, hasilnya malah
+    // membesar). Paragraf hanging-indent manual ini sepenuhnya taat ke style
+    // inline kita.
+    const li = ek => `<p style="margin:0 0 4px 0; padding-left:14pt; text-indent:-14pt; margin-left:1cm;">•&nbsp;&nbsp;${_esc(_lcName(ek.ekNama))}</p>`;
 
     let block = '';
 
@@ -258,13 +267,9 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (meningkat.length > 0) {
 
-      block += p(`${subjek} menunjukkan peningkatan penguasaan pada unit kompetensi berikut:`);
-
-      block += `<ul style="margin:0 0 10px 0; padding-left:20px;">`;
+      block += pIntro(`${subjek} menunjukkan peningkatan penguasaan pada unit kompetensi berikut:`);
 
       block += meningkat.map(li).join('');
-
-      block += `</ul>`;
 
     }
 
@@ -272,13 +277,11 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
     if (stabilTinggi.length > 0) {
 
-      block += p(`${meningkat.length > 0 ? 'Selain itu, penguasaan' : `${subjek} tetap menunjukkan penguasaan`} yang konsisten baik dipertahankan pada unit kompetensi berikut:`);
-
-      block += `<ul style="margin:0 0 10px 0; padding-left:20px;">`;
+      block += meningkat.length > 0
+        ? `<p style="margin:16px 0 3px 0; text-align:justify;">Selain itu, penguasaan yang konsisten baik dipertahankan pada unit kompetensi berikut:</p>`
+        : pIntro(`${subjek} tetap menunjukkan penguasaan yang konsisten baik dipertahankan pada unit kompetensi berikut:`);
 
       block += stabilTinggi.map(li).join('');
-
-      block += `</ul>`;
 
     }
 
@@ -292,19 +295,15 @@ export function generateNarasi(ekComparison, totalPre, totalPost, pesertaNama, l
 
   if (stabilRendah.length > 0 || menurun.length > 0) {
 
-    const li = (ek, ket) => `<li style="margin-bottom:4px;">${_esc(_lcName(ek.ekNama))} — ${ket}</li>`;
+    const li = (ek, ket) => `<p style="margin:0 0 4px 0; padding-left:14pt; text-indent:-14pt; margin-left:1cm;">•&nbsp;&nbsp;${_esc(_lcName(ek.ekNama))} — ${ket}</p>`;
 
 
 
-    let block = p(`Meski demikian, terdapat unit kompetensi yang masih memerlukan perhatian:`);
-
-    block += `<ul style="margin:0 0 10px 0; padding-left:20px;">`;
+    let block = `<p style="margin:16px 0 3px 0; text-align:justify;">Meski demikian, terdapat unit kompetensi yang masih memerlukan perhatian:</p>`;
 
     block += stabilRendah.map(ek => li(ek, 'belum menunjukkan perkembangan yang berarti, masih di bawah standar')).join('');
 
     block += menurun.map(ek => li(ek, 'mengalami penurunan, perlu pendalaman secara mandiri')).join('');
-
-    block += `</ul>`;
 
     paragraphs.push(block);
 
