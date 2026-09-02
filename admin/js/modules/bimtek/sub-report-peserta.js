@@ -303,6 +303,17 @@ function _loadHtmlDocx() {
   });
 }
 
+function _loadJSZip() {
+  if (window.JSZip) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s   = document.createElement('script');
+    s.src     = 'https://unpkg.com/jszip/dist/jszip.min.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Gagal memuat library JSZip'));
+    document.head.appendChild(s);
+  });
+}
+
 async function _imageToBase64(url) {
   try {
     const resp = await fetch(url);
@@ -346,22 +357,37 @@ async function _downloadDocxTerpilih(container) {
   btn.disabled = true;
 
   try {
-    await _loadHtmlDocx();
+    await Promise.all([_loadHtmlDocx(), _loadJSZip()]);
     const kopB64 = await _getKopBase64();
-    const allData = [];
+    const zip = new window.JSZip();
+    const usedNames = new Set();
+
     for (let i = 0; i < checked.length; i++) {
+      const noPeserta = checked[i].dataset.nopeserta;
       btn.textContent = `Memuat ${i + 1}/${checked.length}…`;
-      const data = await getPesertaReportData(S.bimtekId, checked[i].dataset.nopeserta, S.bimtek);
-      allData.push(data);
+      const data = await getPesertaReportData(S.bimtekId, noPeserta, S.bimtek);
+
+      // Satu docx per peserta (bukan digabung jadi satu file panjang) —
+      // masing-masing dibungkus terpisah di dalam zip.
+      const docHtml = _buildDocxFullHtml([data], kopB64);
+      const blob    = window.htmlDocx.asBlob(docHtml, {
+        orientation: 'portrait',
+        margins: { top: 1134, right: 1417, bottom: 1134, left: 1417 }, // kiri/kanan 2,5cm, atas/bawah 2cm
+      });
+
+      const namaBersih = (data?.peserta?.nama || noPeserta).replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+      let filename = `laporan-${namaBersih}.docx`;
+      let n = 2;
+      while (usedNames.has(filename)) { filename = `laporan-${namaBersih}-${n++}.docx`; }
+      usedNames.add(filename);
+
+      zip.file(filename, blob);
     }
-    btn.textContent = 'Menyiapkan docx…';
-    const docHtml = _buildDocxFullHtml(allData, kopB64);
-    const blob    = window.htmlDocx.asBlob(docHtml, {
-      orientation: 'portrait',
-      margins: { top: 1134, right: 1417, bottom: 1134, left: 1417 }, // kiri/kanan 2,5cm, atas/bawah 2cm
-    });
+
+    btn.textContent = 'Menyiapkan zip…';
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
     const nama = (S.bimtek?.nama ?? 'bimtek').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-    _triggerDownload(blob, `laporan-peserta-${nama}.docx`);
+    _triggerDownload(zipBlob, `laporan-peserta-${nama}.zip`);
   } catch (err) {
     alert('Gagal membuat docx: ' + err.message);
   } finally {
