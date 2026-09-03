@@ -8,6 +8,8 @@ import {
 } from './penilaian-api.js';
 import { listSesi, listMapel } from './api.js';
 import { showToast } from '../../components/toast.js';
+import { db, collection, query, where, getDocs } from '../../../../shared/db.js';
+import { COL } from '../../../../shared/constants.js';
 
 // ─── ENTRY POINT ────────────────────────────────────────────────────
 
@@ -43,6 +45,17 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
       attendanceMap[score.noPeserta] = att.sessions || {};
     }
 
+    // Fetch nama peserta
+    const namaMap = {};
+    const ids = scores.map(s => s.noPeserta);
+    for (let i = 0; i < ids.length; i += 30) {
+      const chunk = ids.slice(i, i + 30);
+      const snap = await getDocs(
+        query(collection(db, COL.PESERTA_MASTER), where('noPeserta', 'in', chunk))
+      );
+      snap.docs.forEach(d => { namaMap[d.id] = d.data().nama ?? d.id; });
+    }
+
     container.innerHTML = `
       <div class="overflow-x-auto">
         <table class="btam-table">
@@ -73,7 +86,10 @@ export async function renderSubKehadiran(container, bimtekId, bimtek, scores, se
               const att = attendanceMap[score.noPeserta] || {};
               return `
                 <tr>
-                  <td class="sticky left-0 bg-gray-950 z-10 font-medium text-sm">${_esc(score.noPeserta)}</td>
+                  <td class="sticky left-0 bg-gray-950 z-10 text-sm">
+                    <div class="font-medium">${_esc(namaMap[score.noPeserta] ?? score.noPeserta)}</div>
+                    <div class="text-gray-500 text-xs">${_esc(score.noPeserta)}</div>
+                  </td>
                   ${hari.map(d => Object.entries(sesiPerHariPerMapel[d] || {}).map(([mapelId, sesiList]) => {
                     sesiList = sesiList || [];
                     const allHadir = sesiList.every(s => att[s?.id]?.kehadiran ?? false);
