@@ -117,6 +117,7 @@ export async function createBimtek(data) {
     pesertaIds: [],
     pengajarIds: data.pengajarIds || [],
     ukIds: data.ukIds || [],
+    skl: data.skl || [],
     kkm: data.kkm ?? DEFAULT_KKM,
     weights: data.weights || { ...DEFAULT_WEIGHTS },
     hasTugas: data.hasTugas ?? false,
@@ -143,7 +144,7 @@ export async function createBimtek(data) {
 export async function updateBimtek(bimtekId, data) {
   const allowed = [
     'nama', 'deskripsi', 'kodeBimtek', 'tipe', 'mode', 'bidangIds', 'clientInstansiId',
-    'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'ukIds', 'kkm', 'weights',
+    'periode', 'lokasi', 'kapasitas', 'pengajarIds', 'ukIds', 'skl', 'kkm', 'weights',
     'hasTugas', 'hasPresentasi', 'reportThresholds', 'status', 'cancelReason',
     'preTestExamId', 'postTestExamId', 'accessCode', 'noSertifikat',
   ];
