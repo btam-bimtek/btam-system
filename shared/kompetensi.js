@@ -62,3 +62,71 @@ export function labelBloom(level) {
   const b = BLOOM_LEVELS.find(x => x.level === level);
   return b ? `${b.level} ${b.nama}` : String(level);
 }
+
+/**
+ * Nilai capaian kognitif seorang peserta pada satu unit kompetensi.
+ *
+ * Aturan levelTercapai: level tertinggi L yang persentase benarnya >= ambang
+ * DAN seluruh level di bawah L juga >= ambang. Syarat berjenjang ini penting —
+ * tanpa itu, satu tebakan beruntung di level tinggi cukup untuk mengklaim
+ * penguasaan yang tidak dimiliki.
+ *
+ * Level tanpa soal memutus rantai: tidak bisa diklaim dikuasai, tidak juga
+ * dianggap lulus diam-diam.
+ *
+ * @param {Object} detail    - exam_results.detail: { soalId: { benar, bobot, skor } }
+ * @param {Object} soalMap   - { soalId: { unitKompetensi, bloomLevel, ... } }
+ * @param {Object} sklRow    - satu baris bimtek.skl
+ * @param {Object} [blueprint] - exams.blueprint, untuk melaporkan defisit stok
+ */
+export function calcLevelAttainment(detail, soalMap, sklRow, blueprint = null) {
+  const { ukId, ukKode, ukNama, targetBloom, ambang } = sklRow;
+  const kodeUK = String(ukKode ?? '').toUpperCase();
+
+  const perLevel = {};
+  for (const [soalId, d] of Object.entries(detail ?? {})) {
+    const soal = soalMap?.[soalId];
+    if (!soal) continue;
+    if (String(soal.unitKompetensi ?? '').toUpperCase() !== kodeUK) continue;
+    const lv = soal.bloomLevel;
+    if (!lv) continue;
+    if (!perLevel[lv]) perLevel[lv] = { benar: 0, total: 0, pct: 0 };
+    perLevel[lv].total++;
+    if (d?.benar) perLevel[lv].benar++;
+  }
+  for (const v of Object.values(perLevel)) {
+    v.pct = v.total > 0 ? Math.round((v.benar / v.total) * 100) : 0;
+  }
+
+  const targetIdx = BLOOM_LEVELS.findIndex(b => b.level === targetBloom);
+  if (targetIdx < 0) throw new Error(`Level Bloom '${targetBloom}' tidak dikenal.`);
+  const urutan = BLOOM_LEVELS.slice(0, targetIdx + 1).map(b => b.level);
+
+  let levelTercapai = null;
+  let levelPemutus  = null;
+  for (const lv of urutan) {
+    const s = perLevel[lv];
+    if (!s || s.total === 0 || s.pct < ambang) { levelPemutus = lv; break; }
+    levelTercapai = lv;
+  }
+
+  // Kesimpulan ditandai tipis bila level yang menentukannya — entah yang
+  // dicapai terakhir atau yang menggagalkan — hanya diwakili satu butir.
+  const levelPenentu = levelPemutus ?? levelTercapai;
+  const totalPenentu = levelPenentu ? (perLevel[levelPenentu]?.total ?? 0) : 0;
+  const tipis        = totalPenentu === 1;
+
+  const defisit = (blueprint?.komposisi ?? [])
+    .filter(k => k.ukId === ukId && k.terpenuhi < k.diminta)
+    .map(k => ({ bloomLevel: k.bloomLevel, diminta: k.diminta, terpenuhi: k.terpenuhi }));
+
+  return {
+    ukId, ukKode, ukNama: ukNama ?? ukKode,
+    target: targetBloom, ambang,
+    perLevel,
+    levelTercapai,
+    memenuhiTarget: levelTercapai === targetBloom,
+    tipis,
+    defisit,
+  };
+}
