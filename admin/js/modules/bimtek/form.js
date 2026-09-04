@@ -5,6 +5,7 @@ import { confirmDialog } from '../../components/modal.js';
 import { navigate } from '../../router.js';
 import { createBimtek, updateBimtek, getBimtek, deleteBimtek, DEFAULT_WEIGHTS, listSesi, shiftSesiPeriode, listBimtek, normalizeNama } from './api.js';
 import { BIDANG_LIST, KOMPONEN_NILAI } from '../../../../shared/constants.js';
+import { renderTabSKL, bacaSKL } from './form-skl.js';
 
 // ─── ENTRY POINT ─────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ export async function renderBimtekForm({ id } = {}) {
       <div class="flex gap-1 mb-6 border-b border-gray-800">
         <button class="tab-btn px-4 py-2 text-sm font-medium text-[#2dd4bf] border-b-2 border-[#2dd4bf]" data-tab="info">Informasi</button>
         <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent" data-tab="weights">Bobot Nilai</button>
+        <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent" data-tab="skl">SKL</button>
       </div>
 
       <!-- Tab: Informasi -->
@@ -166,6 +168,9 @@ export async function renderBimtekForm({ id } = {}) {
         </div>
       </div>
 
+      <!-- Tab: SKL -->
+      <div id="tab-skl" class="hidden"></div>
+
       <!-- Actions -->
       <div class="flex items-center gap-3 pt-2">
         <button id="btn-submit" class="px-4 py-2 rounded-lg text-sm bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] font-medium transition-colors">
@@ -191,6 +196,16 @@ export async function renderBimtekForm({ id } = {}) {
       btn.className = 'tab-btn px-4 py-2 text-sm font-medium text-[#2dd4bf] border-b-2 border-[#2dd4bf]';
       app.querySelector('#tab-info').classList.toggle('hidden', btn.dataset.tab !== 'info');
       app.querySelector('#tab-weights').classList.toggle('hidden', btn.dataset.tab !== 'weights');
+      app.querySelector('#tab-skl').classList.toggle('hidden', btn.dataset.tab !== 'skl');
+
+      if (btn.dataset.tab === 'skl' && !app.querySelector('#tab-skl').dataset.dimuat) {
+        const panel = app.querySelector('#tab-skl');
+        panel.dataset.dimuat = '1';
+        // bidangIds dibaca saat tab dibuka, bukan saat form dibuat, supaya
+        // daftar UK mengikuti bidang yang mungkin baru saja diubah admin.
+        const bidangTerpilih = _readBidangIds();
+        renderTabSKL(panel, d?.skl ?? [], bidangTerpilih);
+      }
     });
   });
 
@@ -381,6 +396,19 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
       hasTugas: ht, hasPresentasi: hp, bidangIds,
       kapasitas: kap || (mode === 'online' ? 25 : 17),
       periode: { mulai: pm, selesai: ps },
+      // Tab SKL dimuat malas. Kalau admin tidak pernah membukanya, panelnya
+      // kosong dan bacaSKL akan mengembalikan array kosong — yang berarti
+      // MENGHAPUS SKL yang sudah tersimpan. Karena itu jatuhkan ke nilai lama.
+      ...(() => {
+        const panel = app.querySelector('#tab-skl');
+        const skl   = panel?.dataset.dimuat ? bacaSKL(panel) : (oldData?.skl ?? []);
+        return {
+          skl,
+          // ukIds diturunkan dari SKL, bukan disimpan terpisah — satu daftar
+          // UK saja, tidak ada dua sumber yang harus dijaga tetap sinkron.
+          ukIds: skl.map(s => s.ukId),
+        };
+      })(),
     };
 
     if (isEdit) {
