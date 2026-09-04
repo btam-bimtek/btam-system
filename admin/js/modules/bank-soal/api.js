@@ -316,6 +316,11 @@ function _validateSoal(data) {
   const errors = [];
   if (!data.pertanyaan?.trim())           errors.push('Pertanyaan wajib diisi.');
   if (!data.bidangId)                     errors.push('Bidang wajib dipilih.');
+  // Level Bloom menentukan bobot soal dan seluruh pemetaan kognitif. Soal
+  // tanpa level diam-diam dihitung berbobot 1 (setara C1) oleh scorer, yang
+  // membuat soal analisis dinilai seringan soal hafalan.
+  if (!data.bloomLevel)                   errors.push('Level Bloom wajib dipilih.');
+  else if (!BLOOM_MAP[data.bloomLevel])   errors.push(`Level Bloom '${data.bloomLevel}' tidak dikenal.`);
   if (!data.kunci)                        errors.push('Kunci jawaban wajib dipilih.');
   if (!data.opsi || data.opsi.length < 2) errors.push('Minimal 2 opsi jawaban.');
 
