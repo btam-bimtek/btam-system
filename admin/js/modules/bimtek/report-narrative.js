@@ -2,6 +2,8 @@
 
 // Utility: mapToLabel + generator narasi otomatis Section C peserta report.
 
+import { labelBloom } from '../../../../shared/kompetensi.js';
+
 
 
 /**
@@ -707,6 +709,59 @@ function _esc(str) {
 
     .replace(/"/g, '&quot;');
 
+}
+
+// Kata kerja yang menggambarkan apa yang bisa dilakukan peserta di tiap level.
+// Dipakai untuk menyusun kalimat capaian yang bermakna bagi pembaca awam —
+// "naik dari Mengingat ke Menerapkan" lebih berarti daripada "42% ke 88%".
+const KATA_KERJA_BLOOM = {
+  C1: 'mengingat dan menyebutkan kembali',
+  C2: 'memahami dan menjelaskan',
+  C3: 'menerapkan pada situasi kerja nyata',
+  C4: 'menganalisis dan menguraikan penyebab',
+  C5: 'menimbang dan mengevaluasi',
+  C6: 'merancang dan menyusun hal baru',
+};
+
+/**
+ * Susun kalimat capaian kognitif untuk satu unit kompetensi.
+ * @param {object} baris - satu elemen pesertaReportData.capaianKognitif
+ * @returns {{ kalimat: string, catatan: string|null }}
+ */
+export function narasiCapaianKognitif(baris) {
+  const { ukNama, post, pre, targetBloom: target } = baris;
+  const namaTarget  = labelBloom(target);
+  const namaCapaian = post.levelTercapai ? labelBloom(post.levelTercapai) : null;
+
+  let kalimat;
+  if (post.memenuhiTarget) {
+    const naik = pre.levelTercapai && pre.levelTercapai !== post.levelTercapai;
+    kalimat = naik
+      ? `Saudara mencapai sasaran ${namaTarget} pada ${ukNama}, naik dari `
+        + `${labelBloom(pre.levelTercapai)} sebelum mengikuti bimtek. `
+        + `Saudara kini mampu ${KATA_KERJA_BLOOM[target]}.`
+      : `Saudara mencapai sasaran ${namaTarget} pada ${ukNama}, `
+        + `yakni mampu ${KATA_KERJA_BLOOM[target]}.`;
+  } else if (namaCapaian) {
+    kalimat = `Pada ${ukNama}, Saudara mampu ${KATA_KERJA_BLOOM[post.levelTercapai]}, `
+      + `namun belum menunjukkan kemampuan ${KATA_KERJA_BLOOM[target]} `
+      + `sebagaimana disasar bimtek ini. Disarankan pendalaman lebih lanjut.`;
+  } else {
+    kalimat = `Pada ${ukNama}, Saudara belum menunjukkan penguasaan yang memadai `
+      + `pada level kognitif manapun yang diujikan. Disarankan mengulang materi ini.`;
+  }
+
+  let catatan = null;
+  if (post.defisit.length) {
+    const lv = post.defisit.map(d => d.bloomLevel).join(', ');
+    catatan = `Penilaian level ${lv} belum lengkap — bank soal belum menyediakan `
+      + `cukup butir untuk level tersebut.`;
+  } else if (post.tipis) {
+    catatan = `Penilaian pada level penentu bersandar pada satu butir soal, `
+      + `sehingga kesimpulannya perlu dibaca dengan hati-hati.`;
+  }
+
+  return { kalimat, catatan };
 }
 
 

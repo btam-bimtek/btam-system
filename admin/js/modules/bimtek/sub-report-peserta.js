@@ -2,7 +2,8 @@
 // Laporan peserta: list + preview 4-section + print.
 
 import { getPesertaReportData } from './report-api.js';
-import { mapToLabel, generateNarasi, generateNarasiDeskriptif, generateRekomendasi } from './report-narrative.js';
+import { mapToLabel, generateNarasi, generateNarasiDeskriptif, generateRekomendasi, narasiCapaianKognitif } from './report-narrative.js';
+import { labelBloom } from '../../../../shared/kompetensi.js';
 import { kategoriNilai } from './scorer.js';
 import { db, doc, getDoc } from '../../../../shared/db.js';
 import { COL } from '../../../../shared/constants.js';
@@ -684,6 +685,23 @@ function _buildDocxPageHtml(data, kopBase64) {
       ? `${subHeader('C.1 Penguasaan per Unit Kompetensi')}
          <div style="margin:2pt 0 4pt;">${ukBars}</div>`
       : ''}
+    ${data.capaianKognitif ? `
+      <p style="margin:12px 0 6px 0;font-weight:600;">Capaian Level Kognitif</p>
+      ${data.capaianKognitif.map(b => {
+        const { kalimat, catatan } = narasiCapaianKognitif(b);
+        const status = b.post.memenuhiTarget ? '✓ tercapai' : '✗ belum tercapai';
+        const dari   = b.pre.levelTercapai  ? labelBloom(b.pre.levelTercapai)  : '—';
+        const ke     = b.post.levelTercapai ? labelBloom(b.post.levelTercapai) : 'belum tercapai';
+        return `
+          <div style="margin-bottom:10px;">
+            <p style="margin:0 0 2px 0;"><strong>${_esc(b.ukNama)}</strong>
+               <span style="color:#666;">— sasaran ${_esc(labelBloom(b.targetBloom))}</span></p>
+            <p style="margin:0 0 2px 0;">sebelum ${_esc(dari)} &rarr; sesudah ${_esc(ke)} &nbsp; ${status}</p>
+            <p style="margin:0;text-align:justify;">${_esc(kalimat)}</p>
+            ${catatan ? `<p style="margin:2px 0 0 0;font-size:9pt;color:#8a6d00;">${_esc(catatan)}</p>` : ''}
+          </div>`;
+      }).join('')}
+    ` : ''}
     <div style="height:14pt;line-height:14pt;font-size:1pt;">&nbsp;</div>
     ${subHeader('C.2 Analisis Kompetensi')}
     <div style="line-height:1.2;margin:2pt 0 4pt;text-align:justify;">${narasi}</div>
@@ -759,7 +777,7 @@ function _buildReportHTML(data) {
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
       <!-- SECTION C: PERUBAHAN KOMPETENSI -->
-      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, b.kkm ?? 60)}
+      ${_buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, b.kkm ?? 60, data.capaianKognitif)}
 
       <div style="border-top:1px solid #ccc; margin:24px 0;"></div>
 
@@ -943,7 +961,7 @@ function _buildSectionB(scores, kehadiranDetail, thresholds, b, violationSummary
 
 // ── Section C ─────────────────────────────────────────────────────────────────
 
-function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, kkm = 60) {
+function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, peserta, hasIncompleteUKData, hasUKBaseline, kkm = 60, capaianKognitif = null) {
   const pre  = scores?.pretest  ?? null;
   const post = scores?.posttest ?? null;
 
@@ -1021,6 +1039,25 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
       </table>`;
   }
 
+  // Capaian Level Kognitif (hanya bila bimtek punya SKL)
+  const capaianKognitifSection = capaianKognitif ? `
+    <p style="margin:12px 0 6px 0;font-weight:600;">Capaian Level Kognitif</p>
+    ${capaianKognitif.map(b => {
+      const { kalimat, catatan } = narasiCapaianKognitif(b);
+      const status = b.post.memenuhiTarget ? '✓ tercapai' : '✗ belum tercapai';
+      const dari   = b.pre.levelTercapai  ? labelBloom(b.pre.levelTercapai)  : '—';
+      const ke     = b.post.levelTercapai ? labelBloom(b.post.levelTercapai) : 'belum tercapai';
+      return `
+        <div style="margin-bottom:10px;">
+          <p style="margin:0 0 2px 0;"><strong>${_esc(b.ukNama)}</strong>
+             <span style="color:#666;">— sasaran ${_esc(labelBloom(b.targetBloom))}</span></p>
+          <p style="margin:0 0 2px 0;">sebelum ${_esc(dari)} &rarr; sesudah ${_esc(ke)} &nbsp; ${status}</p>
+          <p style="margin:0;text-align:justify;">${_esc(kalimat)}</p>
+          ${catatan ? `<p style="margin:2px 0 0 0;font-size:9pt;color:#8a6d00;">${_esc(catatan)}</p>` : ''}
+        </div>`;
+    }).join('')}
+  ` : '';
+
   // C.4 — Analisis Kompetensi
   const narasi = generateNarasi(ekComparison, pre, post, peserta?.nama, scores?.lulus ?? null, scores?.nilaiAkhir ?? null, kkm);
   const narasiSection = `
@@ -1061,6 +1098,7 @@ function _buildSectionC(scores, pretestResult, posttestResult, ekComparison, pes
     ${chartSection}
     ${ekChartSection}
     ${ekTableSection}
+    ${capaianKognitifSection}
     ${narasiSection}
     ${rekomendasiSection}`;
 }

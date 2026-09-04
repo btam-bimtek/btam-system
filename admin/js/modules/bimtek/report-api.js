@@ -8,6 +8,7 @@ import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
 import { listExams } from './exam-api.js';
 import { listSesi } from './api.js';
 import { getUKByKodes } from '../master-uk/api.js';
+import { calcLevelAttainment } from '../../../../shared/kompetensi.js';
 
 // ─── DEFAULT THRESHOLDS (sesuai STRUKTUR_APLIKASI_v3) ─────────────────────────
 
@@ -216,6 +217,21 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
 
   const violationSummary = await getViolationSummary(bimtekId, noPeserta);
 
+  // ── Capaian kognitif terhadap SKL ─────────────────────────────────────────
+  // Hanya dihitung bila bimtek punya SKL. Bimtek tanpa SKL memakai jalur lama
+  // dan laporannya tidak berubah sama sekali.
+  let capaianKognitif = null;
+  if (bimtek.skl?.length && allSoalIds.length > 0) {
+    const soalMap   = await _fetchSoalMap(allSoalIds);
+    const blueprint = exams.find(e => e.blueprint)?.blueprint ?? null;
+
+    capaianKognitif = bimtek.skl.map(row => ({
+      ...row,
+      pre:  calcLevelAttainment(pretestResult?.detail  ?? {}, soalMap, row, blueprint),
+      post: calcLevelAttainment(posttestResult?.detail ?? {}, soalMap, row, blueprint),
+    }));
+  }
+
   return {
     peserta,
     scores,
@@ -226,7 +242,8 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
     hasUKBaseline: baselineUkIds.length > 0,
     hasIncompleteUKData,
     violationSummary,
-    thresholds: bimtek.reportThresholds ?? DEFAULT_REPORT_THRESHOLDS
+    thresholds: bimtek.reportThresholds ?? DEFAULT_REPORT_THRESHOLDS,
+    capaianKognitif,
   };
 }
 
