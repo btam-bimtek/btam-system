@@ -11,7 +11,7 @@ import {
 import { auth } from '../../../../shared/firebase-config.js';
 import { logAudit } from '../../../../shared/logger.js';
 import { generateId } from '../../../../shared/normalize.js';
-import { COL, BLOOM_MAP } from '../../../../shared/constants.js';
+import { COL, BLOOM_MAP, BLOOM_LEVELS } from '../../../../shared/constants.js';
 
 // ─── List ─────────────────────────────────────────────────────
 
@@ -308,6 +308,61 @@ export async function recalcSoalStats(soalIds) {
     });
     await batch.commit();
   }
+}
+
+// ─── Stok per UK x Bloom ──────────────────────────────────────
+
+/**
+ * Hitung sebaran soal aktif per Unit Kompetensi per level Bloom.
+ * Dipakai matriks stok di Bank Soal dan kolom Stok di form SKL bimtek.
+ * @returns {{ rows: object[], totalSoal: number, selKosong: number,
+ *             selTipis: number, selSiap: number }}
+ *   rows: [{ ukKode, ukNama, lv: {C1..C6}, total }] urut total menurun
+ */
+export async function buildStokMatrix() {
+  const snap = await getDocs(query(
+    collection(db, COL.BANK_SOAL),
+    where('deleted', '==', false),
+    where('active',  '==', true)
+  ));
+
+  const LEVELS = BLOOM_LEVELS.map(b => b.level);
+  const map = new Map();
+
+  snapToArray(snap).forEach(s => {
+    const kode = (s.unitKompetensi || '').toUpperCase().trim();
+    if (!kode) return; // soal tanpa UK tidak masuk matriks
+    if (!map.has(kode)) {
+      map.set(kode, {
+        ukKode: kode,
+        ukNama: s.ekNama || kode,
+        lv:     Object.fromEntries(LEVELS.map(l => [l, 0])),
+        tanpaLevel: 0,
+        total:  0,
+      });
+    }
+    const e = map.get(kode);
+    e.total++;
+    if (LEVELS.includes(s.bloomLevel)) e.lv[s.bloomLevel]++;
+    else e.tanpaLevel++;
+    if (!e.ukNama && s.ekNama) e.ukNama = s.ekNama;
+  });
+
+  const rows = [...map.values()].sort((a, b) => b.total - a.total);
+
+  let selKosong = 0, selTipis = 0, selSiap = 0;
+  rows.forEach(r => LEVELS.forEach(l => {
+    const n = r.lv[l];
+    if (n === 0)      selKosong++;
+    else if (n === 1) selTipis++;
+    else              selSiap++;
+  }));
+
+  return {
+    rows,
+    totalSoal: rows.reduce((a, r) => a + r.total, 0),
+    selKosong, selTipis, selSiap,
+  };
 }
 
 // ─── Internal ─────────────────────────────────────────────────

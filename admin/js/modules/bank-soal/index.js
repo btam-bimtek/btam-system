@@ -9,6 +9,7 @@ import { requireWrite } from '../../auth-guard.js';
 import { listSoal, countSoal, deleteSoal, toggleSoalActive, exportSoalWithAnswers } from './api.js';
 import { openSoalForm } from './form.js';
 import { openImportSoal } from './import.js';
+import { renderStokMatrix } from './stok.js';
 import { BIDANG_LIST, BLOOM_LEVELS } from '../../../../shared/constants.js';
 
 const PER_PAGE = 25;
@@ -31,6 +32,9 @@ export async function renderBankSoalList({ query = {} } = {}) {
           <p class="text-xs text-gray-500 mt-0.5">Kumpulan soal untuk pre-test dan post-test Bimtek</p>
         </div>
         <div class="flex items-center gap-2">
+          <button id="btn-stok" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors">
+            Stok UK × Bloom
+          </button>
           <button id="btn-export" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors">
             Export + Kunci
           </button>
@@ -227,6 +231,20 @@ function _bindEvents() {
 
   document.getElementById('btn-import')?.addEventListener('click', () => {
     if (!requireWrite()) return; openImportSoal(_reload);
+  });
+
+  document.getElementById('btn-stok')?.addEventListener('click', () => {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+      <div class="max-w-full">
+        <div class="flex items-center gap-3 mb-6">
+          <button id="btn-stok-kembali" class="px-3 py-2 rounded-lg text-xs text-gray-400 border border-[#1e3a3f] hover:bg-[#12181c] transition-colors">← Kembali</button>
+          <h1 class="text-lg font-bold text-white">Stok UK × Bloom</h1>
+        </div>
+        <div id="stok-pane"></div>
+      </div>`;
+    document.getElementById('btn-stok-kembali').addEventListener('click', () => renderBankSoalList());
+    renderStokMatrix(document.getElementById('stok-pane'));
   });
 
   document.getElementById('btn-export')?.addEventListener('click', async () => {
