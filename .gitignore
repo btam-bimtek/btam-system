@@ -16,3 +16,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+# npm
+node_modules/
