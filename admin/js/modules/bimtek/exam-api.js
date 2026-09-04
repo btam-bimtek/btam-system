@@ -44,6 +44,7 @@ export async function createExam(bimtekId, data) {
     durasi:             data.durasi,
     soalIds:            data.soalIds,
     jumlahDitampilkan:  data.jumlahDitampilkan,
+    blueprint:          data.blueprint ?? null,
     published:          false,
     createdAt:          serverTimestamp(),
     updatedAt:          serverTimestamp(),
@@ -66,6 +67,7 @@ export async function updateExam(examId, data) {
     durasi:            data.durasi,
     soalIds:           data.soalIds,
     jumlahDitampilkan: data.jumlahDitampilkan,
+    blueprint:          data.blueprint ?? null,
     updatedAt:         serverTimestamp(),
   });
   await logAudit({ action: 'update_exam', entityType: 'exam', entityId: examId });

@@ -112,6 +112,7 @@ function _render(app, el, S, exams, sessions) {
     showExamModal({
       bimtekId: S.id,
       bidangIds: S.bimtek?.bidangIds || [],
+      skl: S.bimtek?.skl ?? [],
       exam: null,
       onSaved: () => renderTabUjian(app, el, S),
     })
@@ -122,6 +123,7 @@ function _render(app, el, S, exams, sessions) {
     if (exam) btn.addEventListener('click', () => showExamModal({
       bimtekId: S.id,
       bidangIds: S.bimtek?.bidangIds || [],
+      skl: S.bimtek?.skl ?? [],
       exam,
       onSaved: () => renderTabUjian(app, el, S),
     }));

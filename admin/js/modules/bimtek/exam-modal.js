@@ -5,6 +5,7 @@
 
 import { showToast }     from '../../components/toast.js';
 import { createExam, updateExam } from './exam-api.js';
+import { susunDariSKL, ringkasKomposisi } from './generator-soal.js';
 import { BIDANG_LIST } from '../../../../shared/constants.js';
 import { db } from '../../../../shared/db.js';
 import {
@@ -21,7 +22,7 @@ import { COL } from '../../../../shared/constants.js';
  * @param {Function}    opts.onSaved - dipanggil setelah simpan berhasil (async ok)
  * @param {string}      [opts.defaultTipe] - tipe default saat buat baru (default 'pretest')
  */
-export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onSaved, defaultTipe = 'pretest' }) {
+export async function showExamModal({ bimtekId, bidangIds = [], skl = [], exam = null, onSaved, defaultTipe = 'pretest' }) {
   if (exam?.published) {
     showToast('Ujian sudah dipublish. Unpublish dulu sebelum mengedit.', 'info');
     return;
@@ -51,6 +52,7 @@ export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onS
 
   const isEdit          = !!exam;
   const selectedSoalIds = new Set(exam?.soalIds || []);
+  let blueprintTersimpan = exam?.blueprint ?? null;
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
@@ -88,6 +90,21 @@ export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onS
             <p class="text-xs text-gray-500 mt-1">Untuk Pre-Test & Post-Test: soal identik, urutan diacak. Jumlah harus sama dengan soal dipilih.</p>
           </div>
         </div>
+
+        ${skl.length ? `
+          <div class="mt-3 p-3 rounded-lg border border-[#1e3a3f] bg-[#0b1116]">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-medium text-gray-300">Susun otomatis dari SKL</p>
+                <p class="text-xs text-gray-500">Mengisi daftar soal sesuai target tiap unit kompetensi. Hasilnya masih bisa Anda ubah.</p>
+              </div>
+              <button type="button" id="btn-susun-skl"
+                class="shrink-0 px-3 py-2 rounded-lg text-xs bg-[#0d9488] hover:bg-[#14b8a6] text-[#f0fdfa] transition-colors">
+                Susun dari SKL
+              </button>
+            </div>
+            <div id="skl-pratinjau" class="mt-3 hidden"></div>
+          </div>` : ''}
 
         <div>
           <div class="flex items-center justify-between mb-2">
@@ -200,6 +217,36 @@ export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onS
   modal.querySelector('#exam-modal-close').addEventListener('click', close);
   modal.querySelector('#exam-modal-cancel').addEventListener('click', close);
 
+  modal.querySelector('#btn-susun-skl')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    const teksAsli = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Menyusun…';
+    try {
+      const hasil = await susunDariSKL(skl, bidangIds[0]);
+
+      selectedSoalIds.clear();
+      hasil.soalIds.forEach(id => selectedSoalIds.add(id));
+      blueprintTersimpan = hasil.blueprint;
+
+      // Segarkan centang di daftar soal dan jumlah ditampilkan
+      modal.querySelectorAll('.soal-cb').forEach(cb => {
+        cb.checked = selectedSoalIds.has(cb.value);
+      });
+      modal.querySelector('#exam-jumlah').value = selectedSoalIds.size;
+      countLbl.textContent = `${selectedSoalIds.size} dipilih`;
+
+      const pratinjau = modal.querySelector('#skl-pratinjau');
+      pratinjau.classList.remove('hidden');
+      pratinjau.innerHTML = _pratinjauSKL(hasil);
+    } catch (err) {
+      showToast(`Gagal menyusun: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = teksAsli;
+    }
+  });
+
   modal.querySelector('#exam-modal-save').addEventListener('click', async () => {
     errEl.classList.add('hidden');
     const btn  = modal.querySelector('#exam-modal-save');
@@ -209,6 +256,7 @@ export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onS
       durasi:            parseInt(modal.querySelector('#exam-durasi').value) || 0,
       soalIds:           [...selectedSoalIds],
       jumlahDitampilkan: parseInt(modal.querySelector('#exam-jumlah').value) || 0,
+      blueprint:         blueprintTersimpan,
     };
 
     if (data.tipe === 'pretest_posttest') data.jumlahDitampilkan = data.soalIds.length;
@@ -226,6 +274,29 @@ export async function showExamModal({ bimtekId, bidangIds = [], exam = null, onS
       btn.disabled = false; btn.textContent = 'Simpan';
     }
   });
+}
+
+function _pratinjauSKL(hasil) {
+  const baris = ringkasKomposisi(hasil.blueprint).map(u => {
+    const sel = u.sel.map(k => {
+      const kurang = k.terpenuhi < k.diminta;
+      return `<span class="${kurang ? 'text-red-400' : 'text-gray-400'}">${k.bloomLevel}:${k.terpenuhi}${kurang ? `/${k.diminta}` : ''}</span>`;
+    }).join(' · ');
+    return `<tr>
+      <td class="font-mono text-xs text-[#2dd4bf] py-1 pr-3">${_esc(u.ukKode)}</td>
+      <td class="text-xs py-1 pr-3">${sel}</td>
+      <td class="text-xs py-1 text-gray-300">${u.terpenuhi}/${u.diminta}</td>
+    </tr>`;
+  }).join('');
+
+  const peringatan = hasil.adaDefisit
+    ? `<p class="text-xs text-yellow-400 mt-2">
+         ⚠ Sebagian level tidak punya cukup soal di bank. Kekurangannya dicatat dan akan
+         ditandai di laporan — tidak diganti dengan soal level lain.
+       </p>`
+    : '';
+
+  return `<table class="w-full">${baris}</table>${peringatan}`;
 }
 
 function _esc(str) {
