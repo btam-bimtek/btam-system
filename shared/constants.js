@@ -179,6 +179,7 @@ export const COL = {
   UNIT_KOMPETENSI:  'unit_kompetensi',
   BANK_SOAL:          'bank_soal',
   BANK_SOAL_ANSWERS:  'bank_soal_answers',
+  BLOOM_SUGGESTIONS:  'bloom_suggestions',
   BIMTEK:             'bimtek',
   BIMTEK_SCORES:      'bimtek_scores',
   BIMTEK_ATTENDANCE:  'bimtek_attendance',

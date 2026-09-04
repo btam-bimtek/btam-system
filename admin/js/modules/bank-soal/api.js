@@ -365,6 +365,85 @@ export async function buildStokMatrix() {
   };
 }
 
+// ─── Usulan level Bloom (backfill) ────────────────────────────
+
+/** Ambil usulan yang masih menunggu peninjauan, digabung dengan isi soalnya. */
+export async function listBloomSuggestions() {
+  const snap = await getDocs(query(
+    collection(db, COL.BLOOM_SUGGESTIONS),
+    where('status', '==', 'pending')
+  ));
+  const usulan = snapToArray(snap);
+  if (!usulan.length) return [];
+
+  // Ambil soal per potongan 30 — batas operator 'in' Firestore
+  const soalMap = {};
+  const ids = usulan.map(u => u.soalId);
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    const s = await getDocs(query(
+      collection(db, COL.BANK_SOAL),
+      where('soalId', 'in', chunk)
+    ));
+    snapToArray(s).forEach(d => { soalMap[d.soalId] = d; });
+  }
+
+  return usulan
+    .filter(u => soalMap[u.soalId])
+    .map(u => ({ ...u, soal: soalMap[u.soalId] }));
+}
+
+export async function countPendingBloom() {
+  const snap = await getCountFromServer(query(
+    collection(db, COL.BLOOM_SUGGESTIONS),
+    where('status', '==', 'pending')
+  ));
+  return snap.data().count;
+}
+
+/**
+ * Terapkan keputusan admin: tulis bloomLevel + bobot ke bank_soal dan
+ * tandai usulannya selesai.
+ * @param {{soalId: string, level: string, status: 'disetujui'|'diubah'|'ditolak'}[]} keputusan
+ * @returns {{ diterapkan: number, ditolak: number }}
+ */
+export async function applyBloomSuggestions(keputusan) {
+  const email = auth.currentUser?.email ?? null;
+  let diterapkan = 0, ditolak = 0;
+
+  const CHUNK = 200; // 2 tulisan per keputusan, aman di bawah batas 500
+  for (let i = 0; i < keputusan.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    for (const k of keputusan.slice(i, i + CHUNK)) {
+      if (k.status === 'ditolak') {
+        ditolak++;
+      } else {
+        if (!BLOOM_MAP[k.level]) throw new Error(`Level '${k.level}' tidak dikenal untuk soal ${k.soalId}.`);
+        batch.update(doc(db, COL.BANK_SOAL, k.soalId), {
+          bloomLevel: k.level,
+          bobot:      _hitungBobot(k.level),
+          updatedAt:  serverTimestamp(),
+        });
+        diterapkan++;
+      }
+      batch.update(doc(db, COL.BLOOM_SUGGESTIONS, k.soalId), {
+        status:       k.status,
+        levelDipakai: k.status === 'ditolak' ? null : k.level,
+        ditinjauPada: serverTimestamp(),
+        ditinjauOleh: email,
+      });
+    }
+    await batch.commit();
+  }
+
+  await logAudit({
+    action: 'apply_bloom_suggestions', entityType: 'bank_soal', entityId: 'batch',
+    metadata: { diterapkan, ditolak }
+  });
+
+  return { diterapkan, ditolak };
+}
+
 // ─── Internal ─────────────────────────────────────────────────
 
 function _validateSoal(data) {

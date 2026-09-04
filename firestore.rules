@@ -116,6 +116,13 @@ service cloud.firestore {
       allow read, write: if canWrite();
     }
 
+    // Usulan level Bloom untuk soal lama yang belum berlevel.
+    // Admin saja — exam app tidak pernah menyentuhnya. Koleksi sementara,
+    // boleh dihapus setelah seluruh usulan ditinjau.
+    match /bloom_suggestions/{soalId} {
+      allow read, write: if canWrite();
+    }
+
 		match /unit_kompetensi/{id} {
   		allow get:   if true;   // Portal Peserta: getPesertaReportData butuh baseline UK untuk sertifikat/laporan
   		allow list:  if isAdmin();
