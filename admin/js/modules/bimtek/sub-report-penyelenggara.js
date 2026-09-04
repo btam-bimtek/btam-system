@@ -291,7 +291,52 @@ function _renderPerEK(el) {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div>
+    ${S.data.pemenuhanSKL ? `
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 mt-6">
+      <h3 class="text-sm font-semibold text-white mb-1">Pemenuhan Standar Kompetensi Lulusan</h3>
+      <p class="text-xs text-gray-500 mb-4">
+        Berapa peserta yang mencapai target level kognitif tiap unit kompetensi, dihitung dari post-test.
+      </p>
+      <table class="btam-table">
+        <thead>
+          <tr>
+            <th>Unit Kompetensi</th>
+            <th class="w-28 text-center">Target</th>
+            <th class="w-32 text-center">Capai target</th>
+            <th class="w-28 text-center">Level mayoritas</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${S.data.pemenuhanSKL.map(u => {
+            const rendah = u.pct < 50;
+            return `
+              <tr>
+                <td>
+                  <div class="font-mono text-xs text-[#2dd4bf]">${_esc(u.ukKode)}</div>
+                  <div class="text-xs text-gray-400">${_esc(u.ukNama)}</div>
+                </td>
+                <td class="text-center text-xs text-gray-300">${_esc(u.target)}</td>
+                <td class="text-center text-xs ${rendah ? 'text-red-400' : 'text-gray-300'}">
+                  ${u.capai}/${u.dari} &nbsp; ${u.pct}% ${rendah ? '⚠' : ''}
+                </td>
+                <td class="text-center text-xs text-gray-300">${_esc(u.levelRata ?? '—')}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      ${S.data.pemenuhanSKL.filter(u => u.pct < 50 || u.defisit.length).map(u => `
+        <div class="mt-3 bg-yellow-900/10 border border-yellow-700/30 rounded-lg p-3">
+          <p class="text-xs text-yellow-400">
+            <strong>${_esc(u.ukNama)}</strong> —
+            ${u.pct < 50 ? `hanya ${u.pct}% peserta mencapai sasaran ${_esc(u.target)}. ` : ''}
+            ${u.defisit.length
+              ? `Bank soal menyediakan ${u.defisit.map(d => `${d.terpenuhi} dari ${d.diminta} butir ${d.bloomLevel}`).join(', ')}
+                 — kesimpulan ini perlu diperkuat sebelum dijadikan dasar evaluasi materi.`
+              : `Perlu ditinjau apakah alokasi jam pelajaran memadai untuk level tersebut.`}
+          </p>
+        </div>`).join('')}
+    </div>` : ''}`;
 
   requestAnimationFrame(() => _initEKChart(ekDataAll));
 }

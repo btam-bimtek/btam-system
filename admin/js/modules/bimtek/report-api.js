@@ -2,7 +2,7 @@
 // Aggregasi data untuk report penyelenggara dan report peserta.
 
 import { db, doc, getDoc, collection, query, where, getDocs } from '../../../../shared/db.js';
-import { COL } from '../../../../shared/constants.js';
+import { COL, BLOOM_LEVELS } from '../../../../shared/constants.js';
 import { listBimtekScores, listExamResults, hitungKehadiran } from './penilaian-api.js';
 import { hitungNilaiAkhir, cekKelulusan } from './scorer.js';
 import { listExams } from './exam-api.js';
@@ -95,6 +95,41 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
   // Per-pengajar data
   const pengajarData = _buildPengajarData(enriched, mapels, pengajars);
 
+  // ── Pemenuhan SKL seluruh peserta ─────────────────────────────────────────
+  let pemenuhanSKL = null;
+  if (bimtek.skl?.length) {
+    const allSoalIds = [...new Set(exams.flatMap(e => e.soalIds ?? []))];
+    if (allSoalIds.length) {
+      const soalMap   = await _fetchSoalMap(allSoalIds);
+      const blueprint = exams.find(e => e.blueprint)?.blueprint ?? null;
+      const posts     = examResults.filter(r => r.tipeSession === 'posttest');
+
+      pemenuhanSKL = bimtek.skl.map(row => {
+        const hasil = posts.map(r => calcLevelAttainment(r.detail ?? {}, soalMap, row, blueprint));
+        const capai = hasil.filter(h => h.memenuhiTarget).length;
+
+        // Level rata-rata = level tertinggi yang dicapai mayoritas peserta.
+        const urutan = BLOOM_LEVELS.map(b => b.level);
+        let levelRata = null;
+        for (const lv of urutan) {
+          const n = hasil.filter(h => h.levelTercapai && urutan.indexOf(h.levelTercapai) >= urutan.indexOf(lv)).length;
+          if (hasil.length && n > hasil.length / 2) levelRata = lv;
+        }
+
+        return {
+          ukKode:  row.ukKode,
+          ukNama:  row.ukNama,
+          target:  row.targetBloom,
+          capai,
+          dari:    hasil.length,
+          pct:     hasil.length ? Math.round((capai / hasil.length) * 100) : 0,
+          levelRata,
+          defisit: hasil[0]?.defisit ?? [],
+        };
+      });
+    }
+  }
+
   return {
     scores: enriched,
     scoresSorted,
@@ -104,6 +139,7 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
     ekDataAll,
     soalErrorData,
     pengajarData,
+    pemenuhanSKL,
     stats: {
       total, lulus, tidakLulus: total - lulus,
       avgNilaiAkhir, avgPretest, avgPosttest, avgKehadiran,
