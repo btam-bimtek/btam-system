@@ -64,9 +64,10 @@ export const BIMTEK_KAPASITAS = {
 
 export const BIMTEK_STATUS = {
   DRAFT:      'draft',
-  AKTIF:      'aktif',
-  SELESAI:    'selesai',
-  DIBATALKAN: 'dibatalkan'
+  PLANNED:    'planned',
+  ONGOING:    'ongoing',
+  SELESAI:    'completed',
+  DIBATALKAN: 'cancelled'
 };
 
 // ─── Penilaian — Komponen & Bobot Default ────────────────────

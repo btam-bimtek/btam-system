@@ -10,7 +10,8 @@ import { confirmDialog } from '../../components/modal.js';
 import {
   db, collection, query, where, getDocs
 } from '../../../../shared/db.js';
-import { COL } from '../../../../shared/constants.js';
+import { COL, BIMTEK_STATUS } from '../../../../shared/constants.js';
+import { logAudit } from '../../../../shared/logger.js';
 
 export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSyncComplete) {
   try {
@@ -99,8 +100,14 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
                       : `Pre: ${preCount} · Post: ${postCount} submission terscore`}
                   </div>
                 </div>
-                <button class="btn-sync-exam shrink-0 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors"
-                  data-exam-id="${exam.id}" data-exam-judul="${_esc(exam.judul)}">
+                <button class="btn-sync-exam shrink-0 px-4 py-2 ${bimtek?.status === BIMTEK_STATUS.SELESAI
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-500 text-white'} text-sm rounded-lg transition-colors"
+                  data-exam-id="${exam.id}" data-exam-judul="${_esc(exam.judul)}"
+                  ${bimtek?.status === BIMTEK_STATUS.SELESAI ? 'data-terkunci="1"' : ''}
+                  title="${bimtek?.status === BIMTEK_STATUS.SELESAI
+                    ? 'Bimtek sudah selesai — nilai dikunci agar tidak berubah'
+                    : ''}">
                   Sinkronisasi
                 </button>
               </div>
@@ -170,6 +177,28 @@ export async function renderSubPrePost(container, bimtekId, bimtek, scores, onSy
       btn.addEventListener('click', async () => {
         const examId    = btn.dataset.examId;
         const examJudul = btn.dataset.examJudul;
+
+        // Bimtek selesai: nilai sudah dilaporkan dan sertifikat mungkin sudah
+        // terbit. Sinkronisasi ulang akan menghitung ulang skor memakai bobot
+        // Bloom terkini, yang bisa berbeda dari saat nilai pertama ditetapkan.
+        if (btn.dataset.terkunci === '1') {
+          const lanjut = await confirmDialog({
+            title: 'Bimtek ini sudah selesai',
+            message: `Nilai bimtek yang sudah selesai dikunci agar tidak berubah. `
+              + `Sinkronisasi ulang akan MENIMPA nilai pre/post seluruh peserta `
+              + `memakai bobot Bloom yang berlaku sekarang — nilai bisa bergeser `
+              + `dari yang sudah tercetak di sertifikat dan laporan.\n\n`
+              + `Lanjutkan menimpa nilai "${examJudul}"?`
+          });
+          if (!lanjut) return;
+          await logAudit({
+            action:     'force_resync_completed_bimtek',
+            entityType: 'exam',
+            entityId:   examId,
+            metadata:   { bimtekId, examJudul }
+          });
+        }
+
         await _syncExam(bimtekId, examId, examJudul, btn, container, bimtek, onSyncComplete);
       });
     });
