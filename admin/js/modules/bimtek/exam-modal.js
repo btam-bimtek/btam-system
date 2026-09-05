@@ -223,7 +223,7 @@ export async function showExamModal({ bimtekId, bidangIds = [], skl = [], exam =
     btn.disabled = true;
     btn.textContent = 'Menyusun…';
     try {
-      const hasil = await susunDariSKL(skl, bidangIds[0]);
+      const hasil = await susunDariSKL(skl, bidangIds);
 
       selectedSoalIds.clear();
       hasil.soalIds.forEach(id => selectedSoalIds.add(id));

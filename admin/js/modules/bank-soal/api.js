@@ -206,16 +206,32 @@ export async function deleteSoal(soalId) {
  * @returns {Promise<object[]>}
  */
 export async function pickSoalRandom({ bidangId, unitKompetensi, bloomLevels, jumlah, excludeIds = [] }) {
-  const constraints = [
-    where('deleted', '==', false),
-    where('active', '==', true),
-    where('bidangId', '==', bidangId)
-  ];
-  if (unitKompetensi) constraints.push(where('unitKompetensi', '==', unitKompetensi));
-  if (bloomLevels?.length === 1) constraints.push(where('bloomLevel', '==', bloomLevels[0]));
+  // bidangId bisa string tunggal (perilaku lama) atau array (bimtek multi-bidang,
+  // mis. tipe PNBP). Query per nilai — bukan operator 'in' Firestore, yang butuh
+  // index gabungan baru yang belum tentu ada di produksi.
+  const bidangList = Array.isArray(bidangId) ? bidangId : [bidangId];
 
-  const snap = await getDocs(query(collection(db, COL.BANK_SOAL), ...constraints));
-  let pool = snapToArray(snap).filter(s => !excludeIds.includes(s.soalId));
+  let pool = [];
+  for (const bid of bidangList) {
+    const constraints = [
+      where('deleted', '==', false),
+      where('active', '==', true),
+      where('bidangId', '==', bid)
+    ];
+    if (unitKompetensi) constraints.push(where('unitKompetensi', '==', unitKompetensi));
+    if (bloomLevels?.length === 1) constraints.push(where('bloomLevel', '==', bloomLevels[0]));
+
+    const snap = await getDocs(query(collection(db, COL.BANK_SOAL), ...constraints));
+    pool.push(...snapToArray(snap));
+  }
+
+  // Dedupe (satu soal seharusnya cuma 1 bidangId, tapi jaga-jaga) + buang excludeIds
+  const seen = new Set();
+  pool = pool.filter(s => {
+    if (seen.has(s.soalId) || excludeIds.includes(s.soalId)) return false;
+    seen.add(s.soalId);
+    return true;
+  });
 
   // Filter multi bloom kalau lebih dari 1
   if (bloomLevels?.length > 1) pool = pool.filter(s => bloomLevels.includes(s.bloomLevel));

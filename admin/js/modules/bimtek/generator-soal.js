@@ -9,13 +9,15 @@ import { bagiSoalPerLevel } from '../../../../shared/kompetensi.js';
 import { pickSoalRandom } from '../bank-soal/api.js';
 
 /**
- * @param {object[]} skl      - bimtek.skl
- * @param {string}   bidangId - bidang bimtek, membatasi kolam soal
+ * @param {object[]}          skl       - bimtek.skl
+ * @param {string|string[]}   bidangIds - bidang bimtek, membatasi kolam soal. String
+ *   tunggal tetap didukung (backward-compat); bimtek PNBP bisa punya >1 bidang.
  * @returns {Promise<{ soalIds: string[], blueprint: object, adaDefisit: boolean }>}
  */
-export async function susunDariSKL(skl, bidangId) {
+export async function susunDariSKL(skl, bidangIds) {
   if (!skl?.length) throw new Error('Bimtek ini belum punya SKL.');
-  if (!bidangId)    throw new Error('Bidang bimtek belum ditentukan.');
+  const list = Array.isArray(bidangIds) ? bidangIds : [bidangIds];
+  if (!list.length || !list[0]) throw new Error('Bidang bimtek belum ditentukan.');
 
   const komposisi = [];
   const terpakai  = [];   // lintas UK, supaya satu butir tidak terambil dua kali
@@ -27,7 +29,7 @@ export async function susunDariSKL(skl, bidangId) {
       if (diminta < 1) continue;
 
       const pool = await pickSoalRandom({
-        bidangId,
+        bidangId:       list,
         unitKompetensi: baris.ukKode,
         bloomLevels:    [bloomLevel],
         jumlah:         diminta,

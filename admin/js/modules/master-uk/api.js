@@ -49,14 +49,19 @@ export async function listUK({ search = '', bidangId = '', status = '', pageSize
   return { data, lastDoc: snap.docs[snap.docs.length - 1] ?? null };
 }
 
-/** Ambil semua UK aktif (untuk picker di bimtek/soal). */
-export async function listUKAktif({ bidangId = '' } = {}) {
+/**
+ * Ambil semua UK aktif (untuk picker di bimtek/soal).
+ * @param {string}   [bidangId]  - filter bidang tunggal (backward-compat)
+ * @param {string[]} [bidangIds] - filter multi-bidang (bimtek PNBP bisa >1 bidang)
+ */
+export async function listUKAktif({ bidangId = '', bidangIds = [] } = {}) {
   const snap = await getDocs(
     query(collection(db, COL_NAME), where('deleted', '==', false), where('status', '==', 'aktif'), orderBy('nama'))
   );
   let data = snapToArray(snap);
-  if (bidangId) {
-    data = data.filter(ek => !ek.bidangIds?.length || ek.bidangIds.includes(bidangId));
+  const ids = bidangIds.length ? bidangIds : (bidangId ? [bidangId] : []);
+  if (ids.length) {
+    data = data.filter(ek => !ek.bidangIds?.length || ek.bidangIds.some(b => ids.includes(b)));
   }
   return data;
 }

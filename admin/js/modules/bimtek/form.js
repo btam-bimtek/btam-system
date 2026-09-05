@@ -396,17 +396,22 @@ async function _handleSubmit(app, bimtekId, isEdit, oldData) {
       hasTugas: ht, hasPresentasi: hp, bidangIds,
       kapasitas: kap || (mode === 'online' ? 25 : 17),
       periode: { mulai: pm, selesai: ps },
-      // Tab SKL dimuat malas. Kalau admin tidak pernah membukanya, panelnya
-      // kosong dan bacaSKL akan mengembalikan array kosong — yang berarti
-      // MENGHAPUS SKL yang sudah tersimpan. Karena itu jatuhkan ke nilai lama.
+      // Tab SKL dimuat malas dan async (dua round-trip Firestore). Kalau
+      // admin tidak pernah membukanya, ATAU render-nya belum selesai/gagal
+      // (offline dsb), panelnya belum berisi tabel sungguhan — bacaSKL akan
+      // mengembalikan array kosong yang berarti MENGHAPUS SKL yang sudah
+      // tersimpan. Karena itu gerbangnya adalah dataset.siap ('sudah SELESAI
+      // dan BERHASIL'), bukan dataset.dimuat ('sudah dipicu render-nya').
+      // Kalau belum siap, jatuhkan ke nilai lama apa adanya.
       ...(() => {
         const panel = app.querySelector('#tab-skl');
-        const skl   = panel?.dataset.dimuat ? bacaSKL(panel) : (oldData?.skl ?? []);
+        const siap  = panel?.dataset.siap === '1';
+        const skl   = siap ? bacaSKL(panel) : (oldData?.skl ?? []);
         return {
           skl,
           // ukIds diturunkan dari SKL, bukan disimpan terpisah — satu daftar
           // UK saja, tidak ada dua sumber yang harus dijaga tetap sinkron.
-          ukIds: skl.map(s => s.ukId),
+          ukIds: siap ? skl.map(s => s.ukId) : (oldData?.ukIds ?? []),
         };
       })(),
     };

@@ -23,8 +23,9 @@ export async function renderTabSKL(el, sklAwal = [], bidangIds = []) {
     <div class="w-5 h-5 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin"></div>
   </div>`;
 
+  try {
   const [ukAktif, stok] = await Promise.all([
-    listUKAktif({ bidangId: bidangIds[0] ?? '' }),
+    listUKAktif({ bidangIds }),
     buildStokMatrix(),
   ]);
   const stokMap = Object.fromEntries(stok.rows.map(r => [r.ukKode.toUpperCase(), r]));
@@ -124,6 +125,13 @@ export async function renderTabSKL(el, sklAwal = [], bidangIds = []) {
     const kode = tr.dataset.ukKode.toUpperCase();
     tr.querySelector('[data-skl-stok]').innerHTML = _stokTeks(sel.value, stokMap[kode]);
   });
+
+  el.dataset.siap = '1';
+  } catch (err) {
+    el.innerHTML = `<div class="bg-red-900/20 border border-red-700/30 rounded-xl p-4 text-sm text-red-400">
+      Gagal memuat data SKL: ${err.message}. Silakan coba buka tab ini lagi.
+    </div>`;
+  }
 }
 
 function _barisKosong() {

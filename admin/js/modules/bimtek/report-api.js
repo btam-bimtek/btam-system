@@ -104,29 +104,35 @@ export async function getBimtekReportData(bimtekId, bimtek, mapels = [], pengaja
       const blueprint = exams.find(e => e.blueprint)?.blueprint ?? null;
       const posts     = examResults.filter(r => r.tipeSession === 'posttest');
 
-      pemenuhanSKL = bimtek.skl.map(row => {
-        const hasil = posts.map(r => calcLevelAttainment(r.detail ?? {}, soalMap, row, blueprint));
-        const capai = hasil.filter(h => h.memenuhiTarget).length;
+      // Kalau belum ada satu pun peserta yang punya hasil post-test tersinkron,
+      // jangan tampilkan tabel pemenuhan SKL sama sekali — 0/0 0% di semua
+      // baris akan terbaca seolah seluruh kohort gagal total, padahal
+      // sebenarnya belum ada data untuk dinilai.
+      if (posts.length > 0) {
+        pemenuhanSKL = bimtek.skl.map(row => {
+          const hasil = posts.map(r => calcLevelAttainment(r.detail ?? {}, soalMap, row, blueprint));
+          const capai = hasil.filter(h => h.memenuhiTarget).length;
 
-        // Level rata-rata = level tertinggi yang dicapai mayoritas peserta.
-        const urutan = BLOOM_LEVELS.map(b => b.level);
-        let levelRata = null;
-        for (const lv of urutan) {
-          const n = hasil.filter(h => h.levelTercapai && urutan.indexOf(h.levelTercapai) >= urutan.indexOf(lv)).length;
-          if (hasil.length && n > hasil.length / 2) levelRata = lv;
-        }
+          // Level rata-rata = level tertinggi yang dicapai mayoritas peserta.
+          const urutan = BLOOM_LEVELS.map(b => b.level);
+          let levelRata = null;
+          for (const lv of urutan) {
+            const n = hasil.filter(h => h.levelTercapai && urutan.indexOf(h.levelTercapai) >= urutan.indexOf(lv)).length;
+            if (hasil.length && n > hasil.length / 2) levelRata = lv;
+          }
 
-        return {
-          ukKode:  row.ukKode,
-          ukNama:  row.ukNama,
-          target:  row.targetBloom,
-          capai,
-          dari:    hasil.length,
-          pct:     hasil.length ? Math.round((capai / hasil.length) * 100) : 0,
-          levelRata,
-          defisit: hasil[0]?.defisit ?? [],
-        };
-      });
+          return {
+            ukKode:  row.ukKode,
+            ukNama:  row.ukNama,
+            target:  row.targetBloom,
+            capai,
+            dari:    hasil.length,
+            pct:     hasil.length ? Math.round((capai / hasil.length) * 100) : 0,
+            levelRata,
+            defisit: hasil[0]?.defisit ?? [],
+          };
+        });
+      }
     }
   }
 
@@ -257,14 +263,14 @@ export async function getPesertaReportData(bimtekId, noPeserta, bimtek) {
   // Hanya dihitung bila bimtek punya SKL. Bimtek tanpa SKL memakai jalur lama
   // dan laporannya tidak berubah sama sekali.
   let capaianKognitif = null;
-  if (bimtek.skl?.length && allSoalIds.length > 0) {
+  if (bimtek.skl?.length && posttestResult) {
     const soalMap   = await _fetchSoalMap(allSoalIds);
     const blueprint = exams.find(e => e.blueprint)?.blueprint ?? null;
 
     capaianKognitif = bimtek.skl.map(row => ({
       ...row,
-      pre:  calcLevelAttainment(pretestResult?.detail  ?? {}, soalMap, row, blueprint),
-      post: calcLevelAttainment(posttestResult?.detail ?? {}, soalMap, row, blueprint),
+      pre:  calcLevelAttainment(pretestResult?.detail ?? {}, soalMap, row, blueprint),
+      post: calcLevelAttainment(posttestResult.detail, soalMap, row, blueprint),
     }));
   }
 
