@@ -2,6 +2,7 @@
 // Sub-tab Riwayat — tabel semua keikutsertaan bimtek dengan expandable row.
 
 import { listRiwayat } from './api.js';
+import { showToast } from '../../components/toast.js';
 
 const BIDANG_LABEL = {
   produksi:    'Produksi',
@@ -68,6 +69,13 @@ export async function renderSubRiwayat(pane) {
         <option value="Sistem">Sistem</option>
       </select>
       <span id="alumni-count" class="text-xs text-gray-500 ml-auto"></span>
+      <button id="alumni-export-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+        bg-teal-700 text-white hover:bg-teal-600 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+        </svg>
+        Export Excel
+      </button>
     </div>
 
     <!-- Tabel -->
@@ -276,8 +284,67 @@ export async function renderSubRiwayat(pane) {
     el?.addEventListener(id === 'alumni-search' ? 'input' : 'change', applyFilter);
   });
 
+  document.getElementById('alumni-export-btn')?.addEventListener('click', () => _doExport(rows, mode));
+
   applyModeStyle();
   applyFilter();
+}
+
+// ─── Export .xlsx ────────────────────────────────────────────
+
+async function _doExport(currentRows, currentMode) {
+  const btn = document.getElementById('alumni-export-btn');
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Menyiapkan…`;
+
+  try {
+    if (!currentRows.length) {
+      showToast('Tidak ada data untuk diekspor.', 'warning');
+      return;
+    }
+
+    const XLSX = await _loadXLSX();
+    const exportRows = currentMode === 'peserta'
+      ? currentRows.map(g => ({
+          Nama: g.nama, NIK: g.nik, Instansi: g.instansi, 'Kab/Kota': g.kabKota, Provinsi: g.provinsi,
+          'Jml Bimtek': g._riwayat.length, 'Bimtek Terakhir': g.namaBimtek, Tahun: g.tahun,
+        }))
+      : currentRows.map(r => ({
+          Nama: r.nama, NIK: r.nik, Instansi: r.instansi, 'Kab/Kota': r.kabKota, Provinsi: r.provinsi,
+          Tahun: r.tahun, 'Nama Bimtek': r.namaBimtek, Bidang: BIDANG_LABEL[r.bidang] ?? r.bidang,
+          Tipe: r.tipe === 'pnbp' ? 'PNBP' : r.tipe === 'reguler' ? 'Reguler' : '', Sumber: r._sumber,
+        }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Alumni');
+    ws['!cols'] = Object.keys(exportRows[0]).map(k => ({ wch: Math.min(40, Math.max(k.length, 12)) }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `alumni_${currentMode}_${today}.xlsx`);
+    showToast(`${exportRows.length.toLocaleString('id-ID')} baris diekspor.`, 'success');
+  } catch (err) {
+    showToast('Export gagal: ' + err.message, 'error');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+let _XLSX = null;
+async function _loadXLSX() {
+  if (_XLSX) return _XLSX;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  _XLSX = window.XLSX;
+  return _XLSX;
 }
 
 // ─── Row builder ─────────────────────────────────────────────
