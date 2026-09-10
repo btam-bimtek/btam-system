@@ -308,12 +308,20 @@ async function _doExport(currentRows, currentMode) {
     const exportRows = currentMode === 'peserta'
       ? currentRows.map(g => ({
           Nama: g.nama, NIK: g.nik, Instansi: g.instansi, 'Kab/Kota': g.kabKota, Provinsi: g.provinsi,
+          'Jenis Kelamin': g.jenisKelamin === 'L' ? 'Laki-laki' : g.jenisKelamin === 'P' ? 'Perempuan' : (g.jenisKelamin || ''),
+          Pendidikan: g.pendidikan, Jabatan: g.jabatan,
           'Jml Bimtek': g._riwayat.length, 'Bimtek Terakhir': g.namaBimtek, Tahun: g.tahun,
         }))
       : currentRows.map(r => ({
           Nama: r.nama, NIK: r.nik, Instansi: r.instansi, 'Kab/Kota': r.kabKota, Provinsi: r.provinsi,
+          'Jenis Kelamin': r.jenisKelamin === 'L' ? 'Laki-laki' : r.jenisKelamin === 'P' ? 'Perempuan' : (r.jenisKelamin || ''),
+          Pendidikan: r.pendidikan, Jabatan: r.jabatan,
           Tahun: r.tahun, 'Nama Bimtek': r.namaBimtek, Bidang: BIDANG_LABEL[r.bidang] ?? r.bidang,
-          Tipe: r.tipe === 'pnbp' ? 'PNBP' : r.tipe === 'reguler' ? 'Reguler' : '', Sumber: r._sumber,
+          'Tgl Mulai': _fmtTgl(r.tglMulai), 'Tgl Selesai': _fmtTgl(r.tglSelesai),
+          Mode: r.mode || '', 'Jenis Lokasi': r.jenisLokasi || '',
+          Tipe: r.tipe === 'pnbp' ? 'PNBP' : r.tipe === 'reguler' ? 'Reguler' : '',
+          Lulus: r.lulus === true ? 'Lulus' : r.lulus === false ? 'Tidak Lulus' : '',
+          Sumber: r._sumber,
         }));
 
     const ws = XLSX.utils.json_to_sheet(exportRows);
