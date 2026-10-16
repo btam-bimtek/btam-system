@@ -199,7 +199,7 @@ function _renderUjianTertulisList(list) {
         return `
           <div class="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-3 py-2">
             <span class="text-xs text-gray-700">${_esc(u.namaBimtek)}</span>
-            <a href="/exam/?token=${encodeURIComponent(u.token)}" target="_blank"
+            <a href="../exam/?token=${encodeURIComponent(u.token)}" target="_blank"
                class="text-xs font-semibold text-blue-700 hover:text-blue-900 whitespace-nowrap">
               Mulai Ujian →
             </a>
