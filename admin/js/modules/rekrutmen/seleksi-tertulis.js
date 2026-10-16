@@ -187,7 +187,7 @@ async function _renderMonitorPerBimtek(bimtekPilihan) {
   const blocks = [];
   for (const b of bimtekPilihan) {
     if (!b.examIdTertulis) continue;
-    const sesiList = await listSeleksiSessions(b.examIdTertulis);
+    const sesiList = await listSeleksiSessions(b.examIdTertulis, b.bimtekId);
     const statSesi = { issued: 0, started: 0, submitted: 0, expired: 0 };
     sesiList.forEach(s => { statSesi[s.status] = (statSesi[s.status] ?? 0) + 1; });
     blocks.push(`

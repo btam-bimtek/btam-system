@@ -21,17 +21,23 @@ const TIPE_SESSION = 'seleksi_tertulis';
  * Generate magic link session untuk calon peserta yang lulus administrasi
  * dan belum punya sesi. Skip yang sudah punya sesi (idempotent).
  * @param {object} exam - doc exams (harus tipe seleksi_tertulis)
+ * @param {string} bimtekId - bimtek yang dituju (exam berdiri sendiri, bisa dipakai beberapa
+ *   bimtek sekaligus — bimtekId dari exam sendiri selalu null, jangan dipakai di sini)
  * @param {object[]} calonList - calon_peserta docs { id, nama, instansi, ... }
  * @param {Date} expiredAt
  * @returns {{ created: number, skipped: number }}
  */
-export async function generateSeleksiSessions(exam, calonList, expiredAt) {
+export async function generateSeleksiSessions(exam, bimtekId, calonList, expiredAt) {
   const user = getCurrentUser();
 
   const existingSnap = await getDocs(
     query(collection(db, COL.EXAM_SESSIONS), where('examId', '==', exam.id))
   );
-  const existingSet = new Set(snapToArray(existingSnap).map(s => s.noPeserta));
+  // Dedup per (bimtekId, noPeserta) — exam yang sama bisa ditautkan ke beberapa
+  // bimtek, dan calon perlu sesi terpisah untuk masing-masing pasangan.
+  const existingSet = new Set(
+    snapToArray(existingSnap).filter(s => s.bimtekId === bimtekId).map(s => s.noPeserta)
+  );
 
   const batch = writeBatch(db);
   let created = 0, skipped = 0;
@@ -45,7 +51,7 @@ export async function generateSeleksiSessions(exam, calonList, expiredAt) {
     const ref = doc(collection(db, COL.EXAM_SESSIONS));
     batch.set(ref, {
       examId:          exam.id,
-      bimtekId:         exam.bimtekId ?? null,
+      bimtekId,
       noPeserta:        calon.pendaftarId,
       tipeSession:      TIPE_SESSION,
       soalIds,
@@ -93,7 +99,7 @@ export async function generateSeleksiSessionsBulk(siklus, calonList, expiredAt) 
     const exam = { id: examSnap.id, ...examSnap.data() };
 
     const eligible = calonList.filter(c => c.statusAdmin?.[b.bimtekId]?.status === 'lulus');
-    const { created: c, skipped: s } = await generateSeleksiSessions(exam, eligible, expiredAt);
+    const { created: c, skipped: s } = await generateSeleksiSessions(exam, b.bimtekId, eligible, expiredAt);
     created += c; skipped += s;
     byBimtek.push({ bimtekId: b.bimtekId, created: c, skipped: s });
   }
@@ -121,12 +127,18 @@ export async function syncSeleksiEnrollment(siklus) {
   return generateSeleksiSessionsBulk(siklus, calonList, expiredAt);
 }
 
-/** List sesi seleksi_tertulis untuk exam tertentu (dipakai untuk tampilkan link per calon). */
-export async function listSeleksiSessions(examId) {
+/**
+ * List sesi seleksi_tertulis untuk exam tertentu (dipakai untuk tampilkan link per calon).
+ * @param {string} examId
+ * @param {string} [bimtekId] - filter tambahan; exam berdiri sendiri bisa dipakai beberapa
+ *   bimtek, jadi tanpa filter ini sesi bimtek lain ikut tercampur.
+ */
+export async function listSeleksiSessions(examId, bimtekId) {
   const snap = await getDocs(
     query(collection(db, COL.EXAM_SESSIONS), where('examId', '==', examId), where('tipeSession', '==', TIPE_SESSION))
   );
-  return snapToArray(snap);
+  const sessions = snapToArray(snap);
+  return bimtekId ? sessions.filter(s => s.bimtekId === bimtekId) : sessions;
 }
 
 /**
@@ -157,13 +169,15 @@ export async function scoreSeleksiSubmissions(examId) {
   const kunciMap = {};
   answersSnap.docs.forEach(d => { kunciMap[d.id] = d.data().kunci; });
 
-  // Dedupe: per noPeserta, ambil submission dengan submittedAt terakhir
+  // Dedupe: per (bimtekId, noPeserta) — exam yang sama bisa ditautkan ke beberapa
+  // bimtek, jadi satu noPeserta bisa punya submission terpisah per bimtek.
   const latestByPeserta = new Map();
   for (const s of snapToArray(submissionsSnap)) {
-    const existing = latestByPeserta.get(s.noPeserta);
+    const key = `${s.bimtekId}__${s.noPeserta}`;
+    const existing = latestByPeserta.get(key);
     const sTime = s.submittedAt?.toMillis?.() ?? s.submittedAt ?? 0;
     const eTime = existing ? (existing.submittedAt?.toMillis?.() ?? existing.submittedAt ?? 0) : -Infinity;
-    if (!existing || sTime > eTime) latestByPeserta.set(s.noPeserta, s);
+    if (!existing || sTime > eTime) latestByPeserta.set(key, s);
   }
   const submissions = Array.from(latestByPeserta.values());
 
@@ -173,10 +187,11 @@ export async function scoreSeleksiSubmissions(examId) {
   for (const submission of submissions) {
     try {
       const { skor, detail } = hitungSkor(submission, exam, soals, kunciMap, bloomBobot);
-      const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.noPeserta}__${TIPE_SESSION}`);
+      // bimtekId dari sesi/submission — exam.bimtekId selalu null (exam berdiri sendiri).
+      const resultRef = doc(db, COL.EXAM_RESULTS, `${examId}__${submission.bimtekId}__${submission.noPeserta}__${TIPE_SESSION}`);
       batch.set(resultRef, {
         examId,
-        bimtekId:    exam.bimtekId ?? null,
+        bimtekId:    submission.bimtekId ?? null,
         noPeserta:   submission.noPeserta,
         tipeSession: TIPE_SESSION,
         skor,
@@ -185,7 +200,7 @@ export async function scoreSeleksiSubmissions(examId) {
         scoredAt:    serverTimestamp(),
         rescoredAt:  serverTimestamp(),
       }, { merge: false });
-      scored.push({ pendaftarId: submission.noPeserta, skor });
+      scored.push({ pendaftarId: submission.noPeserta, bimtekId: submission.bimtekId, skor });
       processed++;
     } catch (err) {
       failed++;
@@ -197,13 +212,13 @@ export async function scoreSeleksiSubmissions(examId) {
 
   // Sinkron ke calon_peserta — noPeserta di sesi/submission adalah pendaftarId,
   // perlu resolve ke docId calon_peserta dulu (pendaftarId unik & embed tahun).
-  for (const { pendaftarId, skor } of scored) {
+  for (const { pendaftarId, bimtekId, skor } of scored) {
     try {
       const calonSnap = await getDocs(
         query(collection(db, COL.CALON_PESERTA), where('pendaftarId', '==', pendaftarId))
       );
       if (calonSnap.empty) throw new Error('Calon peserta tidak ditemukan');
-      await updateNilaiTertulis(calonSnap.docs[0].id, exam.bimtekId, skor);
+      await updateNilaiTertulis(calonSnap.docs[0].id, bimtekId, skor);
 
       // Sync status_lookup itu operasi turunan (memudahkan calon lihat status) —
       // kegagalannya TIDAK boleh dihitung sebagai kegagalan scoring, karena nilai
