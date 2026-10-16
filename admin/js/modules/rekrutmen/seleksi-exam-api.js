@@ -249,18 +249,25 @@ export async function scoreSeleksiSubmissionsBulk(siklus) {
   const bimtekWithExam = (siklus.bimtekPilihan || []).filter(b => b.examIdTertulis);
   let processed = 0, failed = 0;
   const byBimtek = [];
+  const allErrors = [];
 
   for (const b of bimtekWithExam) {
     try {
-      const { processed: p, failed: f } = await scoreSeleksiSubmissions(b.examIdTertulis);
+      const { processed: p, failed: f, errors } = await scoreSeleksiSubmissions(b.examIdTertulis);
       processed += p; failed += f;
       byBimtek.push({ bimtekId: b.bimtekId, processed: p, failed: f });
+      if (errors?.length) {
+        console.warn(`[scoreSeleksiSubmissionsBulk] ${b.namaBimtek || b.bimtekId}:`, errors);
+        allErrors.push(...errors.map(er => ({ ...er, bimtekId: b.bimtekId })));
+      }
     } catch (e) {
+      console.error(`[scoreSeleksiSubmissionsBulk] gagal total untuk bimtek ${b.namaBimtek || b.bimtekId} (exam ${b.examIdTertulis}):`, e);
       byBimtek.push({ bimtekId: b.bimtekId, processed: 0, failed: 0, error: e.message });
+      allErrors.push({ bimtekId: b.bimtekId, error: e.message });
     }
   }
 
-  return { processed, failed, byBimtek };
+  return { processed, failed, byBimtek, errors: allErrors };
 }
 
 /**

@@ -225,8 +225,10 @@ function _bindContentEvents(examsStandalone) {
     const btn = document.getElementById('btn-sync-nilai');
     btn.disabled = true; btn.textContent = 'Memproses...';
     try {
-      const { processed, failed } = await scoreSeleksiSubmissionsBulk(_S.siklus);
-      showToast(`${processed} nilai disinkronkan${failed ? `, ${failed} gagal` : ''}`, failed ? 'info' : 'success');
+      const { processed, failed, errors } = await scoreSeleksiSubmissionsBulk(_S.siklus);
+      if (errors?.length) console.warn('[Sinkronkan Nilai] detail error:', errors);
+      const errSuffix = errors?.length ? ` (lihat console untuk detail ${errors.length} error)` : '';
+      showToast(`${processed} nilai disinkronkan${failed ? `, ${failed} gagal` : ''}${errSuffix}`, (failed || errors?.length) ? 'info' : 'success');
       _renderContent();
     } catch (e) {
       showToast('Gagal sinkronkan nilai: ' + e.message, 'error');
